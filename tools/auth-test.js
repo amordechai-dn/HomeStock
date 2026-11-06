@@ -79,6 +79,7 @@ require('../auth.js');
 require('../data/foods.js'); // sets self.FOODS (=> window.FOODS)
 window.FOODS = self.FOODS;
 require('../home-model.js');
+require('../barcode.js');
 require('../app.js'); // exposes window.App._internals (DOM-free helpers)
 var Auth = global.window.Auth;
 var CurrentUser = global.window.CurrentUser;
@@ -1060,6 +1061,12 @@ async function rejects(name, fn) {
   });
   var catalogRice=window.FOODS.find(function(food){return food.name==='Rice';});
   ok('rice autocomplete uses grains category',catalogRice.category==='grains');
+
+  ['Shampoo','Hand soap','Batteries','Toothpaste','Toilet paper','Dishwasher tablets'].forEach(function(name){
+    var product=window.FOODS.find(function(row){return row.name===name;});
+    ok('household catalog contains '+name,!!product&&!!product.he&&['care','paper','household'].indexOf(product.category)!==-1);
+  });
+  ok('household catalog exports metadata without inline photos',(await DB.getAllBarcodes()).every(function(row){return !('image' in row);}));
 
   var rapid=await DB.create({name:'בדיקת לחיצות מהירות',quantity:1,unit:'pcs',location:'House'});
   AppI.setItems(await DB.getAll());

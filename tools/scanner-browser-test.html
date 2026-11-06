@@ -1,0 +1,30 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><base href="../"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#c3cec0"><title>בדיקת סורק — וידאו מדומה בלבד</title>
+<script src="theme.js"></script><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="design.css"><link rel="stylesheet" href="workspace.css"><link rel="stylesheet" href="theme.css"></head><body><div id="root"></div><output id="fixture-status" style="position:fixed;bottom:2px;left:2px;z-index:999;font:11px Arial;color:white;background:#233a2c;padding:5px;pointer-events:none">בדיקה מקומית · ללא מצלמה פיזית</output>
+<script src="config.js"></script><script src="data/foods.js"></script><script src="i18n.js"></script><script src="db.js"></script><script src="auth.js"></script><script src="dropdown.js"></script><script src="sync/github-sync.js"></script><script src="home-model.js"></script><script src="brand.js"></script><script src="barcode.js"></script><script src="tools/barcode-fixtures.js"></script><script src="app.js"></script>
+<script>
+(async()=>{
+ if(!['localhost','127.0.0.1'].includes(location.hostname)){document.body.textContent='בדיקה זו זמינה מקומית בלבד.';return;}
+ const mode=new URLSearchParams(location.search),canvas=document.createElement('canvas');canvas.width=960;canvas.height=540;
+ const streams=[];let requests=0;
+ const diag=document.createElement('output');diag.id='decode-diagnostics';diag.style='position:fixed;top:0;left:0;z-index:999;background:#fff;color:#000;font:12px Arial;direction:ltr';document.body.appendChild(diag);
+ setInterval(()=>{if(!window.ZXing)return;const Z=ZXing,hints=new Map([[Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.EAN_13]],[Z.DecodeHintType.TRY_HARDER,true]]);let out=[];
+ for(const [label,source]of [['canvas',canvas],['video',document.querySelector('video')]]){if(!source||(label==='video'&&!source.videoWidth))continue;try{let target=source;if(label==='video'){target=document.createElement('canvas');target.width=source.videoWidth;target.height=source.videoHeight;target.getContext('2d').drawImage(source,0,0);}
+ const luminance=new Z.HTMLCanvasElementLuminanceSource(target,false),bitmap=new Z.BinaryBitmap(new Z.HybridBinarizer(luminance));out.push(label+': '+new Z.MultiFormatReader().decode(bitmap,hints).getText());}catch(error){out.push(label+': '+error.name+' '+error.message);}}diag.textContent=out.join(' / ');},1200);
+ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{
+  enumerateDevices:async()=>[{kind:'videoinput',deviceId:'virtual-test-camera',label:'Back Camera — synthetic test'}],
+  getUserMedia:async()=>{requests++;if(mode.get('camera')==='denied'){let error=new Error('Simulated denial');error.name='NotAllowedError';throw error;}
+   BarcodeFixtures.draw(canvas,'7290000688077');const stream=canvas.captureStream(12);streams.push(stream);return stream;}
+ }});
+ setInterval(()=>{
+  if(streams.some(s=>s.active))BarcodeFixtures.draw(canvas,'7290000688077');
+  const tracks=streams.flatMap(s=>s.getTracks());document.getElementById('fixture-status').textContent='מצלמה מדומה בלבד · בקשות: '+requests+' · מסלולים פעילים: '+tracks.filter(t=>t.readyState==='live').length+' · נעצרו: '+tracks.filter(t=>t.readyState==='ended').length;
+ },150);
+ if(mode.get('lookup')==='slow'){
+  const originalFetch=window.fetch.bind(window);
+  window.fetch=(url,opts)=>String(url).startsWith('https://world.openfoodfacts.org/api/')?new Promise(resolve=>setTimeout(()=>resolve({ok:true,status:200,json:async()=>({status:'success',product:{product_name:'Test product',product_name_he:'מוצר בדיקה',product_type:'food'}})}),1500)):originalFetch(url,opts);
+ }
+ await Auth.init();PantryDB.setUser(CurrentUser.id());
+ await PantryDB.putBarcode({barcode:'7290000688077',name:'Test milk',he:'חלב לבדיקה',unit:'L',categoryId:'dairy',source:'user'});
+ App.start();
+})();
+</script></body></html>

@@ -58,6 +58,7 @@ async function browser(server,id){
   let milk=await a.db.create({name:'חלב',quantity:2,unitPriceAgorot:650});
   await a.db.putShopping({id:'s1',name:'לחם',quantity:1,purchased:false});
   a.db.setMonthlyLog({'2026-11':{restocked:2,consumed:0,shortfall:[],expenses:[{id:'p1',at:'2026-11-06',name:'חלב',amountAgorot:1300,quantity:2}]}});
+  await a.db.putBarcode({barcode:'7290000688077',name:'Milk',he:'חלב',categoryId:'dairy',unit:'L',image:'data:image/webp;base64,YQ==',source:'user'});
   await a.engine.start();
   await assert.rejects(a.engine.connect('bad-token'),/token-format/);
   assert.equal(a.engine.status().phase,'local','validation errors must not appear as storage errors');
@@ -65,7 +66,11 @@ async function browser(server,id){
   assert.equal(a.engine.status().phase,'synced');
   assert.equal(a.kv.get('credential').token,'github_pat_TEST');
   const b=await browser(cloud,'device-b');await b.start();
-  assert.equal((await b.db.getAll())[0].name,'חלב');
+  assert.equal((await b.db.getBarcode('7290000688077')).he,'חלב','saved barcode catalog transfers to another device');
+  assert(!('image' in cloud.files.get('household.json').doc.records['barcodes/7290000688077'].value),'catalog does not duplicate inline photos');
+  var learned=await b.db.getBarcode('7290000688077');learned.he='חלב שמור';await b.db.putBarcode(learned);await b.engine.sync();await a.engine.sync();
+  assert.equal((await a.db.getBarcode('7290000688077')).image,'data:image/webp;base64,YQ==','remote metadata preserves the local image cache');
+  assert.equal((await a.db.getAll())[0].name,'חלב');
   assert.equal((await b.db.getAll())[0].unitPriceAgorot,650);
   assert.equal((await b.db.getAllShopping())[0].name,'לחם');
   assert.equal(b.db.getMonthlyLog()['2026-11'].expenses[0].amountAgorot,1300);

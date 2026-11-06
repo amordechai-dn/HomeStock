@@ -2055,9 +2055,9 @@
 
   // Find an existing inventory item that already carries this barcode.
   function itemByBarcode(code) {
-    code = String(code || '');
+    code = window.HomeBarcode.key(code);
     for (var i = 0; i < items.length; i++)
-      if (items[i].barcode && String(items[i].barcode) === code) return items[i];
+      if (items[i].barcode && window.HomeBarcode.key(items[i].barcode) === code) return items[i];
     return null;
   }
 
@@ -2086,73 +2086,33 @@
   // Fetch + compress a remote (Open Food Facts) image to a local data URL so it
   // works offline afterwards. Resolves null on any failure (never a broken img).
   function fetchImageLocal(url) {
-    return new Promise(function (resolve) {
-      if (!url) return resolve(null);
-      try {
-        fetch(url)
-          .then(function (r) { return r.ok ? r.blob() : null; })
-          .then(function (blob) {
-            if (!blob) return resolve(null);
-            // processImage accepts any Blob; the data URL is same-origin so the
-            // canvas is not tainted and export succeeds. We keep the full
-            // variant here; the thumb is derived when it is persisted/deduped.
-            processImage(blob, function (pair) { resolve(pair ? pair.full : null); });
-          })
-          .catch(function () { resolve(null); });
-      } catch (e) {
-        resolve(null);
-      }
+    return new Promise(function(resolve){
+      var controller=new AbortController(),finished=false;
+      function done(image){if(finished)return;finished=true;clearTimeout(timer);resolve(image);}
+      var timer=setTimeout(function(){controller.abort();done(null);},3500);
+      try{
+        var source=new URL(url);
+        if(source.protocol!=='https:'||!/(^|\.)open(food|beauty|products|petfood)facts\.org$/.test(source.hostname)){done(null);return;}
+        fetch(source.href,{signal:controller.signal,credentials:'omit'}).then(function(response){return response.ok?response.blob():null;})
+          .then(function(blob){if(!blob){done(null);return;}processImage(blob,function(pair){done(pair?pair.full:null);});}).catch(function(){done(null);});
+      }catch(e){done(null);}
     });
   }
 
-  // Local-first lookup: an existing inventory item, then the per-user
-  // barcode->product cache/mapping. Resolves null when nothing local matches.
-  function resolveLocal(code) {
-    var item = itemByBarcode(code);
-    if (item) return Promise.resolve({ source: 'inventory', item: item });
-    return window.PantryDB.getBarcode(code).then(function (rec) {
-      return rec ? { source: 'cache', product: rec } : null;
-    });
-  }
-
-  // External Open Food Facts lookup. Returns a product object (source 'off'),
-  // { offline:true }, { error:true }, or null (found nothing usable).
-  function lookupOFF(code) {
-    if (!navigator.onLine) return Promise.resolve({ offline: true });
-    var url =
-      'https://world.openfoodfacts.org/api/v2/product/' +
-      encodeURIComponent(code) +
-      '.json?fields=product_name,product_name_en,product_name_he,generic_name,' +
-      'brands,categories_tags,image_front_small_url,image_small_url,image_front_url,quantity';
-    return fetch(url)
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        var p = d && d.product;
-        if (!p || d.status !== 1) return null;
-        var name = p.product_name_en || p.product_name || p.generic_name || '';
-        var he = p.product_name_he || '';
-        if (!name.trim() && !he.trim()) return null;
-        var cat = deriveCategory(p.categories_tags);
-        var fm = foodMatch(name || he);
-        if (fm && cat === 'other' && fm.category) cat = fm.category;
-        var imgUrl =
-          p.image_front_small_url || p.image_small_url || p.image_front_url || '';
-        return fetchImageLocal(imgUrl).then(function (img) {
-          return {
-            barcode: String(code),
-            name: name.trim(),
-            he: he.trim(),
-            brand: (p.brands || '').split(',')[0].trim() || '',
-            size: (p.quantity || '').trim(),
-            categoryId: cat,
-            unit: fm && fm.unit ? fm.unit : 'pcs',
-            emoji: fm ? fm.emoji : null,
-            image: img,
-            source: 'off',
-          };
-        });
-      })
-      .catch(function () { return { error: true }; });
+  function mapPublicProduct(product,code) {
+    var name=String(product.product_name_en||product.product_name||product.generic_name||'').trim();
+    var he=String(product.product_name_he||'').trim(),type=product.product_type||'food';
+    if(!name&&!he)return Promise.resolve(null);
+    var match=foodMatch(he||name),category=deriveCategory(product.categories_tags);
+    if(type==='beauty')category='care';
+    else if(type==='product')category=match?match.category:'household';
+    else if(match&&category==='other')category=match.category;
+    var image=product.image_front_small_url||product.image_small_url||product.image_front_url;
+    return (image?fetchImageLocal(image):Promise.resolve(null)).then(function(localImage){return {
+      barcode:code,name:name,he:he||match&&match.he||'',productType:type,
+      brand:String(product.brands||'').split(',')[0].trim(),size:String(product.quantity||'').trim(),
+      categoryId:category,unit:match&&match.unit||'pcs',emoji:match&&match.emoji||null,image:localImage,source:'off'
+    };});
   }
 
   function scanDisplayName(p) {
@@ -2168,24 +2128,13 @@
   //   4) otherwise a create-new-product fallback (barcode filled) -> 'new'
   //      ('offline' is a distinct new-product case with no network)
   // Never rejects; always resolves to a normalized { source, ... } descriptor.
+  var sharedBarcodeLookup=null;
   function lookupBarcode(code) {
-    code = String(code || '').trim();
-    return resolveLocal(code).then(function (local) {
-      if (local && local.source === 'inventory')
-        return { source: 'inventory', item: local.item };
-      if (local && local.source === 'cache')
-        return { source: 'cache', product: local.product };
-      return lookupOFF(code).then(function (off) {
-        if (off && off.source === 'off') {
-          window.PantryDB.putBarcode(off); // cache for next time (any path)
-          return { source: 'off', product: off };
-        }
-        var blank = { barcode: code, categoryId: 'other', unit: 'pcs' };
-        if (off && off.offline) return { source: 'offline', product: blank };
-        // Online but not found, or the DB was unreachable -> create new.
-        return { source: 'new', product: blank, reason: off && off.error ? 'unreachable' : 'notfound' };
-      });
+    if(!sharedBarcodeLookup)sharedBarcodeLookup=window.HomeBarcode.createLookup({
+      db:window.PantryDB,items:function(){return items;},online:function(){return navigator.onLine!==false;},
+      fetch:function(url,options){return fetch(url,options);},map:mapPublicProduct
     });
+    return sharedBarcodeLookup(code);
   }
 
   // Shared UI router: turn a lookupBarcode() result into the correct dialog.
@@ -2203,6 +2152,7 @@
     }
     // offline / new (not found / unreachable) -> create new, barcode prefilled.
     if (res.source === 'offline') showToast(t('scan.offline'));
+    else if (res.reason === 'rate-limit') showToast('המאגר עמוס כרגע. אפשר למלא פרטים ידנית ולנסות שוב בעוד דקה.');
     else if (res.reason === 'unreachable') showToast(t('scan.offUnreachable'));
     else showToast(t('scan.notFound'));
     openBarcodeProduct({ barcode: code, product: res.product, isNew: true }, onCancel, onSaved);
@@ -2213,7 +2163,8 @@
   function openManualBarcode(handlers) {
     handlers = handlers || {};
     var overlay = h('div', { class: 'overlay center' });
-    function close() { overlay.remove(); }
+    var closed=false,looking=false;
+    function close() {closed=true;overlay.remove();}
     overlay.addEventListener('click', function (e) { if (e.target === overlay) { close(); if (handlers.onCancel) handlers.onCancel(); } });
 
     var input = h('input', {
@@ -2225,13 +2176,16 @@
       placeholder: t('scan.manualBarcodePlaceholder'),
       'aria-label': t('scan.manualBarcodeTitle'),
     });
-    var status = h('div', { class: 'scan-status', text: '' });
+    var status = h('div', { class: 'scan-status', role:'status',text: '' });
 
     function submit() {
-      var code = input.value.replace(/\s+/g, '').trim();
+      if(looking||closed)return;
+      var code = window.HomeBarcode.normalize(input.value);
       if (!code) { input.classList.add('error'); input.focus(); return; }
+      looking=true;submitButton.disabled=true;
       status.textContent = t('scan.looking');
       lookupBarcode(code).then(function (res) {
+        if(closed)return;
         close();
         openBarcodeResult(res, code, handlers.onCancel, handlers.onSaved);
       });
@@ -2239,9 +2193,10 @@
     input.addEventListener('input', function () { input.classList.remove('error'); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
 
+    var submitButton=h('button',{class:'btn save',type:'button',onclick:submit},t('scan.manualBarcodeSubmit'));
     var dialog = h(
       'div',
-      { class: 'dialog' },
+      { class: 'dialog',role:'dialog','aria-modal':'true','aria-label':t('scan.manualBarcodeTitle') },
       h('div', { class: 'sheet-header' },
         h('h2', { class: 'dialog-title', text: t('scan.manualBarcodeTitle') }),
         h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: function () { close(); if (handlers.onCancel) handlers.onCancel(); } }, '✕')
@@ -2251,7 +2206,7 @@
       status,
       h('div', { class: 'actions' },
         h('button', { class: 'btn cancel', type: 'button', onclick: function () { close(); if (handlers.onCancel) handlers.onCancel(); } }, t('form.cancel')),
-        h('button', { class: 'btn save', type: 'button', onclick: submit }, t('scan.manualBarcodeSubmit'))
+        submitButton
       )
     );
     overlay.appendChild(dialog);
@@ -2326,7 +2281,9 @@
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
     // 2nd arg = ms between decode attempts. 80ms ≈ 12 attempts/sec (was 500 =
     // 2/sec), so a code in view is found far faster.
-    var reader = new ZXing.BrowserMultiFormatReader(hints, 80);
+    var reader = new ZXing.MultiFormatReader();
+    var captureCanvas=document.createElement('canvas'),captureContext;
+    try{captureContext=captureCanvas.getContext('2d',{willReadFrequently:true});}catch(e){captureContext=captureCanvas.getContext('2d');}
     var controls = null;
 
     // Dev-only debug telemetry (see maybeAttachDebug). Cheap counters kept
@@ -2348,6 +2305,7 @@
 
     var overlay = h('div', { class: 'overlay scanner center' });
     var video = h('video', { class: 'scan-video' });
+    video.muted=true;video.autoplay=true;video.playsInline=true;
     video.setAttribute('playsinline', 'true');
     video.setAttribute('muted', 'true');
     video.setAttribute('autoplay', 'true');
@@ -2442,7 +2400,7 @@
         if (stream && stream.getTracks) stream.getTracks().forEach(function (tr) { tr.stop(); });
       } catch (e) {}
       try { video.srcObject = null; } catch (e) {}
-      stream = null;
+      stream = null;captureCanvas.width=0;captureCanvas.height=0;
     }
 
     // ---- Dev-only debug panel ----
@@ -2487,7 +2445,7 @@
         dbgEls.running.classList.toggle('ok', !!dbg.running);
         dbgEls.frames.textContent = String(dbg.attempts);
         dbgEls.last.textContent = dbg.lastCode;
-        dbgEls.format.textContent = {EAN_13:'אירופי 13',EAN_8:'אירופי 8',UPC_A:'אמריקאי מלא',UPC_E:'אמריקאי מקוצר'}[dbg.format] || 'לא זוהה';
+        dbgEls.format.textContent = {'EAN-13':'אירופי 13','EAN-8':'אירופי 8','UPC-A':'אמריקאי מלא','UPC-E':'אמריקאי מקוצר'}[dbg.format] || 'לא זוהה';
         dbgEls.error.textContent = dbg.lastError;
         dbgEls.error.classList.toggle('bad', dbg.lastError !== '-');
         dbgEls.status.textContent = (status.textContent || '').slice(0, 40);
@@ -2548,7 +2506,7 @@
     // exposes labels, refine to a back/rear/environment deviceId so multi-cam
     // devices don't grab a wide/ultrawide lens that focuses poorly on barcodes.
     function pickConstraints() {
-      var base = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+      var base = { width: { ideal: 1280 }, height: { ideal: 720 } };
       var envConstraints = { audio: false, video: Object.assign({ facingMode: { ideal: 'environment' } }, base) };
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices)
         return Promise.resolve(envConstraints);
@@ -2570,7 +2528,10 @@
       status.textContent = t('scan.point');
       hideTips();
       pickConstraints()
-        .then(function (constraints) { return navigator.mediaDevices.getUserMedia(constraints); })
+        .then(function (constraints) { return navigator.mediaDevices.getUserMedia(constraints).catch(function(error){
+          if(error.name!=='OverconstrainedError'&&error.name!=='NotFoundError')throw error;
+          return navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+        }); })
         .then(function (s) {
           if (closed) { s.getTracks().forEach(function (tr) { tr.stop(); }); return; }
           stream = s;
@@ -2606,7 +2567,16 @@
           dbg.h = video.videoHeight;
           dbg.attempts++; // FRAMES PROCESSED
           try {
-            var result = reader.decode(video);
+            // Capture pixels explicitly. The legacy browser wrapper did not
+            // decode otherwise valid live frames in the browser regression.
+            // Keep the canvas sized to the current stream and use the same
+            // core decode path verified by the image and video fixtures.
+            var width=Math.min(video.videoWidth,960),height=Math.max(1,Math.round(video.videoHeight*width/video.videoWidth));
+            if(captureCanvas.width!==width||captureCanvas.height!==height){captureCanvas.width=width;captureCanvas.height=height;}
+            captureContext.drawImage(video,0,0,width,height);
+            var luminance=new ZXing.HTMLCanvasElementLuminanceSource(captureCanvas,false);
+            var bitmap=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+            var result = reader.decode(bitmap,hints);
             if (result) {
               var text = result.getText();
               dbg.lastCode = text;
@@ -2665,7 +2635,7 @@
               'div',
               { class: 'scan-row' },
               itemThumb(e, 'sm'),
-              h('span', { class: 'scan-row-name', dir: 'auto', text: scanDisplayName(e) }),
+              (e.name||e.he)?h('span', { class: 'scan-row-name', dir: 'auto', text: scanDisplayName(e) }):h('input',{class:'input scan-row-name',type:'text','aria-label':'שם המוצר עבור '+e.barcode,placeholder:'שם המוצר…',value:e.nameDraft||'',oninput:function(event){e.nameDraft=event.target.value;}}),
               h('span', { class: 'scan-row-count', text: '×' + e.count }),
               h('input',{class:'input batch-price',type:'text',inputmode:'decimal',dir:'ltr',placeholder:'מחיר ₪',
                 'aria-label':'מחיר ליחידה בשקלים עבור '+scanDisplayName(e),value:e.priceDraft,
@@ -2685,7 +2655,7 @@
     }
 
     function addToSession(prod) {
-      var e = byKey[prod.barcode];
+      var e = byKey[window.HomeBarcode.key(prod.barcode)];
       if (e) {
         e.count += 1;
       } else {
@@ -2697,13 +2667,14 @@
           emoji: prod.emoji || null,
           categoryId: prod.categoryId || 'other',
           unit: prod.unit || 'pcs',
+          location:prod.location||(prod.productType==='beauty'?'Shower':prod.productType==='product'?'House':defaultInventoryLocation()),
           count: 1,
           unitPriceAgorot: prod.unitPriceAgorot,
           priceDraft: priceText(prod.unitPriceAgorot),
           itemId: prod.itemId || null,
           source: prod.source || 'user',
         };
-        byKey[prod.barcode] = e;
+        byKey[window.HomeBarcode.key(prod.barcode)] = e;
         session.push(e);
       }
       status.textContent = t('scan.found');
@@ -2715,6 +2686,7 @@
     function resolveForSession(code) {
       status.textContent = t('scan.looking');
       lookupBarcode(code).then(function (res) {
+        if(closed)return;
         if (res.source === 'inventory') {
           var it = res.item;
           addToSession({
@@ -2739,6 +2711,7 @@
     // closeSaved() closes the scanner + refreshes on success.
     function handleSingle(code) {
       lookupBarcode(code).then(function (res) {
+        if(closed)return;
         openBarcodeResult(res, code, resume, closeSaved);
       });
     }
@@ -2757,9 +2730,10 @@
     }
 
     function onCode(code) {
+      code=window.HomeBarcode.normalize(code);
       var now = Date.now();
-      if (closed) return;
-      if (code === lastCode && now - lastTime < 2500) return; // debounce dupes (~2.5s cooldown)
+      if (closed||busy) return;
+      if (window.HomeBarcode.key(code) === window.HomeBarcode.key(lastCode) && now - lastTime < 2500) return; // debounce dupes (~2.5s cooldown)
       lastCode = code;
       lastTime = now;
       hideTips();
@@ -2779,6 +2753,8 @@
     function commitSession() {
       if(addAllBtn.disabled)return;
       var entries = session.filter(function(e){return !e.committed;});
+      if(entries.some(function(e){return !String(e.name||e.he||e.nameDraft||'').trim();})){showToast('יש להשלים שם לכל מוצר שלא זוהה לפני השמירה.');return;}
+      entries.forEach(function(e){if(!e.name&&!e.he)e.he=String(e.nameDraft||'').trim();});
       try {entries.forEach(function(e){e.unitPriceAgorot=parseUnitPrice(e.priceDraft);});} catch(error){showToast('בדקו את המחירים. מותר להזין עד שתי ספרות אחרי הנקודה.');return;}
       addAllBtn.disabled=true;
       if (!entries.length) { close(); return; }
@@ -2788,9 +2764,8 @@
         chain = chain.then(function () {
           var existing = e.itemId ? itemById(e.itemId) : itemByBarcode(e.barcode);
           if (existing) {
-            existing.quantity += e.count;
-            existing.unitPriceAgorot=e.unitPriceAgorot;
-            return window.PantryDB.put(existing).then(function () { recordDelta(e.count);recordExpense(existing,e.count); });
+            var updated=Object.assign({},existing,{quantity:existing.quantity+e.count,unitPriceAgorot:e.unitPriceAgorot});
+            return window.PantryDB.put(updated).then(function () { Object.assign(existing,updated);recordDelta(e.count);recordExpense(updated,e.count); });
           }
           var nm = e.name || e.he || t('scan.unknownName');
           // Dedup the image into the shared store first, then reference by hash.
@@ -2800,17 +2775,18 @@
                 name: nm, nameEn: e.name || null, nameHe: e.he || null,
                 unitPriceAgorot:e.unitPriceAgorot,
                 quantity: e.count, unit: e.unit, categoryId: e.categoryId,
-                location: defaultInventoryLocation(), barcode: e.barcode, emoji: e.emoji, imageHash: imageHash || null,
+                location: e.location, barcode: e.barcode, emoji: e.emoji, imageHash: imageHash || null,
               });
             })
             .then(function (item) {
+              e.itemId=item.id;items.push(item);
               recordDelta(item.quantity);
               recordExpense(item,item.quantity);
               return window.PantryDB.putBarcode({
                 barcode: e.barcode, name: e.name || '', he: e.he || '',
                 categoryId: e.categoryId, unit: e.unit, image: e.image || null,
                 emoji: e.emoji || null, source: e.source || 'user',
-              });
+              }).catch(function(){return null;});
             });
         }).then(function(){e.committed=true;});
       });
@@ -2828,9 +2804,10 @@
   // Known product already in inventory: choose how many units to add, then
   // increment the existing item (no duplicate). onCancel/onSaved handle flow.
   function openAddUnits(item, onCancel, onSaved) {
-    var qty = 1;
+    var qty = 1,saving=false;
     var overlay = h('div', { class: 'overlay center' });
     function close(saved) {
+      if(saving&&!saved)return;
       overlay.remove();
       if (saved) { if (onSaved) onSaved(); }
       else if (onCancel) onCancel();
@@ -2838,6 +2815,15 @@
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(false); });
 
     var price = priceField(item.unitPriceAgorot,function(){return qty;});
+    var saveButton=h('button',{class:'btn save',type:'button',onclick:function(){
+      if(saving)return;var unitPrice;try{unitPrice=price.read();}catch(e){return;}
+      saving=true;saveButton.disabled=true;
+      window.PantryDB.getItem(item.id).then(function(live){
+        if(!live)throw new Error('missing');
+        return window.PantryDB.put(Object.assign({},live,{unitPriceAgorot:unitPrice,quantity:live.quantity+qty}));
+      }).then(function(saved){Object.assign(item,saved);recordDelta(qty);recordExpense(saved,qty);close(true);})
+        .catch(function(){saving=false;saveButton.disabled=false;showToast('הכמות לא השתנתה. לא ניתן לשמור כרגע; נסו שוב.');});
+    }},t('scan.add'));
     var dialog = h(
       'div',
       { class: 'dialog' },
@@ -2857,19 +2843,7 @@
       price.element,
       h('div', { class: 'actions' },
         h('button', { class: 'btn cancel', type: 'button', onclick: function () { close(false); } }, t('form.cancel')),
-        h('button', {
-          class: 'btn save', type: 'button',
-          onclick: function () {
-            var unitPrice;try{unitPrice=price.read();}catch(e){return;}
-            item.unitPriceAgorot=unitPrice;
-            item.quantity += qty;
-            window.PantryDB.put(item).then(function () {
-              recordDelta(qty);
-              recordExpense(item,qty);
-              close(true);
-            });
-          },
-        }, t('scan.add'))
+        saveButton
       )
     );
     dialog.addEventListener('click',price.update);
@@ -2888,6 +2862,7 @@
       categoryId: product.categoryId || 'other',
       unit: product.unit || 'pcs',
       qty: 1,
+      location:product.location||(product.productType==='beauty'?'Shower':product.productType==='product'?'House':defaultInventoryLocation()),
       unitPriceAgorot: product.unitPriceAgorot,
       emoji: product.emoji || null,
       // Full image from OFF/cache; thumb (if any) is set when a photo is picked.
@@ -2898,6 +2873,7 @@
     var overlay = h('div', { class: 'overlay' });
     var sheet = h('div', { class: 'sheet' });
     function close(saved) {
+      if(saving&&!saved)return;
       overlay.remove();
       if (saved) { if (onSaved) onSaved(); }
       else if (onCancel) onCancel();
@@ -2914,6 +2890,7 @@
     var body = h('div', { class: 'sheet-body' });
 
     if (opts.hint) body.appendChild(h('div', { class: 'scan-hint', text: opts.hint }));
+    if(product.source==='off')body.appendChild(h('a',{class:'scan-data-credit',href:window.HomeBarcode.sourceUrl(product.productType)+'/product/'+encodeURIComponent(barcode),target:'_blank',rel:'noopener noreferrer',text:'פרטי המוצר במאגר הפתוח'}));
 
     // Photo
     body.appendChild(h('label', { class: 'field-label', text: t('form.photo') }));
@@ -2945,15 +2922,19 @@
 
     var price = priceField(st.unitPriceAgorot,function(){return st.qty;});
     body.appendChild(price.element);
+    body.appendChild(h('label',{class:'field-label',text:'מיקום בבית'}));
+    body.appendChild(locationPicker(function(){return st.location;},function(value){st.location=value;}));
     body.addEventListener('click',price.update);
     sheet.appendChild(body);
 
+    var saving=false;
     function save() {
+      if(saving)return;
       var unitPrice;try{unitPrice=price.read();}catch(e){return;}
       var en = enInput.value.trim();
       var he = heInput.value.trim();
-      if (!en && !he) {
-        (en ? enInput : heInput).classList.add('error');
+      if (!he) {
+        heInput.classList.add('error');heInput.focus();
         showToast(t('scan.nameRequired'));
         return;
       }
@@ -2968,43 +2949,44 @@
       var imgP = st.imageThumb
         ? storeImagePair({ full: st.imageFull, thumb: st.imageThumb })
         : persistFullImage(st.imageFull);
+      saving=true;saveButton.disabled=true;
       imgP.then(function (imageHash) {
         var existing = itemByBarcode(barcode);
         var p;
         if (existing) {
-          existing.quantity += st.qty;
-          existing.unitPriceAgorot=unitPrice;
+          var updated=Object.assign({},existing,{quantity:existing.quantity+st.qty,unitPriceAgorot:unitPrice});
           var prevHash = existing.imageHash || null;
-          if (imageHash) { existing.imageHash = imageHash; existing.image = null; }
-          p = window.PantryDB.put(existing).then(function () {
+          if (imageHash) { updated.imageHash = imageHash; updated.image = null; }
+          p = window.PantryDB.put(updated).then(function () {
+            Object.assign(existing,updated);
             recordDelta(st.qty);
-            recordExpense(existing,st.qty);
-            if (imageHash && prevHash && prevHash !== imageHash) return releaseImage(prevHash);
+            recordExpense(updated,st.qty);
+            if (imageHash && prevHash && prevHash !== imageHash) return releaseImage(prevHash).catch(function(){});
           });
         } else {
           p = window.PantryDB.create({
             name: primary, nameEn: en || null, nameHe: he || null,
             unitPriceAgorot: unitPrice,
             quantity: st.qty, unit: st.unit, categoryId: st.categoryId,
-            location: defaultInventoryLocation(), barcode: barcode, emoji: emoji || null, imageHash: imageHash || null,
+            location: st.location, barcode: barcode, emoji: emoji || null, imageHash: imageHash || null,
           }).then(function (item) { recordDelta(item.quantity);recordExpense(item,item.quantity); });
         }
-        p.then(function () {
-          window.PantryDB.putBarcode({
+        return p.then(function () {
+          return window.PantryDB.putBarcode({
             barcode: barcode, name: en, he: he, categoryId: st.categoryId,
-            unit: st.unit, image: st.imageFull || null, emoji: emoji || null,
+            unit: st.unit,location:st.location, image: st.imageFull || null, emoji: emoji || null,
             brand: product.brand || '', size: product.size || '',
             source: opts.isNew ? 'user' : product.source || 'off',
-          });
-          close(true);
+          }).catch(function(){return null;}).then(function(){close(true);});
         });
-      });
+      }).catch(function(){saving=false;saveButton.disabled=false;showToast('לא ניתן להשלים את השמירה. בדקו את החיבור ואת הכמות במלאי לפני ניסיון נוסף.');});
     }
 
+    var saveButton=h('button',{class:'btn save',type:'button',onclick:save},t('scan.save'));
     sheet.appendChild(
       h('div', { class: 'actions' },
         h('button', { class: 'btn cancel', type: 'button', onclick: function () { close(false); } }, t('form.cancel')),
-        h('button', { class: 'btn save', type: 'button', onclick: save }, t('scan.save'))
+        saveButton
       )
     );
 

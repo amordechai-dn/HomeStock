@@ -4,7 +4,7 @@
  * offline edits and merge concurrent devices. Photos live in separate files. */
 (function(root){
   'use strict';
-  var TABLES=['items','shopping','expenses','counters'];
+  var TABLES=['items','shopping','expenses','counters','barcodes'];
   function empty(){return {version:1,records:{}};}
   function clone(x){return JSON.parse(JSON.stringify(x));}
   function canonical(value){
@@ -24,6 +24,7 @@
       var v=e.value;
       if(v!==null && (typeof v!=='object'||Array.isArray(v)))throw new Error('invalid-data');
       if(v && (table==='items'||table==='shopping') && (typeof v.id!=='string'||key!==table+'/'+v.id||typeof v.name!=='string'||!Number.isFinite(v.quantity)||v.quantity<0))throw new Error('invalid-data');
+      if(v && table==='barcodes' && (typeof v.barcode!=='string'||!v.barcode||v.barcode.length>128||key!=='barcodes/'+v.barcode))throw new Error('invalid-data');
       if(v && table==='expenses' && (key!=='expenses/'+v.id||!/^\d{4}-\d{2}$/.test(v.month)||!Number.isSafeInteger(v.amountAgorot)||v.amountAgorot<0))throw new Error('invalid-data');
       if(v && table==='counters' && (!Number.isFinite(v.restocked)||!Number.isFinite(v.consumed)||!/^\d{4}-\d{2}$/.test(v.month)))throw new Error('invalid-data');
     });
@@ -44,14 +45,15 @@
     function month(key){if(!monthly[key])monthly[key]={restocked:0,consumed:0,shortfall:[],expenses:[]};return monthly[key];}
     rows(doc,'expenses').forEach(function(e){var copy=clone(e);delete copy.month;month(e.month).expenses.push(copy);});
     rows(doc,'counters').forEach(function(e){var m=month(e.month);m.restocked+=e.restocked;m.consumed+=e.consumed;});
-    return {items:rows(doc,'items'),shopping:rows(doc,'shopping'),monthly:monthly};
+    return {items:rows(doc,'items'),shopping:rows(doc,'shopping'),barcodes:rows(doc,'barcodes'),monthly:monthly};
   }
   function capture(meta,snapshot,device){
     var doc=meta.doc,previous=meta.observed || {items:[],shopping:[],monthly:{}};
     var clock=maxClock(doc);
     function put(key,value,initial){doc.records[key]={rev:[initial?0:++clock,device],value:clone(value)};}
-    ['items','shopping'].forEach(function(table){
-      var before={},after={};previous[table].forEach(function(x){before[x.id]=x;});snapshot[table].forEach(function(x){after[x.id]=x;});
+    ['items','shopping','barcodes'].forEach(function(table){
+      function id(row){return table==='barcodes'?row.barcode:row.id;}
+      var before={},after={};(previous[table]||[]).forEach(function(x){before[id(x)]=x;});(snapshot[table]||[]).forEach(function(x){after[id(x)]=x;});
       Object.keys(after).forEach(function(id){if(!equal(before[id],after[id]))put(table+'/'+id,after[id],!before[id]&&!doc.records[table+'/'+id]);});
       Object.keys(before).forEach(function(id){if(!after[id])put(table+'/'+id,null,false);});
     });
@@ -95,7 +97,7 @@
       return fn();
     });chain=p.catch(function(){});return p;}
     async function readMeta(){meta=await store.get(key)||{doc:empty(),observed:{items:[],shopping:[],monthly:{}}};}
-    async function snapshot(){var data=await Promise.all([db.getAll(),db.getAllShopping()]);return {items:data[0],shopping:data[1],monthly:db.getMonthlyLog()};}
+    async function snapshot(){var data=await Promise.all([db.getAll(),db.getAllShopping(),db.getAllBarcodes()]);return {items:data[0],shopping:data[1],barcodes:data[2],monthly:db.getMonthlyLog()};}
     async function captureNow(){capture(meta,await snapshot(),device);await store.set(key,meta);}
     async function api(path,token,method,body,raw){
       var control=new AbortController(),timeout=setTimeout(function(){control.abort();},25000);

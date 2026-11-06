@@ -303,6 +303,16 @@
     } catch (e) {}
   }
 
+  function barcodeMetadata(rec){var value=Object.assign({},rec);delete value.image;return value;}
+  // Shared catalog exports metadata only. Photos remain in the local cache.
+  function getAllBarcodes(){
+    if(!scoped())return scopeError();
+    if(!useIDB){var map=bcLsRead();return Promise.resolve(Object.keys(map).map(function(key){return barcodeMetadata(map[key]);}));}
+    return tx('readonly',BC_STORE).then(function(store){return new Promise(function(resolve,reject){
+      var req=store.getAll();req.onsuccess=function(){resolve((req.result||[]).map(barcodeMetadata));};req.onerror=function(){reject(req.error);};
+    });});
+  }
+
   function getBarcode(code) {
     if (!scoped()) return scopeError();
     if (!code) return Promise.resolve(null);
@@ -561,10 +571,11 @@
     var changed = false;
     function same(a,b) { return JSON.stringify(a) === JSON.stringify(b); }
     function plan(table, actual, write, remove) {
-      var old = {}, next = {}, current = {}, result = {};
-      expected[table].forEach(function(r){old[r.id]=r;result[r.id]=r;});
-      desired[table].forEach(function(r){next[r.id]=r;});
-      actual.forEach(function(r){current[r.id]=r;});
+      var old=Object.create(null),next=Object.create(null),current=Object.create(null),result=Object.create(null);
+      function key(row){return table==='barcodes'?row.barcode:row.id;}
+      (expected[table]||[]).forEach(function(r){old[key(r)]=r;result[key(r)]=r;});
+      (desired[table]||[]).forEach(function(r){next[key(r)]=r;});
+      actual.forEach(function(r){current[key(r)]=r;});
       Object.keys(Object.assign({},old,next)).forEach(function(id){
         if(!same(current[id],old[id]) || same(current[id],next[id])) return;
         if(next[id]) { write(next[id]); result[id]=next[id]; }
@@ -588,16 +599,29 @@
         function update(arr,rec){var i=arr.findIndex(function(x){return x.id===rec.id;});if(i<0)arr.push(rec);else arr[i]=rec;}
         plan('items',inv,function(r){update(inv,r);},function(id){inv=inv.filter(function(r){return r.id!==id;});});
         plan('shopping',shop,function(r){update(shop,r);},function(id){shop=shop.filter(function(r){return r.id!==id;});});
+        if(Array.isArray(desired.barcodes)){
+          var codes=bcLsRead();
+          plan('barcodes',Object.keys(codes).map(function(key){return barcodeMetadata(codes[key]);}),function(r){codes[r.barcode]=Object.assign({},r,{image:codes[r.barcode]&&codes[r.barcode].image||null});},function(code){delete codes[code];});
+          localStorage.setItem(BC_LS_KEY,JSON.stringify(codes));
+        }
         localStorage.setItem(LS_KEY,JSON.stringify(inv));
         localStorage.setItem(SHOP_LS_KEY,JSON.stringify(shop));
         return Promise.resolve(monthly());
       } catch(e) { return Promise.reject(e); }
     }
     return openDB().then(function(db){return new Promise(function(resolve,reject){
-      var tx=db.transaction([STORE,SHOP_STORE],'readwrite');
-      ['items','shopping'].forEach(function(table){
-        var store=tx.objectStore(table==='items'?STORE:SHOP_STORE),req=store.getAll();
-        req.onsuccess=function(){plan(table,req.result||[],function(r){store.put(r);},function(id){store.delete(id);});};
+      var tables=['items','shopping'];if(Array.isArray(desired.barcodes))tables.push('barcodes');
+      var stores={items:STORE,shopping:SHOP_STORE,barcodes:BC_STORE};
+      var tx=db.transaction(tables.map(function(table){return stores[table];}),'readwrite');
+      tables.forEach(function(table){
+        var store=tx.objectStore(stores[table]),req=store.getAll();
+        req.onsuccess=function(){
+          var raw=req.result||[],byCode=Object.create(null);raw.forEach(function(r){byCode[r.barcode]=r;});
+          plan(table,table==='barcodes'?raw.map(barcodeMetadata):raw,function(r){
+            if(table==='barcodes')r=Object.assign({},r,{image:byCode[r.barcode]&&byCode[r.barcode].image||null});
+            store.put(r);
+          },function(id){store.delete(id);});
+        };
       });
       tx.oncomplete=function(){try{resolve(monthly());}catch(e){reject(e);}};
       tx.onerror=tx.onabort=function(){reject(tx.error || new Error('Sync import failed'));};
@@ -733,6 +757,7 @@
     put: put,
     remove: remove,
     getBarcode: getBarcode,
+    getAllBarcodes: getAllBarcodes,
     putBarcode: putBarcode,
     // Shopping List — separate model, independent write path.
     getAllShopping: getAllShopping,

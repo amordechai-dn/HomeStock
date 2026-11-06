@@ -35,9 +35,11 @@
   const item=await a.db.create({name:'חלב',quantity:2,unitPriceAgorot:700});
   await a.db.putShopping({id:'list-1',name:'לחם',quantity:1});
   a.db.setMonthlyLog({'2026-11':{restocked:2,consumed:0,shortfall:[],expenses:[{id:'expense-1',name:'חלב',amountAgorot:1400}]}});
+  await a.db.putBarcode({barcode:'7290000688077',name:'Milk',he:'חלב',categoryId:'dairy',unit:'L',image:'data:image/webp;base64,YQ=='});
   await a.engine.start();await a.engine.connect('github_pat_TEST');
   check(a.engine.status().phase==='synced','first device publishes');
   await b.engine.start();await b.engine.connect('github_pat_TEST');
+  check((await b.db.getBarcode('7290000688077')).he==='חלב','barcode catalog transfers between browser stores');
   check((await b.db.getAll())[0].name==='חלב','Hebrew inventory transfers through IndexedDB');
   check((await b.db.getAllShopping())[0].id==='list-1','shopping list transfers');
   check(b.db.getMonthlyLog()['2026-11'].expenses[0].amountAgorot===1400,'expense snapshots transfer');

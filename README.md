@@ -5,12 +5,12 @@ organized into **Kitchen / Bathroom / House** spaces, with kitchen and bathroom 
 scanning, a separate shopping list, a **Hebrew interface** with full RTL,
 one household profile, **automatic on-device saving**, and optional **automatic GitHub device sync**.
 
-Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It works
-100% offline and **auto-updates** whenever a new version is deployed.
+Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. Saved inventory and cached product lookup work
+offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.1.1`
+**Current version:** `v4.2.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -46,7 +46,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - Consuming/deleting stock or changing its price does not rewrite past spending.
 - Monthly expense totals and purchase history appear in **הוצאות חודשיות**; mistaken entries can be removed without changing stock.
 - Shopping-list entries count as spending only when marked purchased; undo reverses that purchase entry.
-- Prices travel with inventory/shopping record data. Expense history uses the existing per-device monthly log and is currently **local to each device**; cloud backend setup remains pending.
+- Prices travel with inventory/shopping record data. Expense history uses the monthly log and participates in connected GitHub sync.
 
 ### Product images (on-device)
 - Photos are **compressed on-device** (WebP when supported), stored as a small
@@ -60,17 +60,13 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
   matching the current language and falls back gracefully.
 
 ### Barcode scanning 📷
-- **Camera scanning** with a resilient **continuous decode loop** (rear camera,
-  formats **EAN-13 / UPC-A / UPC-E / EAN-8**, `TRY_HARDER`), plus **manual
-  barcode entry**.
-- **Continuous-scan session:** toggle ON to batch many products (with a short
-  duplicate cooldown) and commit them all with one tap; OFF scans a single item
-  then stops.
-- Detection feedback (frame flash, beep, vibrate, detected-number badge) and a
-  **dev debug overlay** (`?debug=1`) showing decoder-running / frames-processed.
-- Barcodes are resolved to a product **name/image** via the free **Open Food
-  Facts** API (the only online-dependent step) and **cached per-user** so repeat
-  scans work offline.
+- Rear-camera video frames are decoded locally with the bundled ZXing decoder (EAN-13, EAN-8, UPC-A and UPC-E). Manual entry remains available if permission is denied.
+- Single scans open a review with quantity, price and storage location. Repeating a barcode restocks its existing item; continuous mode groups products before saving.
+- Lookup checks inventory and the learned barcode catalog first, then the Open Food Facts universal API (`product_type=all`) for food, beauty, pet food and general products. Coverage varies; unknown products require a name before saving.
+- Successful matches are cached for offline reuse. Barcode metadata joins automatic GitHub sync when each device is connected; cached photos remain local.
+- The bundled autocomplete catalog contains **309 food and household names** with Hebrew names, aliases, categories and units. These are generic suggestions, not 309 preloaded barcode identities.
+- Network requests have an eight-second timeout, shared in-flight lookups, request limits and rate-limit backoff. Canceling a lookup prevents a late result from reopening its dialog.
+- Tests cover real decoder images, simulated camera video, permission denial, scan-to-save/restock, cancellation, live API lookup and browser IndexedDB catalog transfer. **Physical phone-camera focus and permissions still require a device check.**
 
 ### Shopping list (separate feature)
 - A **standalone model** — *not* derived from inventory.
@@ -90,8 +86,8 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - Inventory, shopping lists and expenses save automatically on the current device.
 - Clearing inventory works offline without cloud setup; shopping lists and expense history are preserved.
 - The retired Supabase provider is disabled, ships no backend credentials and ignores old saved overrides.
-- Cross-device synchronization is **not active** until a replacement shared-storage service is connected.
-- Legacy sync code and schema files remain for reference, but are not loaded by the app.
+- Cross-device synchronization requires the one-time GitHub connection on each device.
+- The GitHub adapter is active; retired provider files remain for reference only.
 
 ### Platform
 - **Hebrew interface** with full **RTL** layout (CSS logical properties).
@@ -108,7 +104,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - **Local storage:** **IndexedDB** (per-user database), with a **localStorage
   fallback**; monthly log and settings in per-user localStorage keys.
 - **Service worker:** precache + cache-first, offline navigation, self-updating.
-- **Backend:** no active cloud backend. The retired provider is disabled.
+- **Shared storage:** optional authenticated GitHub repository adapter; retired provider disabled.
 - **Vendored libraries (local, no CDN):** [`@zxing/library`](https://github.com/zxing-js/library)
   for barcode decoding. The legacy QR generator is not loaded by the current app.
 - **Hosting:** **GitHub Pages** (static).
@@ -149,12 +145,9 @@ Deployment is just a git push to the Pages repo:
 
 ## Cross-device sync status
 
-Cloud synchronization is not currently active. The old provider has been
-retired; no manual sync setup or backend settings are exposed in the app.
-A replacement requires an authenticated shared-storage service and a new
-adapter before computer/phone synchronization can be offered.
+Automatic GitHub synchronization uses a separate private data repository. Each device needs its one-time connection in settings before household data can transfer. Inventory, shopping lists, expenses and learned barcode metadata sync; changes made offline are merged after reconnection. Never put access tokens in public source code.
 
-The files under `sync/` are legacy reference material, not current setup instructions.
+The retired Supabase files are historical reference only. A successful simulated two-device test does not mean a user's devices have completed their connection.
 
 ---
 
@@ -166,15 +159,16 @@ design.css            Kitchen-shelf visual design, responsive navigation and typ
 fonts/                Locally bundled Rubik variable font (OFL)
 styles.css            Base components (logical properties → RTL-safe), responsive
 config.js             Runtime flags; retired cloud provider disabled
-i18n.js               English + Hebrew strings + RTL handling
-data/foods.js         Local bilingual food database (autocomplete + emoji)
+i18n.js               Hebrew strings + RTL handling
+data/foods.js         309 bilingual food/household suggestions
+barcode.js            Local-first product lookup, caching and API limits
 db.js                 Per-user IndexedDB persistence (localStorage fallback)
 auth.js               Passwordless profiles (repository / active user / migration)
 app.js                UI, CRUD, modals, scanner, shopping list, sync glue
 pwa.js                Service-worker registration + auto-update + version label
 sw.js                 Service worker (precache, cache-first, VERSION)
 manifest.webmanifest  PWA manifest (icons + maskable, relative paths)
-sync/homesync.js      Cross-device sync engine (lazy-loaded, dormant by default)
+sync/github-sync.js   Automatic GitHub household-data adapter
 sync/schema.sql       Supabase schema + indexes + RLS + device-link RPCs
 sync/SYNC_SETUP.md    Supabase setup walkthrough
 vendor/zxing.min.js   Vendored barcode scanner (@zxing/library UMD)
