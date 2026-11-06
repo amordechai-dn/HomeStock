@@ -146,9 +146,12 @@
   // he/name (session + barcode + catalog).
   function localName(o) {
     if (!o) return '';
-    if (window.I18N.getLang() === 'he')
-      return o.nameHe || o.he || o.nameEn || o.name || '';
-    return o.nameEn || o.name || o.nameHe || o.he || '';
+    if (o.nameHe || o.he) return o.nameHe || o.he;
+    var original = o.nameEn || o.name || '';
+    var match = foodMatch(original);
+    // Translate known catalog labels without rewriting a user's custom text.
+    if (match && match.he && scoreFood(match, original.trim().toLowerCase()) === 0) return match.he;
+    return original;
   }
   // Alias kept expressive at call sites that operate on inventory items.
   var itemName = localName;
@@ -1098,7 +1101,7 @@
       h(
         'div',
         { class: 'card-info' },
-        h('div', { class: 'card-name', dir: 'auto', text: sf.nameEn || sf.nameHe || sf.name }),
+        h('div', { class: 'card-name', dir: 'auto', text: itemName(sf) }),
         h('div', { class: 'card-meta', text: t('shopping.need', { missing: formatQty(sf.missing), unit: unit }) })
       ),
       h('button', {
@@ -1292,9 +1295,9 @@
 
   function renderNavigation() {
     var nav = h('nav', { class: 'kitchen-nav', 'aria-label': 'ניווט ראשי' });
-    nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'HomeStock — המלאי שלי'},
+    nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'הום סטוק — המלאי שלי'},
       h('span',{class:'brand-mark'},uiIcon('shelf')),
-      h('span',{class:'brand-word',dir:'ltr',text:'HomeStock'})));
+      h('span',{class:'brand-word',dir:'rtl',text:'הום סטוק'})));
     nav.appendChild(h('p',{class:'nav-caption',text:'קצת סדר. הרבה שקט.'}));
     var links = h('div', {class:'nav-links'});
     links.appendChild(actionButton('המלאי שלי','shelf','nav-link' + (currentView === 'inventory' ? ' active':''),function(){
@@ -1307,7 +1310,7 @@
     nav.appendChild(links);
     nav.appendChild(h('div',{class:'nav-bottom'},
       h('div',{class:'nav-note'},uiIcon('leaf'),h('p',{text:'לדעת מה יש.\nלקנות רק מה שצריך.'})),
-      h('span',{class:'version',id:'version',text:window.APP_VERSION || ''})));
+      h('span',{class:'version',id:'version',text:'גרסה ' + String(window.APP_VERSION || '').replace(/^v/,'')})));
     return nav;
   }
 
@@ -2104,7 +2107,7 @@
       var parts = key.split('-');
       var d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
       try {
-        return d.toLocaleDateString(window.I18N.getLang() === 'he' ? 'he' : 'en', {
+        return d.toLocaleDateString('he-IL', {
           month: 'long',
           year: 'numeric',
         });
@@ -2662,7 +2665,7 @@
         error: row(t('scan.debug.error')),
         status: row(t('scan.debug.status')),
       };
-      dbgEls.formats.textContent = 'EAN-13, UPC-A, UPC-E, EAN-8';
+      dbgEls.formats.textContent = 'אירופי 13, אירופי 8, אמריקאי מלא ומקוצר';
       dbgTimer = setInterval(function () {
         dbg.fps = dbg.attempts - dbg.lastAttempts; // frames processed in the last second
         dbg.lastAttempts = dbg.attempts;
@@ -2672,7 +2675,7 @@
         dbgEls.running.classList.toggle('ok', !!dbg.running);
         dbgEls.frames.textContent = String(dbg.attempts);
         dbgEls.last.textContent = dbg.lastCode;
-        dbgEls.format.textContent = dbg.format;
+        dbgEls.format.textContent = {EAN_13:'אירופי 13',EAN_8:'אירופי 8',UPC_A:'אמריקאי מלא',UPC_E:'אמריקאי מקוצר'}[dbg.format] || 'לא זוהה';
         dbgEls.error.textContent = dbg.lastError;
         dbgEls.error.classList.toggle('bad', dbg.lastError !== '-');
         dbgEls.status.textContent = (status.textContent || '').slice(0, 40);
@@ -2770,7 +2773,7 @@
           if (closed) return;
           status.textContent = t('scan.denied');
           status.classList.add('error');
-          dbg.lastError = (err && (err.name || err.message)) || 'getUserMedia failed';
+          dbg.lastError = 'לא ניתן לגשת למצלמה';
         });
     }
 
@@ -2802,7 +2805,7 @@
               onCode(text);
             }
           } catch (err) {
-            if (!isNoCode(err)) dbg.lastError = (err && (err.name || err.message)) || String(err);
+            if (!isNoCode(err)) dbg.lastError = 'לא ניתן לפענח את הברקוד';
           }
         }
         // Timeout guidance: keep decoding, just reveal tips once.
@@ -3254,8 +3257,6 @@
       avc.input,
       h('label', { class: 'field-label', text: t('auth.displayName') }),
       nameInput,
-      cu.username() ? h('label', { class: 'field-label', text: t('auth.username') }) : null,
-      cu.username() ? h('div', { class: 'profile-username', text: '@' + cu.username() }) : null,
       h('div', { class: 'actions' },
         h('button', { class: 'btn cancel', type: 'button', onclick: close }, t('form.cancel')),
         h('button', { class: 'btn save', type: 'button', onclick: save }, t('auth.save'))
@@ -4080,7 +4081,7 @@
           )
         );
         body.appendChild(
-          h('p', { class: 'sync-note', text: t('sync.lastSync') + ': ' + (lastAt ? new Date(lastAt).toLocaleString() : t('sync.never')) })
+          h('p', { class: 'sync-note', text: t('sync.lastSync') + ': ' + (lastAt ? new Date(lastAt).toLocaleString('he-IL') : t('sync.never')) })
         );
         body.appendChild(btn(t('sync.syncNow'), 'save', function () {
           if (syncMgr) syncMgr.scheduleSync(0);
@@ -4191,8 +4192,8 @@
       // a collapsed disclosure. Prefilled from the baked config; not needed for
       // normal use (every device ships already configured via config.js).
       var cfg = syncGetConfig();
-      var urlInput = h('input', { class: 'input', type: 'url', value: cfg.url, placeholder: 'https://xxxx.supabase.co', dir: 'ltr' });
-      var anonInput = h('input', { class: 'input mono', type: 'text', value: cfg.anonKey, placeholder: 'sb_publishable_… / eyJhbGci…', dir: 'ltr' });
+      var urlInput = h('input', { class: 'input', type: 'url', value: cfg.url, placeholder: 'כתובת שרת הסנכרון', dir: 'ltr' });
+      var anonInput = h('input', { class: 'input mono', type: 'text', value: cfg.anonKey, placeholder: 'הדביקו את מפתח הגישה הציבורי', dir: 'ltr' });
       var advanced = h('details', { class: 'sync-advanced' },
         h('summary', { text: t('sync.backendSettings') }),
         h('p', { class: 'sync-note', text: t('sync.backendSettingsSub') }),
@@ -4317,15 +4318,14 @@
       h('div', { class: 'settings-account' },
         avatarEl('lg'),
         h('div', { class: 'settings-account-info' },
-          h('div', { class: 'settings-account-name', dir: 'auto', text: cu ? cu.displayName() : '' }),
-          cu && cu.username() ? h('div', { class: 'settings-account-sub', text: '@' + cu.username() }) : null
+          h('div', { class: 'settings-account-name', dir: 'auto', text: cu ? cu.displayName() : '' })
         )
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
       row('מעקב חודשי', 'מה צריך לחדש החודש', function () { close(); openMonthly(); }),
       row(t('settings.sync'), t('settings.syncSub'), function () { close(); openSyncSettings(); }),
       row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
-      h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + (window.APP_VERSION || '') })
+      h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
     );
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);

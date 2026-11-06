@@ -280,26 +280,22 @@ async function rejects(name, fn) {
   var createdLegacy = await DB.create({ name: 'Salt', quantity: 1, unit: 'pack', categoryId: 'dry', location: 'Pantry' });
   ok('create defaults missing names to null (fallback)', createdLegacy.nameEn === null && createdLegacy.nameHe === null);
 
-  // 17) Full EN/HE i18n key parity (deep) + new keys present
-  console.log('\n[i18n: full EN/HE parity]');
-  function flatten(obj, prefix, out) {
-    Object.keys(obj).forEach(function (k) {
-      var v = obj[k];
-      var key = prefix ? prefix + '.' + k : k;
-      if (v && typeof v === 'object') flatten(v, key, out);
-      else out[key] = true;
-    });
-    return out;
-  }
+  // Hebrew is the only shipped UI dictionary; strings never fall back to English.
+  console.log('\n[Hebrew-only interface]');
   var dicts = I18N._dicts;
-  var enKeys = Object.keys(flatten(dicts.en, '', {})).sort();
-  var heKeys = Object.keys(flatten(dicts.he, '', {})).sort();
-  var missingInHe = enKeys.filter(function (k) { return heKeys.indexOf(k) === -1; });
-  var missingInEn = heKeys.filter(function (k) { return enKeys.indexOf(k) === -1; });
-  ok('every EN key exists in HE (' + missingInHe.length + ' missing)', missingInHe.length === 0);
-  ok('every HE key exists in EN (' + missingInEn.length + ' missing)', missingInEn.length === 0);
-  if (missingInHe.length) console.log('    missing in he:', missingInHe.join(', '));
-  if (missingInEn.length) console.log('    missing in en:', missingInEn.join(', '));
+  ok('only Hebrew dictionary is shipped', Object.keys(dicts).join(',') === 'he');
+  function assertHebrewStrings(obj) {
+    Object.keys(obj).forEach(function(key){
+      var value=obj[key];
+      if(value && typeof value === 'object') assertHebrewStrings(value);
+      else ok('Hebrew interface string: '+key, !/[a-z]/i.test(String(value).replace(/{{[^}]+}}/g,'')));
+    });
+  }
+  assertHebrewStrings(dicts.he);
+  ok('missing translations never leak English keys', I18N.t('missing.translation') === 'טקסט לא זמין');
+  ok('app name is Hebrew', I18N.t('app.title') === 'הום סטוק');
+  ok('known imported catalog names display in Hebrew', AppI.localName({name:'Milk'}) === 'חלב');
+  ok('custom product names are preserved', AppI.localName({name:'My custom product'}) === 'My custom product');
   ['a11y.close', 'a11y.increase', 'a11y.decrease'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);
     I18N.setLang('he'); var he = I18N.t(k);
@@ -731,8 +727,8 @@ async function rejects(name, fn) {
   // Linking-unavailable message exists in BOTH languages (graceful, not generic).
   I18N.setLang('en'); var luEn = I18N.t('sync.linkUnavailable');
   I18N.setLang('he'); var luHe = I18N.t('sync.linkUnavailable');
-  ok('sync.linkUnavailable present in EN + HE (clear "re-run schema" message)',
-    luEn !== 'sync.linkUnavailable' && luHe !== 'sync.linkUnavailable' && /schema/i.test(luEn));
+  ok('linking setup message is clear and entirely Hebrew',
+    luEn === luHe && /מסד הנתונים/.test(luHe) && !/[a-z]/i.test(luHe));
 
   delete global.fetch;
 

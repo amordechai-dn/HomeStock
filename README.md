@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.1.0`
+**Current version:** `v3.1.1`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -60,6 +60,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 ### Single household profile
 - Opens straight into inventory, with no user picker or language selector.
 - Uses Hebrew regardless of browser language or previously saved preferences.
+- All interface text and the visible app name (**הום סטוק**) are Hebrew; no English UI dictionary or fallback is shipped. Saved user content and technical connection values are preserved.
 - Reuses the active legacy profile (then Aviraz or the oldest available profile)
   and pins its stable ID, preserving its inventory and sync identity.
 - Other legacy profiles remain stored; no profile data is deleted.
