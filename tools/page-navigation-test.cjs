@@ -12,8 +12,8 @@ for(const [name,route] of [['הוצאות','expenses'],['הגדרות','settings
 button(name).click();assert.equal(w.document.querySelector('.kitchen-nav'),stableNav,'navigation DOM stays mounted');assert.equal(w.location.hash,'#/'+route);const page=w.document.querySelector('#main-content');assert(page);page.click();assert.equal(w.location.hash,'#/'+route,'background stays on '+route);
 }
 button('הגדרות').click();const before=w.location.hash;
-[...w.document.querySelectorAll('button')].find(b=>b.textContent.includes('עריכת פרופיל')).click();assert.equal(w.location.hash,before);assert(w.document.querySelector('.profile-dialog'));
+[...w.document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='עריכת פרופיל').click();assert.equal(w.location.hash,before);assert(w.document.querySelector('.profile-dialog'));
 w.document.querySelector('.profile-dialog .btn.cancel').click();assert.equal(w.location.hash,before);assert(w.document.querySelector('.settings-page'));
-[...w.document.querySelectorAll('button')].find(b=>b.textContent.includes('עריכת פרופיל')).click();w.document.querySelector('.profile-dialog .btn.save').click();assert.equal(w.location.hash,before);
+[...w.document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='עריכת פרופיל').click();w.document.querySelector('.profile-dialog .btn.save').click();assert.equal(w.location.hash,before);
 console.log('PASS DOM: page background clicks, all noncamera navigation, profile open/cancel/save preserve settings');w.close();
 })().catch(e=>{console.error(e);process.exit(1)});

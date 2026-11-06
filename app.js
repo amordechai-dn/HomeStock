@@ -3113,7 +3113,7 @@
   function openProfile(opts) {
     opts = opts || {};
     var cu = window.CurrentUser;
-    var overlay = h('div', { class: 'overlay center' });
+    var overlay = h('div', { class: opts.inline ? 'profile-inline' : 'overlay center' });
 
     // State-preserving reopener for a live language switch from within.
     var prevReopen = reopenTop;
@@ -3144,7 +3144,7 @@
 
     var dialog = h(
       'div',
-      { class: 'dialog profile-dialog' },
+      { class: opts.inline ? 'profile-dialog profile-inline-form' : 'dialog profile-dialog' },
       h('div', { class: 'sheet-header' },
         h('h2', { class: 'dialog-title', text: t('auth.profile') }),
         h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: close }, '✕')
@@ -3159,7 +3159,7 @@
       )
     );
     overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
+    if(opts.inline){opts.inline.appendChild(overlay);}else document.body.appendChild(overlay);
     setTimeout(function () { nameInput.focus(); }, 50);
   }
 
@@ -4239,37 +4239,42 @@
   }
 
   function openSettings() {
-    currentView="settings";pageAddress("settings");
-    var cu = window.CurrentUser;
-    var overlay = h('div', { class: 'kitchen-workspace standalone-page',id:'main-content' });
-
-    function row(label, sub, onClick) {
-      return h('button', { class: 'settings-row', type: 'button', onclick: onClick },
-        h('span', { class: 'settings-row-main' },
-          h('span', { class: 'settings-row-label', dir: 'auto', text: label }),
-          sub ? h('span', { class: 'settings-row-sub', text: sub }) : null
-        ),
-        h('span', { class: 'settings-row-chevron', 'aria-hidden': 'true', text: '›' })
-      );
-    }
-
-    var dialog = h('div', { class: 'page-content settings-page' },
-      h('div', { class: 'sheet-header' },
-        h('h1', { class: 'page-title', text: t('settings.title') })
-      ),
-      h('div', { class: 'settings-account' },
-        avatarEl('lg'),
-        h('div', { class: 'settings-account-info' },
-          h('div', { class: 'settings-account-name', dir: 'auto', text: cu ? cu.displayName() : '' })
-        )
-      ),
-      row(t('settings.editProfile'), null, function () { openProfile(); }),
-      row('אותם הנתונים בכל המכשירים', githubStatusText(), function(){openGitHubConnection();}),
-      row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { openClearInventory(); }),
-      h('div', { class: 'settings-version', id: 'version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
-    );
-    overlay.appendChild(dialog);
-    prepareWorkspace();root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
+    currentView='settings';pageAddress('settings');
+    var cu=window.CurrentUser;
+    var page=h('main',{class:'kitchen-workspace standalone-page',id:'main-content'});
+    var content=h('div',{class:'page-content settings-page settings-redesign'},
+      h('h1',{class:'page-title',text:'הגדרות'}),
+      h('p',{class:'settings-intro',text:'הבית שלכם, בדיוק כמו שנוח לכם.'}));
+    var profile=h('section',{class:'settings-section','aria-label':'הפרופיל שלי'},
+      h('h2',{text:'הפרופיל שלי'}));
+    var editor=h('div',{class:'settings-profile-editor'});
+    var edit=h('button',{type:'button',class:'btn ghost','aria-label':'עריכת פרופיל',text:'עריכה',onclick:function(){
+      if(editor.children.length){editor.replaceChildren();edit.setAttribute('aria-expanded','false');return;}
+      edit.setAttribute('aria-expanded','true');openProfile({inline:editor});
+    },'aria-expanded':'false'});
+    profile.appendChild(h('div',{class:'settings-profile-line'},avatarEl('lg'),
+      h('strong',{dir:'auto',text:cu?cu.displayName():''}),edit));profile.appendChild(editor);
+    var state=githubSync?githubSync.status():{};
+    var devices=h('section',{class:'settings-section','aria-label':'המכשירים שלי'},
+      h('h2',{text:'המכשירים שלי'}),
+      h('p',{class:'settings-sync-label',role:'status',text:githubStatusText()}),
+      h('p',{class:'settings-help',text:state.lastSync?'סנכרון אחרון: '+new Date(state.lastSync).toLocaleString('he-IL'):'לאחר חיבור בכל מכשיר, הנתונים מתעדכנים אוטומטית.'}),
+      h('button',{type:'button',class:'btn ghost',text:state.connected?'ניהול החיבור':'חיבור מכשיר נוסף',onclick:openGitHubConnection}));
+    var exportButton=h('button',{type:'button',class:'btn ghost',text:'ייצוא הנתונים לקובץ',onclick:function(){
+      exportButton.disabled=true;
+      Promise.all([window.PantryDB.getAll(),window.PantryDB.getAllShopping(),window.PantryDB.getAllBarcodes()]).then(function(data){
+        var backup={version:1,exportedAt:new Date().toISOString(),items:data[0],shopping:data[1],barcodes:data[2],monthly:window.PantryDB.getMonthlyLog(),profile:{displayName:cu.displayName(),avatar:cu.avatar()}};
+        var url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
+        var link=h('a',{href:url,download:'HomeStock-'+ym()+'.json'});document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+      }).catch(function(){showToast('לא ניתן לייצא כרגע. נסו שוב.');}).then(function(){exportButton.disabled=false;});
+    }});
+    content.appendChild(profile);content.appendChild(devices);
+    content.appendChild(h('section',{class:'settings-section','aria-label':'ניהול הנתונים'},
+      h('h2',{text:'ניהול הנתונים'}),exportButton,
+      h('p',{class:'settings-help',text:'הקובץ כולל מלאי, קניות, הוצאות ופרופיל. תמונות המוצרים ופרטי החיבור אינם כלולים.'}),
+      h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory})));
+    content.appendChild(h('p',{class:'settings-version',id:'version',text:'גרסה '+String(window.APP_VERSION||'').replace(/^v/,'')}));
+    page.appendChild(content);prepareWorkspace();root.appendChild(page);
   }
 
   // ---- Auth / boot ----

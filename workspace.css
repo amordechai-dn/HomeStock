@@ -387,3 +387,19 @@ button,input,textarea,select { font-family:inherit; }
 .shopping-bought summary { cursor:pointer;min-height:44px;font-weight:600;color:var(--muted); }
 .shopping-bought-row { display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;padding-block:12px;color:var(--muted); }
 @media(pointer:coarse){.shopping-row{touch-action:pan-y;}}
+
+.settings-redesign { max-width:760px; }
+.settings-intro,.settings-help { color:var(--muted);line-height:1.8; }
+.settings-section { padding-block:30px;border-block-end:1px solid var(--border); }
+.settings-section h2 { font-size:21px;margin:0 0 20px; }
+.settings-profile-line { display:flex;align-items:center;gap:18px; }
+.settings-profile-line strong { flex:1;font-size:21px;overflow-wrap:anywhere; }
+.settings-profile-line .btn { flex-shrink:0; }
+.settings-sync-label { font-size:17px;font-weight:500; }
+.settings-help { font-size:14px;margin-block:12px 20px; }
+.settings-delete-link { display:block;border:0;background:none;color:var(--danger);padding:12px 0;margin-block-start:20px;font:inherit;min-height:44px; }
+.profile-inline-form { padding-block:24px;width:100%; }
+.profile-inline-form .sheet-close { display:none; }
+.profile-inline-form .actions { margin-block-start:18px; }
+.settings-redesign .btn { min-height:46px; }
+@media(max-width:600px){.settings-section{padding-block:24px}.settings-section h2{font-size:19px}.settings-profile-line{gap:12px}.settings-profile-line strong{font-size:18px}}
