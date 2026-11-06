@@ -1,0 +1,21 @@
+'use strict';
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
+(async()=>{
+let checks=0,reloads=0,interval,events={},docEvents={},workerEvents={},promoted=0;
+const worker={state:'installing',postMessage(){promoted++},addEventListener(n,f){workerEvents[n]=f}};
+const reg={installing:worker,update:async()=>{checks++},addEventListener(){}};
+const swEvents={};
+const document={readyState:'complete',visibilityState:'visible',getElementById(){return null},addEventListener(n,f){docEvents[n]=f}};
+const navigator={onLine:true,serviceWorker:{register:async()=>reg,ready:Promise.resolve({}),addEventListener(n,f){swEvents[n]=f}}};
+const window={location:{reload(){reloads++}},addEventListener(n,f){events[n]=f}};
+vm.runInNewContext(fs.readFileSync('pwa.js','utf8'),{window,document,navigator,console,setInterval(f,ms){assert.equal(ms,30000);interval=f;}});
+const flush=()=>new Promise(r=>setImmediate(r));await flush();assert.equal(checks,1);
+interval();await flush();assert.equal(checks,2);
+navigator.onLine=false;interval();await flush();assert.equal(checks,2);
+navigator.onLine=true;events.online();await flush();assert.equal(checks,3);
+document.visibilityState='hidden';interval();await flush();assert.equal(checks,3);
+document.visibilityState='visible';docEvents.visibilitychange();await flush();assert.equal(checks,4);
+worker.state='installed';navigator.serviceWorker.controller={};workerEvents.statechange();assert.equal(promoted,1);
+swEvents.controllerchange();swEvents.controllerchange();assert.equal(reloads,1);
+console.log('PASS: late script initialization, periodic updates, offline/hidden suppression, online/visible recovery, existing installer activation and one reload');
+})().catch(e=>{console.error(e);process.exitCode=1});

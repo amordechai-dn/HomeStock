@@ -5,7 +5,7 @@
 
   // Fallback shown before the SW reports its authoritative VERSION.
   // Keep in sync with sw.js on deploy; the SW value overrides this at runtime.
-  var FALLBACK_VERSION = 'v4.3.15';
+  var FALLBACK_VERSION = 'v4.3.16';
   window.APP_VERSION = FALLBACK_VERSION;
 
   function setVersion(v) {
@@ -53,16 +53,12 @@
 
   function trackUpdates(reg) {
     if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-    reg.addEventListener('updatefound', function () {
-      var sw = reg.installing;
-      if (!sw) return;
-      sw.addEventListener('statechange', function () {
-        promote(sw);
-      });
-    });
+    function watch(sw){if(!sw)return;promote(sw);sw.addEventListener('statechange',function(){promote(sw);});}
+    watch(reg.installing);
+    reg.addEventListener('updatefound',function(){watch(reg.installing);});
   }
 
-  window.addEventListener('load', function () {
+  function registerUpdates() {
     navigator.serviceWorker
       .register('./sw.js', { updateViaCache: 'none' })
       .then(function (reg) {
@@ -75,9 +71,14 @@
           askVersion(r.active);
         });
 
+        var checking=false;
         var update = function () {
-          reg.update().catch(function () {});
+          if(checking||navigator.onLine===false||document.visibilityState==='hidden')return;
+          checking=true;
+          reg.update().catch(function () {}).then(function(){checking=false;if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});});
         };
+        setInterval(update,30000);
+        window.addEventListener('online',update);
         update();
         window.addEventListener('focus', update);
         document.addEventListener('visibilitychange', function () {
@@ -87,5 +88,7 @@
       .catch(function (err) {
         console.warn('SW registration failed:', err);
       });
-  });
+  }
+  if(document.readyState==='complete')registerUpdates();
+  else window.addEventListener('load',registerUpdates,{once:true});
 })();
