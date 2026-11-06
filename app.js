@@ -1297,13 +1297,32 @@
 
   // Re-render the current base screen (mobile page vs. inventory+panel) without
   // reloading data — used on breakpoint crossing and language change.
-  function pageAddress(view) {
-    var hash='#/'+view;
-    try{if(location.hash!==hash)history.pushState(null,'',hash);}catch(error){console.warn('Navigation address unavailable',error);}
+  var restoringNavigation=false;
+  function routeView(){
+    var view=location.hash.slice(2);
+    return ['inventory','shopping','expenses','settings'].indexOf(view)>=0?view:'inventory';
   }
-  if(window.addEventListener)window.addEventListener('popstate',function(){
+  function pageAddress(view) {
+    if(restoringNavigation)return;
+    var hash='#/'+view;
+    try{
+      if(location.hash!==hash){
+        history.replaceState(Object.assign({},history.state,{scrollY:window.scrollY||0}),'');
+        history.pushState({view:view,scrollY:0},'',hash);
+        window.scrollTo({top:0,behavior:'instant'});
+      }
+    }catch(error){console.warn('Navigation address unavailable',error);}
+  }
+  if(window.addEventListener)window.addEventListener('popstate',function(event){
     if(!window.CurrentUser||!window.CurrentUser.id())return;
-    currentView=location.hash.slice(2)||'inventory';renderCurrentView();
+    restoringNavigation=true;
+    try{
+      // Close editor overlays through their cleanup handlers before restoring a page.
+      var overlays=document.querySelectorAll('.overlay');
+      if(overlays.length)overlays[overlays.length-1].dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+      currentView=routeView();renderCurrentView();
+      window.scrollTo({top:event.state&&event.state.scrollY||0,behavior:'instant'});
+    }finally{restoringNavigation=false;}
   });
   function renderCurrentView() {
     if(!hasDOM())return;
@@ -4225,7 +4244,8 @@
       .then(function () { return startGitHubSync(); })
       .then(function () {
         recomputeShortfall();
-        currentView=location.hash.slice(2)||'inventory';
+        currentView=routeView();
+        try{history.replaceState({view:currentView,scrollY:0},'','#/'+currentView);}catch(error){}
         try{renderCurrentView();}catch(error){console.error('Page restore failed',error);currentView='inventory';renderMain();}
         // If we arrived via a device-link URL / QR, honor that explicit action
         // first (advanced path). Otherwise auto-join the deterministic,
