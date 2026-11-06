@@ -1311,7 +1311,7 @@
       if(location.hash!==hash){
         history.replaceState(Object.assign({},history.state,{scrollY:window.scrollY||0}),'');
         history.pushState({view:view,scrollY:0},'',hash);
-        window.scrollTo({top:0,behavior:'instant'});
+
       }
     }catch(error){console.warn('Navigation address unavailable',error);}
   }
@@ -1351,7 +1351,7 @@
   function renderShopping() {
     if(!hasDOM())return;
     if(!root)root=document.getElementById('root');
-    pageAddress('shopping');currentView='shopping';root.innerHTML='';root.appendChild(renderNavigation());
+    pageAddress('shopping');currentView='shopping';prepareWorkspace();
     var page=h('main',{class:'kitchen-workspace shopping-workspace',id:'main-content',tabindex:'-1'});
     page.appendChild(h('header',{class:'kitchen-header'},h('div',{},
       h('h1',{text:'הקנייה הבאה'}),h('p',{class:'kitchen-subtitle',text:'מסמנים מה נקנה. המלאי וההוצאות מתעדכנים יחד.'}))));
@@ -1401,6 +1401,20 @@
     return h('button', { type: 'button', class: cls, 'aria-label':label, onclick: action }, uiIcon(icon), h('span', {text:label}));
   }
 
+  function prepareWorkspace(){
+    if(!root)root=document.getElementById('root');
+    var nav=root.querySelector('.kitchen-nav');
+    if(!nav)nav=renderNavigation();
+    else{
+      var views=['inventory','shopping','scanner','expenses','settings'];
+      nav.querySelectorAll('.nav-link').forEach(function(button,index){
+        var active=views[index]===currentView;
+        button.classList.toggle('active',active);
+        if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+      });
+    }
+    root.replaceChildren(nav);
+  }
   function renderNavigation() {
     var nav = h('nav', { class: 'kitchen-nav', 'aria-label': 'ניווט ראשי' });
     nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'הום סטוק — המלאי שלי'},
@@ -1487,7 +1501,7 @@
   function renderMain() {
     if(!hasDOM())return;if(!root)root=document.getElementById('root');
     pageAddress('inventory');currentView='inventory';shoppingListEl=null;shoppingListMode=null;
-    root.innerHTML='';root.appendChild(renderNavigation());
+    prepareWorkspace();
     var summary=Home.summary(items),month=window.PantryDB.getMonthlyLog()[ym()]||{};
     var workspace=h('main',{class:'kitchen-workspace',id:'main-content',tabindex:'-1'});
     workspace.appendChild(h('header',{class:'kitchen-header'},h('div',{},
@@ -2034,11 +2048,11 @@
       content
     );
     overlay.appendChild(dialog);
-    root.innerHTML='';root.appendChild(renderNavigation());root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
+    prepareWorkspace();root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
     var initial = opts.month && keys.indexOf(opts.month) !== -1 ? opts.month : current;
     select.value = initial;
     renderContent(initial);
-    dialog.setAttribute('tabindex','-1');dialog.focus();
+    dialog.setAttribute('tabindex','-1');dialog.focus({preventScroll:true});
   }
 
   // ---- Toast ----
@@ -2238,7 +2252,7 @@
     if(scannerCleanup){var cleanup=scannerCleanup;scannerCleanup=null;cleanup();}
     currentView='scanner';pageAddress('scanner');
     if(!root)root=document.getElementById('root');
-    root.innerHTML='';root.appendChild(renderNavigation());
+    prepareWorkspace();
     var scannerPage=h('main',{class:'kitchen-workspace scanner-page',id:'main-content'},
       h('h1',{class:'page-title',text:'סריקת מוצר'}),
       h('p',{text:'כוונו את המצלמה לברקוד, או הזינו אותו ידנית.'}));
@@ -4220,7 +4234,7 @@
       h('div', { class: 'settings-version', id: 'version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
     );
     overlay.appendChild(dialog);
-    root.innerHTML='';root.appendChild(renderNavigation());root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
+    prepareWorkspace();root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
   }
 
   // ---- Auth / boot ----
@@ -4283,11 +4297,12 @@
       if(!page||lastView===currentView)return;
       var previous=lastView;lastView=currentView;
       if(animation){animation.cancel();animation=null;}
+      if(previous!==null)window.scrollTo({top:history.state&&history.state.scrollY||0,behavior:'instant'});
       if(previous===null||!page.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
       animation=page.animate([
-        {opacity:0,transform:'translateY(8px)'},
-        {opacity:1,transform:'translateY(0)'}
-      ],{duration:240,easing:'cubic-bezier(.22,1,.36,1)'});
+        {opacity:.65},
+        {opacity:1}
+      ],{duration:140,easing:'ease-out'});
     }).observe(host,{childList:true});
   }
   function start() {
