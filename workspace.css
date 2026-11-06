@@ -306,7 +306,7 @@ button,input,textarea,select { font-family:inherit; }
  .inventory-search { font-size:16px; }
  .shelf-items .card { min-height:100px; }
  .page-content { max-width:960px; }
- .settings-page { max-width:760px; margin-inline-start:0; }
+ .settings-page { max-width:760px; margin-inline:auto; }
  .product-editor { max-width:820px; }
  .product-editor-body { padding:28px 32px; }
 }
@@ -352,4 +352,20 @@ button,input,textarea,select { font-family:inherit; }
  .space-tab-name { font-size:14px; }
  .space-tab-count,.room-status { font-size:12px; }
  .product-editor .editor-stock-controls { grid-template-columns:minmax(0,1fr); }
+}
+
+/* Center each desktop workspace in the area beside the navigation rail. */
+@media(min-width:1024px){
+ .kitchen-workspace {
+   --desktop-rail:210px;
+   box-sizing:border-box;
+   width:calc(100% - var(--desktop-rail));
+   max-width:1530px;
+   max-inline-size:1530px;
+   margin-inline-start:calc(var(--desktop-rail) + max(0px, (100% - var(--desktop-rail) - 1530px) / 2));
+   margin-inline-end:auto;
+ }
+}
+@media(min-width:1024px) and (max-width:1250px){
+ .kitchen-workspace { --desktop-rail:184px; }
 }
