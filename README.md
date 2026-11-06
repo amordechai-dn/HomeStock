@@ -8,12 +8,11 @@ passwordless multi-user profiles, and optional **cross-device cloud sync**.
 Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It works
 100% offline and **auto-updates** whenever a new version is deployed.
 
-**Live app:** <https://amordechai-dn.github.io/pantry-tracker/>
+**Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v2.0.1`
+**Current version:** `v2.1.0`
 
-> The GitHub Pages repo/URL keeps the historical `pantry-tracker` name so
-> installed apps and on-device data keep working; the product is **HomeStock**.
+**Repository:** <https://github.com/amordechai-dn/HomeStock>
 
 ---
 
@@ -99,10 +98,9 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 ## Run locally
 
-No build step — just serve the folder:
+From the repository root, serve the app (no build step):
 
 ```bash
-cd pantry-pwa
 python3 -m http.server 8080
 # open http://localhost:8080/
 ```

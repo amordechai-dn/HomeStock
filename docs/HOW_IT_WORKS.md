@@ -259,8 +259,8 @@ Item names are bilingual (`nameEn`/`nameHe`) with graceful fallback.
 ## 9. Deploy pipeline (GitHub Pages)
 
 The app is served statically from GitHub Pages at
-<https://amordechai-dn.github.io/pantry-tracker/>. The `pantry-pwa/` directory is
-the deploy repo root (remote `pantry-tracker`). Workflow:
+<https://amordechai-dn.github.io/HomeStock/>. The app files live directly in
+the `HomeStock` repository root. Workflow:
 
 1. Edit files; bump `VERSION` (`sw.js`) when app assets change.
 2. `git commit` + `git push` to `main`.
