@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v2.2.2`
+**Current version:** `v3.0.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -77,7 +77,8 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 ### Platform
 - **Hebrew interface** with full **RTL** layout (CSS logical properties).
 - **Installable PWA** with **offline support** and **automatic updates**.
-- **Responsive** across phones → desktop; green / dark-blue brand theme.
+- **Responsive kitchen workspace:** cobalt navigation rail on desktop, thumb-friendly dock on mobile.
+- **Fast inventory search and storage filters**, locally bundled Hebrew Rubik typography, and a shopping-list receipt.
 
 ---
 
@@ -150,7 +151,9 @@ is gated by Row-Level Security.
 
 ```
 index.html            App shell + script order
-styles.css            Design system (logical properties → RTL-safe), responsive
+design.css            Kitchen-shelf visual design, responsive navigation and typography
+fonts/                Locally bundled Rubik variable font (OFL)
+styles.css            Base components (logical properties → RTL-safe), responsive
 config.js             Baked Supabase URL + anon key (public by design)
 i18n.js               English + Hebrew strings + RTL handling
 data/foods.js         Local bilingual food database (autocomplete + emoji)
@@ -189,6 +192,7 @@ Launch it from the home-screen icon for a full-screen, offline app.
 
 | Version | Highlights |
 | --- | --- |
+| **v3.0.0** | Kitchen-shelf redesign, search, storage filters, mobile dock, new icons and offline Hebrew font |
 | **v2.2.0** | One household profile, direct startup, Hebrew-only interface |
 | **v2.0.1** | Barcode scanner fix: resilient own decode loop, detection feedback, timeout tips, debug overlay |
 | **v2.0.0** | Polished responsive header/toolbar + app-wide responsive layout (cloud-sync milestone) |

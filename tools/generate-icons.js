@@ -1,9 +1,6 @@
-// Generates the HomeStock app icons with zero third-party deps (pure Node +
-// zlib). Flat, minimal mark: a white house outline containing a storage box
-// with a checkmark (organized inventory), on the brand green. Supersampled for
-// smooth edges. Standard icons use a rounded-rect tile with transparent
-// corners; maskable icons are full-bleed with the mark kept inside the safe
-// zone. Run: node tools/generate-icons.js
+// Generates HomeStock's cobalt fridge/shelf mark using pure Node + zlib.
+// Standard tiles have transparent rounded corners; maskable versions keep
+// the mark inside the safe zone. Run: node tools/generate-icons.js
 const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
@@ -46,8 +43,8 @@ function encodePng(width, height, rgba) {
 }
 
 // ---- Palette (HomeStock brand) ----
-const GREEN = [52, 168, 83]; // #34A853 primary
-const BLUE = [31, 78, 121]; // #1F4E79 secondary (storage box)
+const COBALT = [48, 71, 201]; // #3047C9 primary
+const APRICOT = [237, 133, 83]; // #ED8553 handle accent
 const WHITE = [255, 255, 255];
 
 // ---- Geometry helpers (all in normalized [0,1] space) ----
@@ -60,49 +57,13 @@ function inRoundedRect(u, v, rn) {
 function inRect(x, y, x0, y0, x1, y1) {
   return x >= x0 && x <= x1 && y >= y0 && y <= y1;
 }
-function sign(ax, ay, bx, by, cx, cy) {
-  return (ax - cx) * (by - cy) - (bx - cx) * (ay - cy);
-}
-function inTriangle(px, py, ax, ay, bx, by, cx, cy) {
-  const d1 = sign(px, py, ax, ay, bx, by);
-  const d2 = sign(px, py, bx, by, cx, cy);
-  const d3 = sign(px, py, cx, cy, ax, ay);
-  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
-  const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
-  return !(hasNeg && hasPos);
-}
-// distance from point p to segment ab
-function distSeg(px, py, ax, ay, bx, by) {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len2 = dx * dx + dy * dy || 1e-9;
-  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  const cx = ax + t * dx;
-  const cy = ay + t * dy;
-  return Math.hypot(px - cx, py - cy);
-}
-
-// Emblem (house + box + check) sampled in local coords lx,ly in [0,1].
-function emblemColor(lx, ly) {
-  if (lx < 0 || lx > 1 || ly < 0 || ly > 1) return null;
-  // House silhouette (white): wide roof triangle + body rectangle.
-  const roof = inTriangle(lx, ly, 0.5, 0.10, 0.09, 0.47, 0.91, 0.47);
-  const body = inRect(lx, ly, 0.19, 0.44, 0.81, 0.90);
-  const inHouse = roof || body;
-  if (!inHouse) return null;
-  // Storage box (secondary blue) inside the house.
-  const inBox = inRect(lx, ly, 0.34, 0.55, 0.66, 0.84);
-  // Checkmark (white) drawn over the box → reads as "organized / checked".
-  const onCheck =
-    inBox &&
-    Math.min(
-      distSeg(lx, ly, 0.40, 0.71, 0.47, 0.785),
-      distSeg(lx, ly, 0.47, 0.785, 0.615, 0.62)
-    ) < 0.028;
-  if (onCheck) return WHITE;
-  if (inBox) return BLUE;
-  return WHITE;
+// Fridge/shelf mark matches the app navigation: two compartments, two handles.
+function emblemColor(x, y) {
+  if (!inRect(x, y, .18, .06, .82, .94)) return null;
+  if (!inRect(x, y, .23, .11, .77, .89)) return WHITE;
+  if (inRect(x, y, .23, .39, .77, .44)) return WHITE;
+  if (inRect(x, y, .62, .20, .67, .31) || inRect(x, y, .62, .53, .67, .70)) return APRICOT;
+  return COBALT;
 }
 
 function render(size, opts) {
@@ -128,7 +89,7 @@ function render(size, opts) {
             col = WHITE;
             alpha = 0; // transparent corners
           } else {
-            col = GREEN;
+            col = COBALT;
             alpha = 255;
             const em = emblemColor((u - ei) / es, (v - ei) / es);
             if (em) col = em;

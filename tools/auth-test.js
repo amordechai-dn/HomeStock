@@ -985,6 +985,17 @@ async function rejects(name, fn) {
     ok(k + ' (Hebrew translation present)', en !== k && he !== k && en === he && I18N.getLang() === 'he');
   });
 
+  var searchRows = [
+    {id:'milk',nameHe:'חלב',nameEn:'Milk',location:'Fridge',quantity:1,desiredAmount:2},
+    {id:'rice',nameHe:'אורז',nameEn:'Rice',location:'Pantry',quantity:4}
+  ];
+  ok('search trims Hebrew query and respects storage', AppI.filteredInventory(searchRows,' חלב ','Fridge')[0].id === 'milk');
+  ok('search matches legacy English metadata case-insensitively', AppI.filteredInventory(searchRows,'MILK','all').length === 1);
+  ok('storage filter excludes other shelves', AppI.filteredInventory(searchRows,'חלב','Pantry').length === 0);
+  ok('empty search shows chosen shelf', AppI.filteredInventory(searchRows,'','Pantry')[0].id === 'rice');
+  ok('unknown search has no matches', AppI.filteredInventory(searchRows,'לא קיים','all').length === 0);
+  ok('filters do not mutate inventory', searchRows.length === 2 && searchRows[0].quantity === 1);
+
   var cleared = [];
   await AppI.clearInventoryRecords({
     getAll: function () { return Promise.resolve([{id:'local'}, {id:'shared'}]); },

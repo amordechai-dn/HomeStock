@@ -373,7 +373,7 @@
         delete: 'מחיקת פריט',
         cancel: 'ביטול',
         save: 'שמירת שינויים',
-        create: 'הוספה למזווה',
+        create: 'הוספת מוצר',
       },
       deleteConfirm: {
         title: 'מחיקת פריט',

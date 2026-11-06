@@ -919,7 +919,7 @@
     var head = h(
       'div',
       { class: 'shopping-head' },
-      h('span', { class: 'shopping-emoji', 'aria-hidden': 'true', text: '🛒' }),
+      uiIcon('bag'),
       h('h2', { class: 'shopping-title', text: t('shopping.title') }),
       h('span', { class: 'section-count', text: String(active.length) })
     );
@@ -972,8 +972,8 @@
         h(
           'div',
           { class: 'shopping-empty' },
-          h('div', { class: 'shopping-empty-emoji', 'aria-hidden': 'true', text: '🛒' }),
-          h('div', { class: 'shopping-empty-text', text: t('shopping.empty') })
+          h('div', { class: 'shopping-empty-emoji' }, uiIcon('bag')),
+          h('div', { class: 'shopping-empty-text', text: 'הרשימה נקייה. מה חסר בבית?' })
         )
       );
     } else {
@@ -1197,27 +1197,14 @@
     if (!root) root = document.getElementById('root');
     currentView = 'shopping';
     root.innerHTML = '';
-    root.appendChild(
-      screenTopBar(t('shopping.title'), function () {
-        currentView = 'inventory';
-        renderMain();
-      })
-    );
-    var page = h('div', { class: 'shopping-page' });
-    renderShoppingList(page, 'page');
-    root.appendChild(page);
-    // Keep the quick Add affordance available on the page too.
-    root.appendChild(
-      h(
-        'button',
-        {
-          class: 'fab',
-          'aria-label': t('fab.add'),
-          onclick: function () { openForm(null); },
-        },
-        '+'
-      )
-    );
+    root.appendChild(renderNavigation());
+    var page = h('main', { class: 'kitchen-workspace shopping-workspace', id:'main-content' });
+    page.appendChild(h('header',{class:'kitchen-header'},h('div',{},
+      h('p',{class:'today-label',text:'לקנייה הבאה'}),h('h1',{text:'רשימת קניות'}),
+      h('p',{class:'kitchen-subtitle',text:'רק מה שחסר. הכול ברשימה אחת.'})),
+      actionButton('חזרה למלאי','arrow','kitchen-button secondary',function(){currentView='inventory';renderMain();})));
+    var list=h('div',{class:'shopping-page'});
+    renderShoppingList(list,'page');page.appendChild(list);root.appendChild(page);
   }
 
   // ---- Rendering (main screen) ----
@@ -1228,182 +1215,147 @@
   // the open dialog comes back translated with its state intact.
   var reopenTop = null;
 
+  var inventoryQuery = '';
+  var inventoryLocation = 'all';
+
+  function uiIcon(name) {
+    var paths = {
+      shelf: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16M9 7v2m0 6v2"/>',
+      bag: '<path d="M5 7h14l1 14H4L5 7Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/>',
+      scan: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 8v8m3-8v8m4-8v8m3-8v8"/>',
+      calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18m-12 4h1m4 0h1"/>',
+      settings: '<path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/>',
+      search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+      plus: '<path d="M12 5v14M5 12h14"/>',
+      cloud: '<path d="M6 18a5 5 0 0 1-1-10 7 7 0 0 1 13-1 5.5 5.5 0 0 1 0 11H6Z"/>',
+      check: '<path d="m5 12 4 4L19 6"/>',
+      leaf: '<path d="M20 4C7 2 2 9 6 16c7 4 14-1 14-12Z"/><path d="M4 21 16 9"/>',
+      arrow: '<path d="m14 6-6 6 6 6M8 12h13"/>'
+    };
+    return h('span', { class: 'ui-icon', 'aria-hidden': 'true', html:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">' + (paths[name] || paths.shelf) + '</svg>' });
+  }
+
+  function actionButton(label, icon, cls, action) {
+    return h('button', { type: 'button', class: cls, onclick: action }, uiIcon(icon), h('span', {text:label}));
+  }
+
+  function renderNavigation() {
+    var nav = h('nav', { class: 'kitchen-nav', 'aria-label': 'ניווט ראשי' });
+    nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'HomeStock — המלאי שלי'},
+      h('span',{class:'brand-mark'},uiIcon('shelf')),
+      h('span',{class:'brand-word',dir:'ltr',text:'HomeStock'})));
+    nav.appendChild(h('p',{class:'nav-caption',text:'קצת סדר. הרבה שקט.'}));
+    var links = h('div', {class:'nav-links'});
+    links.appendChild(actionButton('המלאי שלי','shelf','nav-link' + (currentView === 'inventory' ? ' active':''),function(){
+      currentView='inventory'; inventoryLocation='all'; renderMain();
+    }));
+    links.appendChild(actionButton('רשימת קניות','bag','nav-link' + (currentView === 'shopping' ? ' active':''),openShopping));
+    links.appendChild(actionButton('סריקת מוצר','scan','nav-link nav-scan',openScanner));
+    links.appendChild(actionButton('מעקב חודשי','calendar','nav-link nav-monthly',openMonthly));
+    links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings',openSettings));
+    nav.appendChild(links);
+    nav.appendChild(h('div',{class:'nav-bottom'},
+      h('div',{class:'nav-note'},uiIcon('leaf'),h('p',{text:'לדעת מה יש.\nלקנות רק מה שצריך.'})),
+      h('span',{class:'version',id:'version',text:window.APP_VERSION || ''})));
+    return nav;
+  }
+
+  function filteredInventory(rows, query, location) {
+    query = String(query || '').trim().toLocaleLowerCase('he');
+    return rows.filter(function(item){
+      var matchesLocation = location === 'all' || item.location === location ||
+        (location === 'low' && item.quantity < (item.desiredAmount || 0));
+      var name = [item.name,item.nameHe,item.nameEn].filter(Boolean).join(' ').toLocaleLowerCase('he');
+      return matchesLocation && (!query || name.indexOf(query) !== -1);
+    });
+  }
+
+  function pantryArt() {
+    return h('div',{class:'pantry-art','aria-hidden':'true'},
+      h('div',{class:'art-fridge'},h('i',{class:'fridge-line'}),h('i',{class:'fridge-handle'})),
+      h('div',{class:'art-jar jar-tall'},h('i')),
+      h('div',{class:'art-jar jar-short'},h('i')),
+      h('div',{class:'art-shelf'}),
+      h('span',{class:'art-leaf leaf-one'}),h('span',{class:'art-leaf leaf-two'}));
+  }
+
+  function renderInventoryShelf(container) {
+    container.innerHTML = '';
+    cardRefs = {};
+    var filtered = filteredInventory(items,inventoryQuery,inventoryLocation);
+    var count = h('div',{class:'inventory-caption','aria-live':'polite',text: filtered.length ? tc('summary.items',filtered.length) + ' במלאי' : 'המלאי שלי'});
+    container.appendChild(count);
+    if (!filtered.length) {
+      var isEmpty = !items.length;
+      var empty = h('div',{class:'kitchen-empty'},
+        pantryArt(),
+        h('h2',{text:isEmpty ? 'יש מקום לדברים טובים.' : 'לא מצאנו פריטים כאן.'}),
+        h('p',{text:isEmpty ? 'מתחילים במה שכבר יש בבית. הוסיפו מוצר ראשון,\nוכל המקרר, המקפיא והמזווה יהיו מול העיניים.' : 'נסו שם אחר או עברו למקום אחסון אחר.'}));
+      empty.appendChild(isEmpty ? h('div',{class:'empty-actions'},
+        actionButton('הוספת מוצר ראשון','plus','kitchen-button primary',function(){openForm(null);}),
+        actionButton('סריקת ברקוד','scan','kitchen-button plain',openScanner)) :
+        actionButton('הצגת כל המלאי','shelf','kitchen-button plain',function(){inventoryQuery='';inventoryLocation='all';renderMain();}));
+      container.appendChild(empty);
+      return;
+    }
+    LOCATIONS.forEach(function(loc){
+      var rows=filtered.filter(function(i){return i.location===loc.id;});
+      if(!rows.length)return;
+      var section=h('section',{class:'storage-shelf storage-' + loc.id.toLowerCase(),'aria-label':t('locations.'+loc.id)},
+        h('div',{class:'shelf-heading'},h('span',{class:'shelf-symbol',text:loc.emoji}),
+          h('h2',{text:t('locations.'+loc.id)}),h('span',{class:'shelf-count',text:String(rows.length)})));
+      var list=h('div',{class:'shelf-items'});
+      rows.forEach(function(item){var card=renderCard(item);cardRefs[item.id]=card;list.appendChild(card);});
+      section.appendChild(list);container.appendChild(section);
+    });
+  }
+
   function renderMain() {
     if (!hasDOM()) return;
     if (!root) root = document.getElementById('root');
+    currentView = 'inventory';
     root.innerHTML = '';
-
-    var sections = LOCATIONS.map(function (loc) {
-      return {
-        loc: loc,
-        data: items.filter(function (i) {
-          return i.location === loc.id;
-        }),
-      };
-    }).filter(function (s) {
-      return s.data.length > 0;
+    root.appendChild(renderNavigation());
+    var workspace=h('main',{class:'kitchen-workspace',id:'main-content'});
+    var header=h('header',{class:'kitchen-header'},
+      h('div',{},h('p',{class:'today-label',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
+        h('h1',{text:'המטבח שלי'}),h('p',{class:'kitchen-subtitle',text:'כל מה שיש בבית, במקום אחד.'})),
+      h('div',{class:'kitchen-header-actions'},
+        syncConfigured() ? h('button',{class:'icon-btn sync-indicator',id:'sync-indicator','aria-label':t('sync.a11y'),title:t('sync.title'),onclick:openSyncSettings},uiIcon('cloud')):null,
+        actionButton('סריקת ברקוד','scan','kitchen-button secondary header-scan',openScanner),
+        actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);})));
+    workspace.appendChild(header);
+    var layout=h('div',{class:'main-layout kitchen-layout'});
+    var content=h('div',{class:'content-col'});
+    var shelf=h('div',{class:'inventory-shelves'});
+    var search=h('input',{type:'search',class:'inventory-search',placeholder:'מה מחפשים במטבח?','aria-label':'חיפוש במלאי',value:inventoryQuery,
+      oninput:function(e){inventoryQuery=e.target.value;renderInventoryShelf(shelf);}});
+    var tabs=h('div',{class:'storage-tabs','aria-label':'סינון לפי מקום אחסון'});
+    [{id:'all',label:'הכול'}].concat(LOCATIONS.map(function(loc){return{id:loc.id,label:t('locations.'+loc.id)};})).forEach(function(loc){
+      var count=items.filter(function(i){return loc.id==='all'||i.location===loc.id;}).length;
+      tabs.appendChild(h('button',{type:'button',class:'storage-tab'+(inventoryLocation===loc.id?' active':''),'aria-pressed':String(inventoryLocation===loc.id),onclick:function(){
+        inventoryLocation=loc.id;
+        Array.prototype.forEach.call(tabs.children,function(btn){var active=btn===this;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));},this);
+        renderInventoryShelf(shelf);
+      }},h('span',{text:loc.label}),h('span',{class:'tab-count',text:String(count)})));
     });
-
-    var total = items.length;
-    var subtitle =
-      total === 0
-        ? t('summary.empty')
-        : t('summary.across', {
-            items: tc('summary.items', total),
-            locations: tc('summary.locations', sections.length),
-          });
-
-    // Header
-    var monthlyBtn = h(
-      'button',
-      {
-        class: 'icon-btn',
-        'aria-label': t('monthly.button'),
-        title: t('monthly.button'),
-        onclick: openMonthly,
-      },
-      '📅'
-    );
-    // Shopping List entry point. Desktop: focus/expand the side panel in place.
-    // Mobile: open the dedicated Shopping List page.
-    var shoppingBtn = h(
-      'button',
-      {
-        class: 'icon-btn',
-        'aria-label': t('shopping.title'),
-        title: t('shopping.title'),
-        onclick: openShopping,
-      },
-      '🛒'
-    );
-    var settingsBtn = h(
-      'button',
-      {
-        class: 'icon-btn',
-        'aria-label': t('settings.a11y'),
-        title: t('settings.title'),
-        onclick: openSettings,
-      },
-      '⚙️'
-    );
-    // Subtle sync-status indicator. Only present when a backend is configured —
-    // otherwise sync is fully dormant and nothing is shown.
-    var syncBtn = syncConfigured()
-      ? h(
-          'button',
-          {
-            class: 'icon-btn sync-indicator',
-            id: 'sync-indicator',
-            'aria-label': t('sync.a11y'),
-            title: t('sync.title'),
-            onclick: openSyncSettings,
-          },
-          syncStatusGlyph(syncMgr ? syncMgr.status : 'idle')
-        )
-      : null;
-
-    var header = h(
-      'header',
-      { class: 'header' },
-      h(
-        'div',
-        { class: 'header-text' },
-        h('h1', { class: 'title', text: t('app.title') }),
-        h('p', { class: 'subtitle', text: subtitle })
-      ),
-      h(
-        'div',
-        { class: 'header-actions' },
-        h('div', { class: 'header-btn-row' }, monthlyBtn, shoppingBtn, syncBtn, settingsBtn),
-        h('span', { class: 'version', id: 'version', text: window.APP_VERSION || '' })
-      )
-    );
-    root.appendChild(header);
-
-    // Body: responsive two-column layout. The grid collapses to a single column
-    // below the breakpoint (CSS), and the side panel is only mounted on wide
-    // screens — on narrow screens the Shopping List lives on its own page.
-    var layout = h('div', { class: 'main-layout' });
-    var content = h('div', { class: 'content-col' });
-
-    if (total === 0) {
-      content.appendChild(
-        h(
-          'div',
-          { class: 'empty' },
-          h('div', { class: 'empty-emoji', text: '🧺' }),
-          h('div', { class: 'empty-title', text: t('empty.title') }),
-          h('div', { class: 'empty-body', text: t('empty.body') })
-        )
-      );
-    } else {
-      var list = h('div', { class: 'list' });
-      cardRefs = {};
-      sections.forEach(function (s) {
-        list.appendChild(
-          h(
-            'div',
-            { class: 'section-header' },
-            h('span', { class: 'section-emoji', text: s.loc.emoji }),
-            h('span', {
-              class: 'section-title',
-              text: t('locations.' + s.loc.id),
-            }),
-            h('span', { class: 'section-count', text: String(s.data.length) })
-          )
-        );
-        s.data.forEach(function (item) {
-          var card = renderCard(item);
-          cardRefs[item.id] = card; // for targeted qty updates
-          list.appendChild(card);
-        });
-      });
-      content.appendChild(list);
-    }
+    content.appendChild(h('div',{class:'inventory-toolbar'},h('label',{class:'inventory-search-wrap'},uiIcon('search'),search),tabs));
+    renderInventoryShelf(shelf);
+    content.appendChild(shelf);
     layout.appendChild(content);
-
-    // Desktop: mount the ONE shared Shopping List as a sticky side panel.
-    // Mobile: leave it unmounted here (it opens as a dedicated page instead).
-    if (isWide()) {
-      var aside = h('aside', {
-        class: 'shopping-panel' + (shopCollapsed() ? ' collapsed' : ''),
-      });
-      var inner = h('div', { class: 'shopping-panel-inner' });
-      renderShoppingList(inner, 'sidebar');
-      aside.appendChild(inner);
+    if(isWide()) {
+      var aside=h('aside',{class:'shopping-panel'+(shopCollapsed()?' collapsed':''),'aria-label':'רשימת הקניות שלי'});
+      aside.appendChild(h('div',{class:'receipt-label',text:'לקנייה הבאה'}));
+      var inner=h('div',{class:'shopping-panel-inner'});
+      renderShoppingList(inner,'sidebar');aside.appendChild(inner);
+      aside.appendChild(h('div',{class:'receipt-footer'},uiIcon('check'),h('span',{text:'קונים לפי הרשימה. חוזרים עם מה שצריך.'})));
       layout.appendChild(aside);
-    } else {
-      shoppingListEl = null;
-      shoppingListMode = null;
-    }
-    root.appendChild(layout);
-
-    // Floating actions: Scan (above) + Add.
-    root.appendChild(
-      h(
-        'button',
-        {
-          class: 'fab scan',
-          'aria-label': t('scan.button'),
-          title: t('scan.button'),
-          onclick: openScanner,
-        },
-        '📷'
-      )
-    );
-    root.appendChild(
-      h(
-        'button',
-        {
-          class: 'fab',
-          'aria-label': t('fab.add'),
-          onclick: function () {
-            openForm(null);
-          },
-        },
-        '+'
-      )
-    );
+    } else {shoppingListEl=null;shoppingListMode=null;}
+    workspace.appendChild(layout);
+    workspace.appendChild(h('footer',{class:'kitchen-footer',text:'מקרר, מקפיא, מזווה. עכשיו יודעים מה יש.'}));
+    root.appendChild(workspace);
+    if(items.length) root.appendChild(actionButton('הוספת מוצר','plus','mobile-add',function(){openForm(null);}));
   }
 
   function itemById(id) {
@@ -1464,6 +1416,9 @@
       'div',
       {
         class: 'card',
+        tabindex: '0',
+        'aria-label': 'עריכת ' + itemName(item),
+        onkeydown: function(e){if(e.target===e.currentTarget && (e.key==='Enter'||e.key===' ')){e.preventDefault();openForm(item);}},
         onclick: function () {
           openForm(item);
         },
@@ -1472,7 +1427,7 @@
       h(
         'div',
         { class: 'card-info' },
-        h('div', { class: 'card-name', dir: 'auto', text: itemName(item) }),
+        h('div', { class: 'card-name', dir: 'auto', title: itemName(item), text: itemName(item) }),
         meta
       ),
       stepper
@@ -1492,7 +1447,7 @@
       h(
         'div',
         { class: 'card-info' },
-        h('div', { class: 'card-name', dir: 'auto', text: itemName(item) }),
+        h('div', { class: 'card-name', dir: 'auto', title: itemName(item), text: itemName(item) }),
         h('div', {
           class: 'card-meta',
           text: t('restock.missing', {
@@ -3220,24 +3175,6 @@
     return { box: box, input: fileInput, rerender: render };
   }
 
-  // Clear the base screen (remove any overlays/toasts + wipe root).
-  function resetRoot() {
-    if (!root) root = document.getElementById('root');
-    Array.prototype.slice
-      .call(document.querySelectorAll('.overlay, .toast'))
-      .forEach(function (o) { o.remove(); });
-    root.innerHTML = '';
-  }
-
-  // A minimal in-app screen top bar with a Back button (RTL-safe: text label,
-  // no directional glyph) and a title.
-  function screenTopBar(title, onBack) {
-    return h('div', { class: 'screen-topbar' },
-      h('button', { class: 'btn ghost back-btn', type: 'button', onclick: onBack }, t('auth.back')),
-      h('h2', { class: 'screen-topbar-title', text: title })
-    );
-  }
-
   // ---- Household profile ----
   function openProfile(opts) {
     opts = opts || {};
@@ -4349,6 +4286,7 @@
         )
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
+      row('מעקב חודשי', 'מה צריך לחדש החודש', function () { close(); openMonthly(); }),
       row(t('settings.sync'), t('settings.syncSub'), function () { close(); openSyncSettings(); }),
       row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
       h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + (window.APP_VERSION || '') })
@@ -4426,9 +4364,9 @@
   window.App = {
     start: start,
     renderMain: renderMain,
-    // Two DISTINCT screens: fast one-tap switching vs. full CRUD management.
     // Pure, DOM-free helpers exposed for the automated logic harness.
     _internals: {
+      filteredInventory: filteredInventory,
       clearInventoryRecords: clearInventoryRecords,
       detectLang: detectLang,
       resolveNames: resolveNames,
