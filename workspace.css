@@ -379,3 +379,11 @@ button,input,textarea,select { font-family:inherit; }
 @media(prefers-reduced-motion:reduce){
  ::view-transition-group(workspace),::view-transition-old(workspace),::view-transition-new(workspace){animation:none!important;}
 }
+
+.shopping-buy { border:0;background:var(--primary-soft);color:var(--primary);border-radius:8px;min-height:46px;padding:10px 14px;font:inherit;font-size:14px;font-weight:600;white-space:nowrap; }
+.shopping-buy:disabled { opacity:.55;cursor:progress; }
+.shopping-row { grid-template-columns:auto minmax(0,1fr) 40px; }
+.shopping-bought { margin-block:24px;border-block-start:1px solid var(--border);padding-block-start:16px; }
+.shopping-bought summary { cursor:pointer;min-height:44px;font-weight:600;color:var(--muted); }
+.shopping-bought-row { display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;padding-block:12px;color:var(--muted); }
+@media(pointer:coarse){.shopping-row{touch-action:pan-y;}}

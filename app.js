@@ -981,6 +981,7 @@
   // then removes the shopping entry. Reversible via undo.
   var purchasesInFlight=Object.create(null);
   function purchaseShoppingItem(shop) {
+    if(shop.purchased)return Promise.resolve();
     if(purchasesInFlight[shop.id])return purchasesInFlight[shop.id];
     var pending=completeShoppingPurchase(shop);
     purchasesInFlight[shop.id]=pending;
@@ -1013,8 +1014,8 @@
     return applyInv.then(function (invItem) {
       recordDelta(qty);
       expenseId=recordExpense(invItem,qty);
-      return window.PantryDB.removeShopping(shop.id).then(function () {
-        shoppingItems = shoppingItems.filter(function (x) { return x.id !== shop.id; });
+      return window.PantryDB.putShopping(Object.assign({},shop,{purchased:true,purchasedAt:new Date().toISOString()})).then(function (saved) {
+        upsertLocalShopping(saved);
         recomputeShortfall();
         refreshAfterMutation(invItem);
         showToast(t('shopping.purchased'), function () {
@@ -1129,6 +1130,16 @@
       container.appendChild(listWrap);
     }
 
+    var bought=shoppingItems.filter(function(item){return item.purchased;});
+    if(bought.length){
+      var archive=h('details',{class:'shopping-bought'},h('summary',{text:'נקנו ('+bought.length+')'}));
+      bought.forEach(function(item){archive.appendChild(h('div',{class:'shopping-bought-row'},
+        h('span',{'aria-hidden':'true',text:'✓'}),
+        h('span',{dir:'auto',text:itemName(item)}),
+        h('span',{text:formatQty(item.quantity)+' '+t('units.'+(item.unit||'pcs'))})));});
+      container.appendChild(archive);
+    }
+
     if (suggestions.length) {
       container.appendChild(
         h('div', { class: 'shopping-suggest-head' },
@@ -1146,13 +1157,10 @@
   // stepper, a purchased checkbox (=> purchase flow), and remove.
   function renderShoppingRow(shop) {
     var unit = t('units.' + (shop.unit || 'pcs'));
-    var checkbox = h('input', {
-      type: 'checkbox',
-      class: 'shopping-check',
-      'aria-label': 'נקנה: '+itemName(shop),
-      title: t('shopping.purchase'),
-    });
-    checkbox.addEventListener('change', function () { purchaseShoppingItem(shop); });
+    var checkbox=h('button',{type:'button',class:'shopping-buy','aria-label':'נקנה: '+itemName(shop),onclick:function(){
+      checkbox.disabled=true;
+      purchaseShoppingItem(shop).catch(function(){checkbox.disabled=false;});
+    }},'נקנה ✓');
     var minus = h('button', {
       class: 'step-btn',
       'aria-label': t('a11y.decrease'),
@@ -1169,7 +1177,7 @@
       title: t('shopping.remove'),
       onclick: function (e) { e.stopPropagation(); removeShoppingItem(shop); },
     }, '✕');
-    return h(
+    var row=h(
       'div',
       { class: 'card shopping-row' },
       checkbox,
@@ -1185,6 +1193,19 @@
       remove,
       h('div', { class: 'shopping-step' }, minus, plus)
     );
+    var touchStart=null,suppressClick=false;
+    row.addEventListener('click',function(event){if(suppressClick){event.preventDefault();event.stopPropagation();suppressClick=false;}},true);
+    row.addEventListener('pointerdown',function(event){
+      if(event.pointerType!=='touch'||event.target.closest('.shopping-buy,.shopping-remove,.shopping-step,input'))return;
+      touchStart={x:event.clientX,y:event.clientY};
+    });
+    row.addEventListener('pointerup',function(event){
+      if(!touchStart)return;
+      var dx=event.clientX-touchStart.x,dy=event.clientY-touchStart.y;touchStart=null;
+      if(Math.abs(dx)>90&&Math.abs(dy)<30&&!checkbox.disabled){checkbox.click();suppressClick=true;setTimeout(function(){suppressClick=false;},400);}
+    });
+    row.addEventListener('pointercancel',function(){touchStart=null;});
+    return row;
   }
 
   // A suggestion row (inventory running low). The ＋ writes to the shopping

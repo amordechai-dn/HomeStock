@@ -770,8 +770,8 @@ async function rejects(name, fn) {
   var banInv = invAfterBuy.find(function (x) { return (x.name || '').toLowerCase() === 'bananas'; });
   ok('purchase CREATES the matching inventory item with the needed qty',
     !!banInv && banInv.quantity === 5);
-  ok('purchase COMPLETES (removes) the shopping item',
-    !shopAfterBuy.some(function (x) { return AppIkey(x) === 'bananas'; }));
+  ok('purchase archives the shopping item',
+    shopAfterBuy.some(function (x) { return AppIkey(x) === 'bananas' && x.purchased; }));
 
   // Purchase when inventory already exists => INCREASES existing qty.
   var milk = await DB.create({ name: 'Milk', quantity: 1, unit: 'L', categoryId: 'dairy' });
@@ -786,8 +786,8 @@ async function rejects(name, fn) {
   ok('purchase INCREASES an existing inventory item (1 + 2 = 3)', milkInv && milkInv.quantity === 3);
   ok('purchase did not duplicate the inventory item',
     (await DB.getAll()).filter(function (x) { return (x.name || '').toLowerCase() === 'milk'; }).length === 1);
-  ok('purchased shopping item is gone from the list',
-    !(await DB.getAllShopping()).some(function (x) { return AppIkey(x) === 'milk'; }));
+  ok('purchased shopping item is archived and excluded from active list',
+    (await DB.getAllShopping()).some(function (x) { return AppIkey(x) === 'milk' && x.purchased; }));
 
   // (4) Per-user isolation for the shopping list.
   AppI.setShoppingItems(await DB.getAllShopping());
