@@ -59,5 +59,15 @@
       }catch(e){return fallback(code,options.online()===false?'offline':'unreachable');}
     };
   }
-  root.HomeBarcode={normalize:normalize,key:key,variants:variants,checksum:checksum,sourceUrl:sourceUrl,portable:portable,createLookup:createLookup};
+  function cameraErrorKey(error){
+    switch(error&&error.name){
+      case 'NotAllowedError':case 'PermissionDeniedError':return 'denied';
+      case 'NotFoundError':case 'DevicesNotFoundError':return 'cameraMissing';
+      case 'NotReadableError':case 'TrackStartError':case 'AbortError':return 'cameraUnavailable';
+      case 'OverconstrainedError':case 'ConstraintNotSatisfiedError':return 'cameraConstraints';
+      case 'SecurityError':return 'cameraSecurity';
+      default:return 'cameraFailed';
+    }
+  }
+  root.HomeBarcode={cameraErrorKey:cameraErrorKey,normalize:normalize,key:key,variants:variants,checksum:checksum,sourceUrl:sourceUrl,portable:portable,createLookup:createLookup};
 })(typeof window!=='undefined'?window:globalThis);

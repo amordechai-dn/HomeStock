@@ -2412,12 +2412,6 @@
       },
       t('scan.manualBarcode')
     );
-    var cancelBtn = h(
-      'button',
-      { class: 'btn cancel', type: 'button', onclick: function () { close();renderMain(); } },
-      t('form.cancel')
-    );
-
     var panel = h(
       'div',
       { class: 'scan-panel' },
@@ -2426,7 +2420,7 @@
       status,
       tips,
       sessionBox,
-      h('div', { class: 'actions' }, cancelBtn, manualBtn)
+      h('div', { class: 'actions' }, manualBtn)
     );
     overlay.appendChild(panel);
     var page=document.querySelector('.scanner-page');
@@ -2594,7 +2588,7 @@
         })
         .catch(function (err) {
           if (closed) return;
-          status.textContent = t('scan.denied');
+          status.textContent = t('scan.'+window.HomeBarcode.cameraErrorKey(err));
           status.classList.add('error');
           dbg.lastError = 'לא ניתן לגשת למצלמה';
         });

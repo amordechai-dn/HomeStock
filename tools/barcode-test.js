@@ -30,3 +30,6 @@ function fixture(extra={}){
  const metadata=B.portable({barcode:'123',name:'בדיקה',image:'data:image/webp;base64,xxx'});assert(!('image' in metadata));
  console.log('PASS: barcode normalization/equivalence, checksums, local/cache priority, universal product API, shared in-flight lookups, offline mode, deadlines, rate limits, unavailable storage, malformed responses and metadata-only catalog export');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+for(const [name,key] of Object.entries({NotAllowedError:'denied',NotFoundError:'cameraMissing',NotReadableError:'cameraUnavailable',AbortError:'cameraUnavailable',OverconstrainedError:'cameraConstraints',SecurityError:'cameraSecurity',UnknownError:'cameraFailed'}))assert.equal(B.cameraErrorKey({name}),key);
+assert.equal(B.cameraErrorKey(null),'cameraFailed');
