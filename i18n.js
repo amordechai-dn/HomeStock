@@ -119,7 +119,7 @@
         added: 'נוסף ״{{name}}״',
         notFound: 'המוצר לא נמצא — השלימו את הפרטים',
         undo: 'ביטול',
-        continuous: 'סריקה רציפה',
+        continuous: 'סריקת כמה מוצרים',
         detected: 'זוהה {{code}}',
         found: 'המוצר נמצא',
         tipsTitle: 'לא מזהה? נסו כך',
