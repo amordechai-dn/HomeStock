@@ -431,3 +431,8 @@ button:disabled { cursor: wait; opacity: .5; }
 
 .editor-location-details { display:grid; gap:16px; margin-block-start:20px; }
 .editor-location-details .note { min-height:70px; resize:vertical; }
+
+/* Product form: a continuous sequence of headings and answers. */
+.product-editor .editor-main-grid { grid-template-columns:minmax(0,1fr); gap:28px; }
+.product-editor .editor-section { padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.product-editor .editor-location-details { margin-block-start:28px; gap:28px; }
