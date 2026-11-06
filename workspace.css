@@ -274,3 +274,7 @@ h1,h2,h3 { text-wrap:balance; }
  .mobile-home-mark { display:inline-flex; width:34px; height:34px; flex-shrink:0; color:var(--primary); }
  .mobile-home-mark svg { display:block; width:100%; height:100%; }
 }
+
+/* Keep navigation anchored while the destination page gently enters. */
+.nav-link { transition:background-color 180ms ease,color 180ms ease; }
+@media(prefers-reduced-motion:reduce){.nav-link{transition:none;}}

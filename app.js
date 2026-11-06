@@ -4302,7 +4302,24 @@
     else if (mqWide.addListener) mqWide.addListener(onChange); // older Safari
   }
 
+  function watchPageTransitions(){
+    var host=document.getElementById('root');
+    if(!host||typeof MutationObserver==='undefined')return;
+    var lastView=null,animation=null;
+    new MutationObserver(function(){
+      var page=host.querySelector('#main-content');
+      if(!page||lastView===currentView)return;
+      var previous=lastView;lastView=currentView;
+      if(animation){animation.cancel();animation=null;}
+      if(previous===null||!page.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+      animation=page.animate([
+        {opacity:0,transform:'translateY(8px)'},
+        {opacity:1,transform:'translateY(0)'}
+      ],{duration:240,easing:'cubic-bezier(.22,1,.36,1)'});
+    }).observe(host,{childList:true});
+  }
   function start() {
+    watchPageTransitions();
     window.I18N.init(); // shared language for the picker
     watchBreakpoint();
     document.addEventListener('keydown',function(e){
