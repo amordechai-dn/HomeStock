@@ -245,3 +245,28 @@ button:disabled { cursor: wait; opacity: .5; }
   .space-tab-count { font-size: 10px; }
   .location-picker .segment-item { font-size: 12px; padding-inline: 8px; }
 }
+
+/* Prices and immutable monthly purchase history. */
+.price-field { margin-block: 16px 8px; }
+.price-field .field-label { display: flex; flex-direction: column; gap: 8px; }
+.price-input { font-variant-numeric: tabular-nums; text-align: start; }
+.price-preview, .price-note { font-size: 12px; line-height: 1.7; color: var(--muted); margin-block: 7px; }
+.price-preview { color: var(--primary-dark); }
+.price-input[aria-invalid=true] { border-color: var(--danger); }
+.item-price { color: #3b4eb3; font-variant-numeric: tabular-nums; }
+.monthly-dialog { max-width: 620px; overflow-y: auto; max-height: 90dvh; }
+.expense-summary { display: flex; flex-direction: column; padding: 20px; background: #edf0ff; border: 1px solid #dce2fc; border-radius: 10px; margin-block: 14px 10px; }
+.expense-heading { font-size: 13px; color: #455394; }
+.expense-total { font-size: 35px; line-height: 1.5; color: #263cb5; font-weight: 600; font-variant-numeric: tabular-nums; }
+.expense-summary p { margin: 2px 0 0; color: #697398; font-size: 12px; }
+.expense-disclaimer { font-size: 11px; color: var(--muted); line-height: 1.7; }
+.expense-list { max-height: 250px; overflow-y: auto; margin-block: 16px; border-block: 1px solid var(--border); }
+.expense-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 13px; border-block-end: 1px solid var(--border); font-size: 13px; }
+.expense-row > div { min-width: 0; flex: 1; }
+.expense-row > div strong { display: block; overflow-wrap: anywhere; font-weight: 500; }
+.expense-row span { display: block; font-size: 11px; color: var(--muted); margin-block-start: 4px; }
+.expense-row-amount { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 500; }
+.expense-remove { width: 30px; height: 34px; background: transparent; border: 0; color: #878fa3; font-size: 20px; cursor: pointer; }
+.expense-remove:hover { color: var(--danger); background: var(--danger-soft); border-radius: 6px; }
+.batch-price { width: 88px; min-width: 70px; padding: 8px; font-size: 12px; }
+@media (max-width: 480px) { .scan-row { flex-wrap: wrap; } .batch-price { margin-inline-start: auto; } }

@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.1.1`
+**Current version:** `v3.2.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -26,6 +26,14 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - **+/- quantity steppers** and an **"Out"** badge at zero.
 - **Category emoji** icons (item-specific emoji falls back to its category).
 - **Desired amounts (par levels)** per item and **monthly restock tracking**.
+
+### Prices and expenses
+- Optional unit prices in ILS, stored as integer agorot; blank is unknown, zero is free.
+- Priced additions/restocks record immutable purchase snapshots (quantity × unit price).
+- Consuming/deleting stock or changing its price does not rewrite past spending.
+- Monthly expense totals and purchase history appear in **הוצאות חודשיות**; mistaken entries can be removed without changing stock.
+- Shopping-list entries count as spending only when marked purchased; undo reverses that purchase entry.
+- Prices travel with inventory/shopping record data. Expense history uses the existing per-device monthly log and is currently **local to each device**; cloud backend setup remains pending.
 
 ### Product images (on-device)
 - Photos are **compressed on-device** (WebP when supported), stored as a small

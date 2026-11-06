@@ -1014,6 +1014,48 @@ async function rejects(name, fn) {
     return AppI.clearInventoryRecords({getAll:function(){return Promise.reject(new Error('storage'));}});
   });
 
+  // Price precision, optional values, and immutable expense history.
+  ok('optional price stays unknown', AppI.parseUnitPrice('') === null);
+  ok('price parser keeps exact agorot', AppI.parseUnitPrice('12.90') === 1290);
+  ok('price parser accepts decimal comma', AppI.parseUnitPrice('7,5') === 750);
+  ok('zero price is different from unknown', AppI.parseUnitPrice('0') === 0 && AppI.purchaseAmount(2,0) === 0);
+  ['-1','2.999','1e3','NaN','Infinity','99999999999999999999'].forEach(function(price){
+    var rejected=false;try{AppI.parseUnitPrice(price);}catch(e){rejected=true;}
+    ok('invalid price rejected: '+price,rejected);
+  });
+  ok('weighed quantity rounds once to agorot',AppI.purchaseAmount(0.25,1290) === 323);
+  ok('decimal half-agora is rounded correctly',AppI.purchaseAmount(0.29,50) === 15);
+  ok('small exponential quantities round correctly',AppI.purchaseAmount(0.000001,500000) === 1);
+  ok('unknown price is not counted as free',AppI.purchaseAmount(1,null) === null);
+  DB.setUser('aviraz');
+  var priced=await DB.create({name:'בדיקת מחיר',quantity:2,unit:'pcs',unitPriceAgorot:790,location:'House'});
+  ok('unit price persists in inventory',(await DB.getAll()).find(function(i){return i.id===priced.id;}).unitPriceAgorot===790);
+  var beforeExpenses=DB.getMonthlyLog();
+  var initialTotal=Object.values(beforeExpenses).reduce(function(total,m){return total+AppI.expenseTotal(m.expenses);},0);
+  var purchaseId=AppI.recordExpense(priced,2);
+  function recordedTotal(){return Object.values(DB.getMonthlyLog()).reduce(function(total,m){return total+AppI.expenseTotal(m.expenses);},0);}
+  ok('purchase records quantity times price',recordedTotal()===initialTotal+1580);
+  priced.unitPriceAgorot=990;await DB.put(priced);
+  ok('price change leaves earlier purchase unchanged',recordedTotal()===initialTotal+1580);
+  await AppI.changeQty(priced,-1);
+  ok('consumption does not refund historical expenses',recordedTotal()===initialTotal+1580);
+  await AppI.changeQty(priced,1);
+  ok('restock records current price',recordedTotal()===initialTotal+2570);
+  await DB.remove(priced.id);
+  ok('deleting inventory keeps purchase history',recordedTotal()===initialTotal+2570);
+  AppI.undoExpense(purchaseId);
+  ok('undo removes the exact purchase only',recordedTotal()===initialTotal+990);
+
+  AppI.setItems(await DB.getAll());
+  var totalBeforeShopping=recordedTotal();
+  var pricedShop=await AppI.addToShoppingList({name:'בדיקת קנייה מתומחרת',quantity:2,unitPriceAgorot:1234});
+  ok('shopping plan does not create an expense',recordedTotal()===totalBeforeShopping);
+  await AppI.purchaseShoppingItem(pricedShop);
+  ok('purchased shopping entry records actual priced quantity',recordedTotal()===totalBeforeShopping+2468);
+  var bought=(await DB.getAll()).find(function(item){return item.name==='בדיקת קנייה מתומחרת';});
+  ok('shopping purchase carries price into inventory',bought.unitPriceAgorot===1234);
+  ok('unit price travels in the cloud item payload',AppI.mapItemToCloud(bought,'household').data.unitPriceAgorot===1234);
+
   console.log('\n============================');
   console.log('PASS ' + pass + '  FAIL ' + fail);
   console.log('============================');

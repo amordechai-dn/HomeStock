@@ -732,6 +732,91 @@
     if (!Array.isArray(log[key].shortfall)) log[key].shortfall = [];
     return log[key];
   }
+  // Prices are stored as integer agorot; historical purchase snapshots do not
+  // change when stock is consumed, an item is deleted, or its price is edited.
+  function parseUnitPrice(value) {
+    var text = String(value == null ? '' : value).trim().replace(',', '.');
+    if (!text) return null;
+    if (!/^\d+(?:\.\d{1,2})?$/.test(text)) throw new Error('invalid price');
+    var parts = text.split('.');
+    var result = Number(parts[0]) * 100 + Number(((parts[1] || '') + '00').slice(0,2));
+    if (!Number.isSafeInteger(result)) throw new Error('invalid price');
+    return result;
+  }
+  function priceText(value) {
+    return Number.isSafeInteger(value) && value >= 0 ? (value / 100).toFixed(2) : '';
+  }
+  function formatMoney(agorot) {
+    return new Intl.NumberFormat('he-IL', {style:'currency',currency:'ILS'}).format(agorot / 100);
+  }
+  function purchaseAmount(quantity, unitPrice) {
+    if (!Number.isSafeInteger(unitPrice) || unitPrice < 0 || !Number.isFinite(quantity) || quantity <= 0) return null;
+    // Multiply the entered decimal quantity as a rational number. Floating
+    // point multiplication would incorrectly round e.g. 0.29 × 50 to 14.
+    var parts = quantity.toString().toLowerCase().split('e');
+    var point = parts[0].indexOf('.');
+    var scale = (point < 0 ? 0 : parts[0].length-point-1) - Number(parts[1] || 0);
+    var numerator = BigInt(parts[0].replace('.','')) * BigInt(unitPrice);
+    var denominator = 1n;
+    if(scale > 0) denominator = 10n ** BigInt(scale);
+    else if(scale < 0) numerator *= 10n ** BigInt(-scale);
+    var amount = (numerator * 2n + denominator) / (denominator * 2n);
+    return amount <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(amount) : null;
+  }
+  function recordExpense(item, quantity) {
+    var amount = purchaseAmount(quantity, item.unitPriceAgorot);
+    if (amount === null) return null;
+    var log = window.PantryDB.getMonthlyLog();
+    var month = monthEntry(log, ym());
+    if (!Array.isArray(month.expenses)) month.expenses = [];
+    var entry = {
+      id:'purchase_' + Date.now().toString(36) + Math.random().toString(36).slice(2),
+      at:new Date().toISOString(), itemId:item.id, name:itemName(item),
+      location:item.location, quantity:quantity, unit:item.unit,
+      unitPriceAgorot:item.unitPriceAgorot, amountAgorot:amount
+    };
+    month.expenses.push(entry);
+    if (window.PantryDB.setMonthlyLog(log) === false) {
+      showToast('המלאי נשמר, אך אין מקום לשמור את ההוצאה במכשיר.');
+      return null;
+    }
+    return entry.id;
+  }
+  function undoExpense(id) {
+    if (!id) return;
+    var log = window.PantryDB.getMonthlyLog();
+    Object.keys(log).forEach(function(key){
+      if (Array.isArray(log[key].expenses)) log[key].expenses = log[key].expenses.filter(function(e){return e.id !== id;});
+    });
+    window.PantryDB.setMonthlyLog(log);
+  }
+  function expenseTotal(entries) {
+    return (entries || []).reduce(function(total, entry){
+      return total + (Number.isSafeInteger(entry.amountAgorot) && entry.amountAgorot >= 0 ? entry.amountAgorot : 0);
+    },0);
+  }
+  function priceField(initial, getQuantity, estimateLabel) {
+    var wrap = h('div',{class:'price-field'});
+    var input = h('input',{class:'input price-input',type:'text',inputmode:'decimal',dir:'ltr',
+      'aria-label':'מחיר ליחידה בשקלים',placeholder:'0.00',value:priceText(initial)});
+    var total = h('p',{class:'price-preview','aria-live':'polite'});
+    function update() {
+      try {
+        var price = parseUnitPrice(input.value);
+        var amount = purchaseAmount(getQuantity(),price);
+        total.textContent = price !== null && getQuantity() <= 0 ? 'שינוי מחיר בלבד לא יוסיף הוצאה. הוסיפו כמות כדי לרשום קנייה.' : amount === null ? 'מחיר הוא רשות. פריטים ללא מחיר לא נכללים בהוצאות.' : (estimateLabel || 'הוצאה עבור התוספת למלאי') + ': ' + formatMoney(amount);
+        input.removeAttribute('aria-invalid');
+      } catch(e) {total.textContent='הזינו מחיר מאפס ומעלה, עם עד שתי ספרות אחרי הנקודה.';}
+    }
+    input.addEventListener('input',update);
+    wrap.appendChild(h('label',{class:'field-label'},'מחיר ליחידה (₪)', input));
+    wrap.appendChild(total);
+    update();
+    return {element:wrap,input:input,update:update,read:function(){
+      try {return parseUnitPrice(input.value);} catch(e){input.setAttribute('aria-invalid','true');input.focus();throw e;}
+    }};
+  }
+
   function recordDelta(delta) {
     if (!delta) return;
     var log = window.PantryDB.getMonthlyLog();
@@ -861,6 +946,7 @@
     var rec;
     if (existing) {
       existing.quantity = (typeof existing.quantity === 'number' ? existing.quantity : 0) + qty;
+      if(Number.isSafeInteger(input.unitPriceAgorot)) existing.unitPriceAgorot=input.unitPriceAgorot;
       rec = existing;
     } else {
       rec = {
@@ -870,6 +956,7 @@
         quantity: qty,
         unit: input.unit || 'pcs',
         categoryId: input.categoryId || 'other',
+        unitPriceAgorot: Number.isSafeInteger(input.unitPriceAgorot) ? input.unitPriceAgorot : null,
         note: input.note || null,
         purchased: false,
       };
@@ -902,20 +989,25 @@
     var key = shopKey(shop);
     var inv = key ? findInventoryByKey(key) : null;
     var createdNew = false;
+    var expenseId = null;
+    var prevPrice = inv ? inv.unitPriceAgorot : null;
     var prevQty = inv ? inv.quantity : 0;
     var applyInv;
     if (inv) {
+      if(Number.isSafeInteger(shop.unitPriceAgorot)) inv.unitPriceAgorot=shop.unitPriceAgorot;
       inv.quantity = (typeof inv.quantity === 'number' ? inv.quantity : 0) + qty;
       applyInv = window.PantryDB.put(inv).then(function () { return inv; });
     } else {
       applyInv = window.PantryDB.create({
         name: shop.name, nameEn: shop.nameEn, nameHe: shop.nameHe,
         location: defaultInventoryLocation(),
+        unitPriceAgorot: shop.unitPriceAgorot,
         quantity: qty, unit: shop.unit || 'pcs', categoryId: shop.categoryId || 'other',
       }).then(function (ni) { createdNew = true; items.push(ni); return ni; });
     }
     return applyInv.then(function (invItem) {
       recordDelta(qty);
+      expenseId=recordExpense(invItem,qty);
       return window.PantryDB.removeShopping(shop.id).then(function () {
         shoppingItems = shoppingItems.filter(function (x) { return x.id !== shop.id; });
         recomputeShortfall();
@@ -928,10 +1020,12 @@
             });
           } else {
             invItem.quantity = prevQty;
+            invItem.unitPriceAgorot=prevPrice;
             revert = window.PantryDB.put(invItem);
           }
           revert.then(function () {
             recordDelta(-qty);
+            undoExpense(expenseId);
             return window.PantryDB.putShopping(shop);
           }).then(function (saved) {
             upsertLocalShopping(saved);
@@ -1115,6 +1209,7 @@
             nameEn: sf.nameEn, nameHe: sf.nameHe,
             quantity: sf.missing, unit: inv ? inv.unit : 'pcs',
             categoryId: inv ? inv.categoryId : 'other',
+            unitPriceAgorot: inv ? inv.unitPriceAgorot : null,
           });
         },
       }, '＋')
@@ -1150,6 +1245,8 @@
       unitSel.appendChild(o);
     });
 
+    var price = priceField(editing ? existing.unitPriceAgorot : null,function(){return Number(qtyInput.value)||0;},'עלות מתוכננת');
+    qtyInput.addEventListener('input',price.update);
     var card = h(
       'div', { class: 'sync-body shopping-form' },
       h('h3', { dir: 'auto', text: editing ? t('shopping.editTitle') : t('shopping.addItem') }),
@@ -1160,6 +1257,8 @@
       h('label', { class: 'field-label', text: t('form.unit') }),
       unitSel
     );
+    card.appendChild(price.element);
+    card.appendChild(h('p',{class:'price-note',text:'ההוצאה תירשם רק לאחר סימון הפריט כנרכש.'}));
     var actions = h('div', { class: 'conflict-actions' });
     actions.appendChild(h('button', { class: 'btn ghost', type: 'button', onclick: close }, t('form.cancel')));
     actions.appendChild(h('button', { class: 'btn save', type: 'button', onclick: function () {
@@ -1167,6 +1266,7 @@
       if (!nm) { nameInput.focus(); return; }
       var qv = parseInt(qtyInput.value, 10);
       if (!(qv > 0)) qv = 1;
+      var unitPrice;try{unitPrice=price.read();}catch(e){return;}
       var lang = window.I18N.getLang();
       if (editing) {
         // Update the existing shopping record's active-language name + fields.
@@ -1174,12 +1274,13 @@
         existing.name = nm;
         existing.quantity = qv;
         existing.unit = unitSel.value;
+        existing.unitPriceAgorot=unitPrice;
         window.PantryDB.putShopping(existing).then(function (saved) {
           upsertLocalShopping(saved);
           refreshShopping();
         });
       } else {
-        var input = { name: nm, quantity: qv, unit: unitSel.value };
+        var input = { name: nm, quantity: qv, unit: unitSel.value,unitPriceAgorot:unitPrice };
         if (lang === 'he') input.nameHe = nm; else input.nameEn = nm;
         addToShoppingList(input);
       }
@@ -1305,7 +1406,7 @@
     }));
     links.appendChild(actionButton('רשימת קניות','bag','nav-link' + (currentView === 'shopping' ? ' active':''),openShopping));
     links.appendChild(actionButton('סריקת מוצר','scan','nav-link nav-scan',openScanner));
-    links.appendChild(actionButton('מעקב חודשי','calendar','nav-link nav-monthly',openMonthly));
+    links.appendChild(actionButton('הוצאות חודשיות','calendar','nav-link nav-monthly',openMonthly));
     links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings',openSettings));
     nav.appendChild(links);
     nav.appendChild(h('div',{class:'nav-bottom'},
@@ -1470,6 +1571,7 @@
       'div',
       { class: 'card-meta' },
       h('span', { text: t('categories.' + item.categoryId) }),
+      Number.isSafeInteger(item.unitPriceAgorot) ? h('span',{class:'item-price',text:formatMoney(item.unitPriceAgorot)+' / '+unitLabel}) : null,
       (item.desiredAmount || 0) > 0
         ? h('span', { class: 'target-pill', text: '🎯 ' + formatQty(item.desiredAmount) })
         : null,
@@ -1541,13 +1643,17 @@
     var before = item.quantity;
     item.quantity = Math.max(0, item.quantity + delta);
     var real = item.quantity - before;
-    if (!real) return; // e.g. minus at 0 — nothing to persist or re-render
-    window.PantryDB.put(item);
-    recordDelta(real);
-    recomputeShortfall();
-    // Targeted update: refresh just the affected inventory card (O(1)) and the
-    // mounted shared Shopping List (O(shortfall)) — never a full re-render.
-    refreshAfterMutation(item);
+    if (!real) return Promise.resolve();
+    return window.PantryDB.put(item).then(function(){
+      recordDelta(real);
+      if(real > 0) recordExpense(item, real);
+      recomputeShortfall();
+      refreshAfterMutation(item);
+    }).catch(function(){
+      item.quantity=before;
+      showToast('לא ניתן לשמור את שינוי הכמות. נסו שוב.');
+      refreshAfterMutation(item);
+    });
   }
 
   function refresh() {
@@ -1572,6 +1678,7 @@
       nameEn: editing ? existing.nameEn || null : prefill.nameEn || null,
       nameHe: editing ? existing.nameHe || null : prefill.nameHe || null,
       quantity: editing ? existing.quantity : 1,
+      unitPriceAgorot: editing ? existing.unitPriceAgorot : prefill.unitPriceAgorot,
       unit: editing ? existing.unit : 'pcs',
       categoryId: editing ? existing.categoryId : prefill.categoryId || 'other',
       location: editing ? existing.location : prefill.location || defaultInventoryLocation(),
@@ -1598,6 +1705,7 @@
           nameEn: state.nameEn,
           nameHe: state.nameHe,
           quantity: state.quantity,
+          unitPriceAgorot: parseUnitPrice(price.input.value),
           unit: state.unit,
           categoryId: state.categoryId,
           location: state.location,
@@ -1870,6 +1978,11 @@
     });
     body.appendChild(unitChips);
 
+    var price = priceField(state.unitPriceAgorot, function(){return editing ? Math.max(0,state.quantity-existing.quantity) : state.quantity;});
+    body.appendChild(price.element);
+    body.appendChild(h('p',{class:'price-note',text:'הוספת כמות נרשמת כקנייה במחיר הזה. שינוי המחיר בלבד לא ישנה הוצאות קודמות.'}));
+    body.addEventListener('click', price.update);
+
     // Desired amount (par level / monthly target)
     body.appendChild(
       h('label', { class: 'field-label', text: t('form.desired') })
@@ -1939,6 +2052,9 @@
     sheet.appendChild(body);
 
     function save() {
+      var unitPrice;
+      try {unitPrice=price.read();} catch(e){return;}
+      var addedQuantity = editing ? Math.max(0,state.quantity-existing.quantity) : state.quantity;
       var name = nameInput.value.trim();
       if (!name) {
         nameInput.focus();
@@ -1964,6 +2080,7 @@
           nameEn: names.nameEn,
           nameHe: names.nameHe,
           quantity: state.quantity,
+          unitPriceAgorot: unitPrice,
           unit: state.unit,
           categoryId: state.categoryId,
           location: state.location,
@@ -1981,13 +2098,14 @@
           });
           existing.image = null; // drop any legacy inline copy
           p = window.PantryDB.put(existing).then(function () {
+            if(addedQuantity) {recordDelta(addedQuantity);recordExpense(existing,addedQuantity);}
             // GC the previous image if this was its last reference.
             if (prevHash && prevHash !== imageHash) return releaseImage(prevHash);
           });
         } else {
           p = window.PantryDB.create(payload).then(function (item) {
             // Adding a new item counts as restocking that quantity.
-            if (item.quantity) recordDelta(item.quantity);
+            if (item.quantity) {recordDelta(item.quantity);recordExpense(item,item.quantity);}
             return item;
           });
         }
@@ -2121,6 +2239,26 @@
       var e = log[key] || { restocked: 0, consumed: 0, shortfall: [] };
       // For the current month, show a live shortfall.
       var shortfall = key === current ? computeShortfall() : e.shortfall || [];
+
+      var purchases = (e.expenses || []).slice().sort(function(a,b){return b.at.localeCompare(a.at);});
+      content.appendChild(h('section',{class:'expense-summary','aria-label':'הוצאות החודש'},
+        h('span',{class:'expense-heading',text:'הוצאות שנרשמו החודש'}),
+        h('strong',{class:'expense-total',dir:'auto',text:formatMoney(expenseTotal(purchases))}),
+        h('p',{text:purchases.length === 1 ? 'קנייה אחת עם מחיר שנרשם' : purchases.length ? purchases.length+' קניות עם מחיר שנרשם' : 'עדיין אין קניות עם מחיר בחודש הזה.'})));
+      content.appendChild(h('p',{class:'expense-disclaimer',text:'הסכום כולל רק תוספות למלאי עם מחיר. עדכון מחיר אינו משנה קניות קודמות. ההיסטוריה נשמרת במכשיר הזה.'}));
+      if(purchases.length) {
+        var purchaseList=h('div',{class:'expense-list'});
+        purchases.forEach(function(entry){
+          purchaseList.appendChild(h('div',{class:'expense-row'},
+            h('div',{},h('strong',{text:entry.name,dir:'auto'}),h('span',{text:new Date(entry.at).toLocaleDateString('he-IL')+' · '+formatQty(entry.quantity)+' '+t('units.'+entry.unit)+' × '+formatMoney(entry.unitPriceAgorot)})),
+            h('strong',{class:'expense-row-amount',dir:'auto',text:formatMoney(entry.amountAgorot)}),
+            h('button',{class:'expense-remove',type:'button','aria-label':'מחיקת רישום הוצאה של '+entry.name,onclick:function(){
+              if(!window.confirm('למחוק את רישום ההוצאה? הכמות במלאי לא תשתנה.'))return;
+              undoExpense(entry.id);log=window.PantryDB.getMonthlyLog();renderContent(key);
+            }},'×')));
+        });
+        content.appendChild(purchaseList);
+      }
 
       content.appendChild(
         h(
@@ -2854,7 +2992,10 @@
               { class: 'scan-row' },
               itemThumb(e, 'sm'),
               h('span', { class: 'scan-row-name', dir: 'auto', text: scanDisplayName(e) }),
-              h('span', { class: 'scan-row-count', text: '×' + e.count })
+              h('span', { class: 'scan-row-count', text: '×' + e.count }),
+              h('input',{class:'input batch-price',type:'text',inputmode:'decimal',dir:'ltr',placeholder:'מחיר ₪',
+                'aria-label':'מחיר ליחידה בשקלים עבור '+scanDisplayName(e),value:e.priceDraft,
+                oninput:function(event){e.priceDraft=event.target.value;}})
             )
           );
         });
@@ -2883,6 +3024,8 @@
           categoryId: prod.categoryId || 'other',
           unit: prod.unit || 'pcs',
           count: 1,
+          unitPriceAgorot: prod.unitPriceAgorot,
+          priceDraft: priceText(prod.unitPriceAgorot),
           itemId: prod.itemId || null,
           source: prod.source || 'user',
         };
@@ -2903,7 +3046,7 @@
           addToSession({
             barcode: code, name: it.nameEn || it.name || '', he: it.nameHe || '',
             image: thumbImageFor(it), emoji: it.emoji,
-            categoryId: it.categoryId, unit: it.unit, itemId: it.id, source: 'inventory',
+            categoryId: it.categoryId, unit: it.unit, unitPriceAgorot:it.unitPriceAgorot,itemId: it.id, source: 'inventory',
           });
           return;
         }
@@ -2960,7 +3103,10 @@
     }
 
     function commitSession() {
-      var entries = session.slice();
+      if(addAllBtn.disabled)return;
+      var entries = session.filter(function(e){return !e.committed;});
+      try {entries.forEach(function(e){e.unitPriceAgorot=parseUnitPrice(e.priceDraft);});} catch(error){showToast('בדקו את המחירים. מותר להזין עד שתי ספרות אחרי הנקודה.');return;}
+      addAllBtn.disabled=true;
       if (!entries.length) { close(); return; }
       var total = entries.reduce(function (n, e) { return n + e.count; }, 0);
       var chain = Promise.resolve();
@@ -2969,7 +3115,8 @@
           var existing = e.itemId ? itemById(e.itemId) : itemByBarcode(e.barcode);
           if (existing) {
             existing.quantity += e.count;
-            return window.PantryDB.put(existing).then(function () { recordDelta(e.count); });
+            existing.unitPriceAgorot=e.unitPriceAgorot;
+            return window.PantryDB.put(existing).then(function () { recordDelta(e.count);recordExpense(existing,e.count); });
           }
           var nm = e.name || e.he || t('scan.unknownName');
           // Dedup the image into the shared store first, then reference by hash.
@@ -2977,24 +3124,26 @@
             .then(function (imageHash) {
               return window.PantryDB.create({
                 name: nm, nameEn: e.name || null, nameHe: e.he || null,
+                unitPriceAgorot:e.unitPriceAgorot,
                 quantity: e.count, unit: e.unit, categoryId: e.categoryId,
                 location: defaultInventoryLocation(), barcode: e.barcode, emoji: e.emoji, imageHash: imageHash || null,
               });
             })
             .then(function (item) {
               recordDelta(item.quantity);
+              recordExpense(item,item.quantity);
               return window.PantryDB.putBarcode({
                 barcode: e.barcode, name: e.name || '', he: e.he || '',
                 categoryId: e.categoryId, unit: e.unit, image: e.image || null,
                 emoji: e.emoji || null, source: e.source || 'user',
               });
             });
-        });
+        }).then(function(){e.committed=true;});
       });
       chain.then(function () {
         close();
         refresh().then(function () { showToast(t('scan.committed', { count: total })); });
-      });
+      }).catch(function(){addAllBtn.disabled=false;showToast('לא ניתן להשלים את השמירה. נסו שוב.');});
     }
 
     renderSession();
@@ -3014,6 +3163,7 @@
     }
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(false); });
 
+    var price = priceField(item.unitPriceAgorot,function(){return qty;});
     var dialog = h(
       'div',
       { class: 'dialog' },
@@ -3030,20 +3180,25 @@
       ),
       h('label', { class: 'field-label', text: t('scan.howMany') }),
       stepperBox(function () { return qty; }, function (v) { qty = v; }),
+      price.element,
       h('div', { class: 'actions' },
         h('button', { class: 'btn cancel', type: 'button', onclick: function () { close(false); } }, t('form.cancel')),
         h('button', {
           class: 'btn save', type: 'button',
           onclick: function () {
+            var unitPrice;try{unitPrice=price.read();}catch(e){return;}
+            item.unitPriceAgorot=unitPrice;
             item.quantity += qty;
             window.PantryDB.put(item).then(function () {
               recordDelta(qty);
+              recordExpense(item,qty);
               close(true);
             });
           },
         }, t('scan.add'))
       )
     );
+    dialog.addEventListener('click',price.update);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
   }
@@ -3059,6 +3214,7 @@
       categoryId: product.categoryId || 'other',
       unit: product.unit || 'pcs',
       qty: 1,
+      unitPriceAgorot: product.unitPriceAgorot,
       emoji: product.emoji || null,
       // Full image from OFF/cache; thumb (if any) is set when a photo is picked.
       imageFull: product.image || null,
@@ -3113,9 +3269,13 @@
     body.appendChild(h('label', { class: 'field-label', text: t('form.quantity') }));
     body.appendChild(stepperBox(function () { return st.qty; }, function (v) { st.qty = v; }));
 
+    var price = priceField(st.unitPriceAgorot,function(){return st.qty;});
+    body.appendChild(price.element);
+    body.addEventListener('click',price.update);
     sheet.appendChild(body);
 
     function save() {
+      var unitPrice;try{unitPrice=price.read();}catch(e){return;}
       var en = enInput.value.trim();
       var he = heInput.value.trim();
       if (!en && !he) {
@@ -3139,18 +3299,21 @@
         var p;
         if (existing) {
           existing.quantity += st.qty;
+          existing.unitPriceAgorot=unitPrice;
           var prevHash = existing.imageHash || null;
           if (imageHash) { existing.imageHash = imageHash; existing.image = null; }
           p = window.PantryDB.put(existing).then(function () {
             recordDelta(st.qty);
+            recordExpense(existing,st.qty);
             if (imageHash && prevHash && prevHash !== imageHash) return releaseImage(prevHash);
           });
         } else {
           p = window.PantryDB.create({
             name: primary, nameEn: en || null, nameHe: he || null,
+            unitPriceAgorot: unitPrice,
             quantity: st.qty, unit: st.unit, categoryId: st.categoryId,
             location: defaultInventoryLocation(), barcode: barcode, emoji: emoji || null, imageHash: imageHash || null,
-          }).then(function (item) { recordDelta(item.quantity); });
+          }).then(function (item) { recordDelta(item.quantity);recordExpense(item,item.quantity); });
         }
         p.then(function () {
           window.PantryDB.putBarcode({
@@ -4322,7 +4485,7 @@
         )
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
-      row('מעקב חודשי', 'מה צריך לחדש החודש', function () { close(); openMonthly(); }),
+      row('הוצאות ומעקב חודשי', 'סיכום קניות, הוצאות ומלאי', function () { close(); openMonthly(); }),
       row(t('settings.sync'), t('settings.syncSub'), function () { close(); openSyncSettings(); }),
       row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
       h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
@@ -4403,6 +4566,12 @@
     // Pure, DOM-free helpers exposed for the automated logic harness.
     _internals: {
       locationSpace: locationSpace,
+      changeQty: changeQty,
+      parseUnitPrice: parseUnitPrice,
+      purchaseAmount: purchaseAmount,
+      expenseTotal: expenseTotal,
+      recordExpense: recordExpense,
+      undoExpense: undoExpense,
       filteredInventory: filteredInventory,
       clearInventoryRecords: clearInventoryRecords,
       detectLang: detectLang,

@@ -197,6 +197,7 @@
       nameHe: (input.nameHe || '').trim() || null,
       quantity: typeof input.quantity === 'number' ? input.quantity : 1,
       unit: input.unit || 'pcs',
+      unitPriceAgorot: Number.isSafeInteger(input.unitPriceAgorot) && input.unitPriceAgorot >= 0 ? input.unitPriceAgorot : null,
       categoryId: input.categoryId || 'other',
       location: input.location || 'Fridge',
       note: input.note || null,
@@ -537,7 +538,8 @@
   function setMonthlyLog(obj) {
     try {
       localStorage.setItem(MONTHLY_KEY, JSON.stringify(obj || {}));
-    } catch (e) {}
+      return true;
+    } catch (e) { return false; }
   }
 
   // ---- Delete ALL of a user's data (used by optional profile deletion) ----
