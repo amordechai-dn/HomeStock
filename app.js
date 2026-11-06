@@ -14,10 +14,14 @@
     { id: 'meat', emoji: '🥩' },
     { id: 'bakery', emoji: '🍞' },
     { id: 'dry', emoji: '🥫' },
+    { id: 'grains', emoji: '🌾' },
     { id: 'frozen', emoji: '🧊' },
     { id: 'drinks', emoji: '🥤' },
     { id: 'snacks', emoji: '🍫' },
     { id: 'condiments', emoji: '🧂' },
+    { id: 'care', emoji: '🧴' },
+    { id: 'paper', emoji: '🧻' },
+    { id: 'household', emoji: '🔋' },
     { id: 'other', emoji: '🍽️' },
   ];
   var SPACES = [

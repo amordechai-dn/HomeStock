@@ -1054,6 +1054,13 @@ async function rejects(name, fn) {
     ok('editor rejects invalid quantity: '+value,rejected);
   });
 
+  ['grains','care','paper','household'].forEach(function(category){
+    var label=I18N.t('categories.'+category);
+    ok('household category has a Hebrew label: '+category,!!label && label!=='טקסט לא זמין');
+  });
+  var catalogRice=window.FOODS.find(function(food){return food.name==='Rice';});
+  ok('rice autocomplete uses grains category',catalogRice.category==='grains');
+
   var rapid=await DB.create({name:'בדיקת לחיצות מהירות',quantity:1,unit:'pcs',location:'House'});
   AppI.setItems(await DB.getAll());
   await Promise.all([AppI.changeQty(rapid,1),AppI.changeQty(rapid,1),AppI.changeQty(rapid,-1)]);

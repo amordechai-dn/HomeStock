@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.0.0`
+**Current version:** `v4.0.1`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
