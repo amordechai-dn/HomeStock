@@ -14,7 +14,7 @@
         locations_other: '{{count}} locations',
         across: '{{items}} across {{locations}}',
       },
-      locations: { Fridge: 'Fridge', Freezer: 'Freezer', Pantry: 'Pantry' },
+      locations: { Fridge: 'Fridge', Freezer: 'Freezer', Pantry: 'Pantry', Toilet: 'Toilet', Shower: 'Shower', House: 'House' },
       categories: {
         produce: 'Produce',
         fruit: 'Fruit',
@@ -323,7 +323,7 @@
         locations_other: '{{count}} מיקומים',
         across: '{{items}} ב-{{locations}}',
       },
-      locations: { Fridge: 'מקרר', Freezer: 'מקפיא', Pantry: 'מזווה' },
+      locations: { Fridge: 'מקרר', Freezer: 'מקפיא', Pantry: 'מזווה', Toilet: 'שירותים', Shower: 'מקלחת', House: 'בית' },
       categories: {
         produce: 'ירקות',
         fruit: 'פירות',

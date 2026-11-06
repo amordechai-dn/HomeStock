@@ -1,7 +1,7 @@
 # HomeStock 🏠✅ — Smart Home Inventory
 
 An **offline-first Progressive Web App** for tracking the food you keep at home —
-grouped by where you store it (**Fridge / Freezer / Pantry**), with barcode
+organized into **Kitchen / Bathroom / House** spaces, with kitchen and bathroom subspaces, with barcode
 scanning, a separate shopping list, a **Hebrew interface** with full RTL,
 one household profile, and optional **cross-device cloud sync**.
 
@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.0.0`
+**Current version:** `v3.1.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -19,6 +19,8 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 ## Features
 
 ### Inventory
+- Spaces: **מטבח** (מקפיא, מקרר, מזווה), **חדר רחצה** (שירותים, מקלחת), and **בית** (items stored directly).
+- Pick a space and subspace when adding or moving items. Existing kitchen locations keep their stable IDs.
 - Add / edit / delete items with **name, location, category, quantity + unit, note**.
 - Cards grouped by **Fridge / Freezer / Pantry** with per-section counts.
 - **+/- quantity steppers** and an **"Out"** badge at zero.
@@ -192,6 +194,7 @@ Launch it from the home-screen icon for a full-screen, offline app.
 
 | Version | Highlights |
 | --- | --- |
+| **v3.1.0** | Kitchen, Bathroom and House spaces with nested storage locations |
 | **v3.0.0** | Kitchen-shelf redesign, search, storage filters, mobile dock, new icons and offline Hebrew font |
 | **v2.2.0** | One household profile, direct startup, Hebrew-only interface |
 | **v2.0.1** | Barcode scanner fix: resilient own decode loop, detection feedback, timeout tips, debug overlay |

@@ -996,6 +996,18 @@ async function rejects(name, fn) {
   ok('unknown search has no matches', AppI.filteredInventory(searchRows,'לא קיים','all').length === 0);
   ok('filters do not mutate inventory', searchRows.length === 2 && searchRows[0].quantity === 1);
 
+  var rooms = searchRows.concat([
+    {id:'soap',nameHe:'סבון',location:'Shower'},
+    {id:'paper',nameHe:'נייר טואלט',location:'Toilet'},
+    {id:'battery',nameHe:'סוללות',location:'House'}
+  ]);
+  ok('legacy fridge stays in Kitchen', AppI.locationSpace('Fridge') === 'Kitchen');
+  ok('bathroom groups shower and toilet', AppI.filteredInventory(rooms,'','all','Bathroom').length === 2);
+  ok('bathroom subspace filtering', AppI.filteredInventory(rooms,'','Shower','Bathroom')[0].id === 'soap');
+  ok('House stores items directly', AppI.filteredInventory(rooms,'','all','House')[0].id === 'battery');
+  ok('search stays inside the selected space', AppI.filteredInventory(rooms,'חלב','all','Bathroom').length === 0);
+  ok('space filter preserves existing kitchen inventory', AppI.filteredInventory(rooms,'','all','Kitchen').length === 2);
+
   var cleared = [];
   await AppI.clearInventoryRecords({
     getAll: function () { return Promise.resolve([{id:'local'}, {id:'shared'}]); },

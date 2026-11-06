@@ -19,11 +19,57 @@
     { id: 'condiments', emoji: '🧂' },
     { id: 'other', emoji: '🍽️' },
   ];
-  var LOCATIONS = [
-    { id: 'Fridge', emoji: '🧊' },
-    { id: 'Freezer', emoji: '❄️' },
-    { id: 'Pantry', emoji: '🗄️' },
+  var SPACES = [
+    { id: 'Kitchen', label: 'מטבח', icon: 'shelf', defaultLocation: 'Pantry' },
+    { id: 'Bathroom', label: 'חדר רחצה', icon: 'bath', defaultLocation: 'Toilet' },
+    { id: 'House', label: 'בית', icon: 'house', defaultLocation: 'House' }
   ];
+  // Legacy location IDs stay unchanged, preserving existing inventory/sync rows.
+  var LOCATIONS = [
+    { id: 'Freezer', space: 'Kitchen', emoji: '❄️' },
+    { id: 'Fridge', space: 'Kitchen', emoji: '🧊' },
+    { id: 'Pantry', space: 'Kitchen', emoji: '🗄️' },
+    { id: 'Toilet', space: 'Bathroom', emoji: '🧻' },
+    { id: 'Shower', space: 'Bathroom', emoji: '🚿' },
+    { id: 'House', space: 'House', emoji: '🏠' }
+  ];
+
+  function locationSpace(location) {
+    for (var i = 0; i < LOCATIONS.length; i++) {
+      if (LOCATIONS[i].id === location) return LOCATIONS[i].space;
+    }
+    return 'Kitchen';
+  }
+
+  function defaultInventoryLocation() {
+    if (inventoryLocation !== 'all' && inventoryLocation !== 'low') return inventoryLocation;
+    return SPACES.filter(function(space){return space.id === inventorySpace;})[0].defaultLocation;
+  }
+
+  function locationPicker(get, set) {
+    var wrap = h('div', {class:'location-picker'});
+    function render() {
+      wrap.innerHTML = '';
+      var selectedSpace = locationSpace(get());
+      var spaces = h('div', {class:'segment', 'aria-label':'בחירת אזור בבית'});
+      SPACES.forEach(function(space){
+        spaces.appendChild(h('button',{type:'button',class:'segment-item'+(space.id===selectedSpace?' active':''),'aria-pressed':String(space.id===selectedSpace),onclick:function(){set(space.defaultLocation);render();}},uiIcon(space.icon),h('span',{text:space.label})));
+      });
+      wrap.appendChild(spaces);
+      var locations = LOCATIONS.filter(function(loc){return loc.space===selectedSpace;});
+      if(locations.length>1) {
+        wrap.appendChild(h('p',{class:'location-picker-label',text:'איפה בדיוק?'}));
+        var sub = h('div',{class:'segment location-subspaces','aria-label':'בחירת מקום אחסון'});
+        locations.forEach(function(loc){
+          sub.appendChild(h('button',{type:'button',class:'segment-item'+(get()===loc.id?' active':''),'aria-pressed':String(get()===loc.id),onclick:function(){set(loc.id);render();}},loc.emoji+' '+t('locations.'+loc.id)));
+        });
+        wrap.appendChild(sub);
+      }
+    }
+    render();
+    return wrap;
+  }
+
   var UNITS = ['pcs', 'pack', 'kg', 'g', 'L', 'ml', 'box', 'can'];
 
   function categoryEmoji(id) {
@@ -861,6 +907,7 @@
     } else {
       applyInv = window.PantryDB.create({
         name: shop.name, nameEn: shop.nameEn, nameHe: shop.nameHe,
+        location: defaultInventoryLocation(),
         quantity: qty, unit: shop.unit || 'pcs', categoryId: shop.categoryId || 'other',
       }).then(function (ni) { createdNew = true; items.push(ni); return ni; });
     }
@@ -1217,9 +1264,12 @@
 
   var inventoryQuery = '';
   var inventoryLocation = 'all';
+  var inventorySpace = 'Kitchen';
 
   function uiIcon(name) {
     var paths = {
+      bath: '<path d="M3 12h18v3a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-3Zm3 8v2m12-2v2M5 12V5a3 3 0 0 1 6 0"/><path d="M9 6h4"/>',
+      house: '<path d="m3 11 9-8 9 8M5 10v11h14V10M10 21v-7h4v7"/>',
       shelf: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16M9 7v2m0 6v2"/>',
       bag: '<path d="M5 7h14l1 14H4L5 7Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/>',
       scan: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 8v8m3-8v8m4-8v8m3-8v8"/>',
@@ -1261,13 +1311,13 @@
     return nav;
   }
 
-  function filteredInventory(rows, query, location) {
+  function filteredInventory(rows, query, location, space) {
     query = String(query || '').trim().toLocaleLowerCase('he');
     return rows.filter(function(item){
       var matchesLocation = location === 'all' || item.location === location ||
         (location === 'low' && item.quantity < (item.desiredAmount || 0));
       var name = [item.name,item.nameHe,item.nameEn].filter(Boolean).join(' ').toLocaleLowerCase('he');
-      return matchesLocation && (!query || name.indexOf(query) !== -1);
+      return (!space || locationSpace(item.location) === space) && matchesLocation && (!query || name.indexOf(query) !== -1);
     });
   }
 
@@ -1283,15 +1333,15 @@
   function renderInventoryShelf(container) {
     container.innerHTML = '';
     cardRefs = {};
-    var filtered = filteredInventory(items,inventoryQuery,inventoryLocation);
+    var filtered = filteredInventory(items,inventoryQuery,inventoryLocation,inventorySpace);
     var count = h('div',{class:'inventory-caption','aria-live':'polite',text: filtered.length ? tc('summary.items',filtered.length) + ' במלאי' : 'המלאי שלי'});
     container.appendChild(count);
     if (!filtered.length) {
-      var isEmpty = !items.length;
+      var isEmpty = !items.some(function(item){return locationSpace(item.location)===inventorySpace;});
       var empty = h('div',{class:'kitchen-empty'},
-        pantryArt(),
+        inventorySpace === 'Kitchen' ? pantryArt() : h('div',{class:'room-empty-art room-'+inventorySpace.toLowerCase(),'aria-hidden':'true'},uiIcon(inventorySpace==='Bathroom'?'bath':'house')),
         h('h2',{text:isEmpty ? 'יש מקום לדברים טובים.' : 'לא מצאנו פריטים כאן.'}),
-        h('p',{text:isEmpty ? 'מתחילים במה שכבר יש בבית. הוסיפו מוצר ראשון,\nוכל המקרר, המקפיא והמזווה יהיו מול העיניים.' : 'נסו שם אחר או עברו למקום אחסון אחר.'}));
+        h('p',{text:isEmpty ? (inventorySpace==='Kitchen' ? 'כל המקרר, המקפיא והמזווה במקום אחד.\nהוסיפו את מה שכבר יש במטבח.' : inventorySpace==='Bathroom' ? 'סבון, שמפו ונייר טואלט.\nמקום לכל מה שיש בשירותים ובמקלחת.' : 'מוצרי ניקיון, סוללות וכל מה שצריך לבית.\nהוסיפו מוצר ותמיד תדעו מה יש.') : 'נסו שם אחר או עברו למקום אחסון אחר.'}));
       empty.appendChild(isEmpty ? h('div',{class:'empty-actions'},
         actionButton('הוספת מוצר ראשון','plus','kitchen-button primary',function(){openForm(null);}),
         actionButton('סריקת ברקוד','scan','kitchen-button plain',openScanner)) :
@@ -1320,7 +1370,7 @@
     var workspace=h('main',{class:'kitchen-workspace',id:'main-content'});
     var header=h('header',{class:'kitchen-header'},
       h('div',{},h('p',{class:'today-label',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
-        h('h1',{text:'המטבח שלי'}),h('p',{class:'kitchen-subtitle',text:'כל מה שיש בבית, במקום אחד.'})),
+        h('h1',{text:'הבית שלי'}),h('p',{class:'kitchen-subtitle',text:'כל מה שיש בבית, במקום אחד.'})),
       h('div',{class:'kitchen-header-actions'},
         syncConfigured() ? h('button',{class:'icon-btn sync-indicator',id:'sync-indicator','aria-label':t('sync.a11y'),title:t('sync.title'),onclick:openSyncSettings},uiIcon('cloud')):null,
         actionButton('סריקת ברקוד','scan','kitchen-button secondary header-scan',openScanner),
@@ -1329,18 +1379,29 @@
     var layout=h('div',{class:'main-layout kitchen-layout'});
     var content=h('div',{class:'content-col'});
     var shelf=h('div',{class:'inventory-shelves'});
-    var search=h('input',{type:'search',class:'inventory-search',placeholder:'מה מחפשים במטבח?','aria-label':'חיפוש במלאי',value:inventoryQuery,
+    var search=h('input',{type:'search',class:'inventory-search',placeholder:'מה מחפשים בבית?','aria-label':'חיפוש במלאי',value:inventoryQuery,
       oninput:function(e){inventoryQuery=e.target.value;renderInventoryShelf(shelf);}});
-    var tabs=h('div',{class:'storage-tabs','aria-label':'סינון לפי מקום אחסון'});
-    [{id:'all',label:'הכול'}].concat(LOCATIONS.map(function(loc){return{id:loc.id,label:t('locations.'+loc.id)};})).forEach(function(loc){
-      var count=items.filter(function(i){return loc.id==='all'||i.location===loc.id;}).length;
-      tabs.appendChild(h('button',{type:'button',class:'storage-tab'+(inventoryLocation===loc.id?' active':''),'aria-pressed':String(inventoryLocation===loc.id),onclick:function(){
-        inventoryLocation=loc.id;
-        Array.prototype.forEach.call(tabs.children,function(btn){var active=btn===this;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));},this);
-        renderInventoryShelf(shelf);
-      }},h('span',{text:loc.label}),h('span',{class:'tab-count',text:String(count)})));
+    var spaceTabs=h('div',{class:'space-tabs','aria-label':'אזורי הבית'});
+    SPACES.forEach(function(space){
+      var count=items.filter(function(item){return locationSpace(item.location)===space.id;}).length;
+      spaceTabs.appendChild(h('button',{type:'button',class:'space-tab'+(inventorySpace===space.id?' active':''),'aria-pressed':String(inventorySpace===space.id),onclick:function(){
+        inventorySpace=space.id;inventoryLocation='all';inventoryQuery='';renderMain();
+      }},uiIcon(space.icon),h('span',{class:'space-tab-name',text:space.label}),h('span',{class:'space-tab-count',text:tc('summary.items',count)})));
     });
-    content.appendChild(h('div',{class:'inventory-toolbar'},h('label',{class:'inventory-search-wrap'},uiIcon('search'),search),tabs));
+    workspace.appendChild(spaceTabs);
+    var tabs=h('div',{class:'storage-tabs','aria-label':'סינון לפי מקום אחסון'});
+    var locations=LOCATIONS.filter(function(loc){return loc.space===inventorySpace;});
+    if(locations.length>1) {
+      [{id:'all',label:'הכול'}].concat(locations.map(function(loc){return{id:loc.id,label:t('locations.'+loc.id)};})).forEach(function(loc){
+        var count=items.filter(function(i){return locationSpace(i.location)===inventorySpace && (loc.id==='all'||i.location===loc.id);}).length;
+        tabs.appendChild(h('button',{type:'button',class:'storage-tab'+(inventoryLocation===loc.id?' active':''),'aria-pressed':String(inventoryLocation===loc.id),onclick:function(){
+          inventoryLocation=loc.id;
+          Array.prototype.forEach.call(tabs.children,function(btn){var active=btn===this;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));},this);
+          renderInventoryShelf(shelf);
+        }},h('span',{text:loc.label}),h('span',{class:'tab-count',text:String(count)})));
+      });
+    }
+    content.appendChild(h('div',{class:'inventory-toolbar'},h('label',{class:'inventory-search-wrap'},uiIcon('search'),search),locations.length>1?tabs:null));
     renderInventoryShelf(shelf);
     content.appendChild(shelf);
     layout.appendChild(content);
@@ -1353,7 +1414,7 @@
       layout.appendChild(aside);
     } else {shoppingListEl=null;shoppingListMode=null;}
     workspace.appendChild(layout);
-    workspace.appendChild(h('footer',{class:'kitchen-footer',text:'מקרר, מקפיא, מזווה. עכשיו יודעים מה יש.'}));
+    workspace.appendChild(h('footer',{class:'kitchen-footer',text:'מטבח, חדר רחצה ובית. עכשיו יודעים איפה הכול.'}));
     root.appendChild(workspace);
     if(items.length) root.appendChild(actionButton('הוספת מוצר','plus','mobile-add',function(){openForm(null);}));
   }
@@ -1510,7 +1571,7 @@
       quantity: editing ? existing.quantity : 1,
       unit: editing ? existing.unit : 'pcs',
       categoryId: editing ? existing.categoryId : prefill.categoryId || 'other',
-      location: editing ? existing.location : prefill.location || 'Pantry',
+      location: editing ? existing.location : prefill.location || defaultInventoryLocation(),
       note: editing ? existing.note || '' : '',
       desiredAmount: editing ? existing.desiredAmount || 0 : 0,
       barcode: editing ? existing.barcode || null : prefill.barcode || null,
@@ -1710,33 +1771,8 @@
     body.appendChild(nameInput);
     body.appendChild(acBox);
 
-    // Location segmented
-    body.appendChild(
-      h('label', { class: 'field-label', text: t('form.location') })
-    );
-    var seg = h('div', { class: 'segment' });
-    LOCATIONS.forEach(function (loc) {
-      seg.appendChild(
-        h(
-          'button',
-          {
-            class: 'segment-item' + (state.location === loc.id ? ' active' : ''),
-            type: 'button',
-            onclick: function () {
-              state.location = loc.id;
-              Array.prototype.forEach.call(seg.children, function (c, idx) {
-                c.className =
-                  'segment-item' +
-                  (LOCATIONS[idx].id === loc.id ? ' active' : '');
-              });
-            },
-          },
-          h('span', { text: loc.emoji }),
-          h('span', { text: t('locations.' + loc.id) })
-        )
-      );
-    });
-    body.appendChild(seg);
+    body.appendChild(h('label', {class:'field-label',text:'אזור בבית'}));
+    body.appendChild(locationPicker(function(){return state.location;},function(location){state.location=location;}));
 
     // Category chips
     body.appendChild(
@@ -2939,7 +2975,7 @@
               return window.PantryDB.create({
                 name: nm, nameEn: e.name || null, nameHe: e.he || null,
                 quantity: e.count, unit: e.unit, categoryId: e.categoryId,
-                location: 'Pantry', barcode: e.barcode, emoji: e.emoji, imageHash: imageHash || null,
+                location: defaultInventoryLocation(), barcode: e.barcode, emoji: e.emoji, imageHash: imageHash || null,
               });
             })
             .then(function (item) {
@@ -3110,7 +3146,7 @@
           p = window.PantryDB.create({
             name: primary, nameEn: en || null, nameHe: he || null,
             quantity: st.qty, unit: st.unit, categoryId: st.categoryId,
-            location: 'Pantry', barcode: barcode, emoji: emoji || null, imageHash: imageHash || null,
+            location: defaultInventoryLocation(), barcode: barcode, emoji: emoji || null, imageHash: imageHash || null,
           }).then(function (item) { recordDelta(item.quantity); });
         }
         p.then(function () {
@@ -4366,6 +4402,7 @@
     renderMain: renderMain,
     // Pure, DOM-free helpers exposed for the automated logic harness.
     _internals: {
+      locationSpace: locationSpace,
       filteredInventory: filteredInventory,
       clearInventoryRecords: clearInventoryRecords,
       detectLang: detectLang,
