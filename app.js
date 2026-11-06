@@ -1299,13 +1299,14 @@
   // reloading data — used on breakpoint crossing and language change.
   function pageAddress(view) {
     var hash='#/'+view;
-    if(location.hash!==hash)history.pushState(null,'',hash);
+    try{if(location.hash!==hash)history.pushState(null,'',hash);}catch(error){console.warn('Navigation address unavailable',error);}
   }
-  window.addEventListener('popstate',function(){
+  if(window.addEventListener)window.addEventListener('popstate',function(){
     if(!window.CurrentUser||!window.CurrentUser.id())return;
     currentView=location.hash.slice(2)||'inventory';renderCurrentView();
   });
   function renderCurrentView() {
+    if(!root)root=document.getElementById('root');
     var active=document.activeElement;
     var focusKey=active&&root&&root.contains(active)&&active.getAttribute('data-focus-key');
     var selection=focusKey==='inventory-search'?[active.selectionStart,active.selectionEnd]:null;
@@ -4223,7 +4224,8 @@
       .then(function () { return startGitHubSync(); })
       .then(function () {
         recomputeShortfall();
-        currentView=location.hash.slice(2)||'inventory';renderCurrentView();
+        currentView=location.hash.slice(2)||'inventory';
+        try{renderCurrentView();}catch(error){console.error('Page restore failed',error);currentView='inventory';renderMain();}
         // If we arrived via a device-link URL / QR, honor that explicit action
         // first (advanced path). Otherwise auto-join the deterministic,
         // profile-based household so the SAME profile shares across devices with
