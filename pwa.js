@@ -5,7 +5,7 @@
 
   // Fallback shown before the SW reports its authoritative VERSION.
   // Keep in sync with sw.js on deploy; the SW value overrides this at runtime.
-  var FALLBACK_VERSION = 'v2.2.0';
+  var FALLBACK_VERSION = 'v2.2.1';
   window.APP_VERSION = FALLBACK_VERSION;
 
   function setVersion(v) {
@@ -64,7 +64,7 @@
 
   window.addEventListener('load', function () {
     navigator.serviceWorker
-      .register('./sw.js')
+      .register('./sw.js', { updateViaCache: 'none' })
       .then(function (reg) {
         trackUpdates(reg);
 
@@ -78,6 +78,7 @@
         var update = function () {
           reg.update().catch(function () {});
         };
+        update();
         window.addEventListener('focus', update);
         document.addEventListener('visibilitychange', function () {
           if (document.visibilityState === 'visible') update();

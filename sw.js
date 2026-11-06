@@ -1,7 +1,8 @@
 /* Service worker: precache + cache-first, offline-capable, self-updating.
    Bump VERSION on every deploy to trigger an update for installed PWAs. */
-var VERSION = 'v2.2.0';
-var CACHE = 'pantry-' + VERSION;
+var VERSION = 'v2.2.1';
+var CACHE_PREFIX = 'homestock:' + self.registration.scope + ':';
+var CACHE = CACHE_PREFIX + VERSION;
 
 // Critical-path assets for first paint + full offline. Kept lean: only what
 // the app needs to boot and run offline. Runtime API responses (Open Food
@@ -41,7 +42,18 @@ self.addEventListener('install', function (event) {
     caches
       .open(CACHE)
       .then(function (cache) {
-        return cache.addAll(ASSETS);
+        // Fetch one complete release, bypassing browser/CDN entries from an
+        // older deployment. Store canonical keys for offline asset lookup.
+        return Promise.all(ASSETS.map(function (path) {
+          var canonical = new URL(path, self.registration.scope).href;
+          var fresh = new URL(canonical);
+          fresh.searchParams.set('__release', VERSION);
+          return fetch(new Request(fresh.href, { cache: 'reload' }))
+            .then(function (response) {
+              if (!response.ok) throw new Error('Precache failed: ' + path);
+              return cache.put(canonical, response);
+            });
+        }));
       })
       .then(function () {
         return self.skipWaiting();
@@ -56,7 +68,7 @@ self.addEventListener('activate', function (event) {
       .then(function (keys) {
         return Promise.all(
           keys.map(function (key) {
-            if (key !== CACHE) return caches.delete(key);
+            if (key.indexOf(CACHE_PREFIX) === 0 && key !== CACHE) return caches.delete(key);
             return null;
           })
         );
@@ -69,22 +81,18 @@ self.addEventListener('activate', function (event) {
 
 self.addEventListener('fetch', function (event) {
   var req = event.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== 'GET' || req.url.indexOf(self.registration.scope) !== 0) return;
 
-  event.respondWith(
-    caches.match(req).then(function (cached) {
+  event.respondWith(caches.open(CACHE).then(function (cache) {
+    // Never search other releases or other GitHub Pages apps' caches.
+    return cache.match(req, { ignoreSearch: true }).then(function (cached) {
       if (cached) return cached;
-      return fetch(req)
-        .then(function (res) {
-          return res;
-        })
-        .catch(function () {
-          // Offline fallback for navigations.
-          if (req.mode === 'navigate') return caches.match('./index.html');
-          return undefined;
-        });
-    })
-  );
+      return fetch(req).catch(function (err) {
+        if (req.mode === 'navigate') return cache.match(new URL('./index.html', self.registration.scope).href);
+        throw err;
+      });
+    });
+  }));
 });
 
 self.addEventListener('message', function (event) {
