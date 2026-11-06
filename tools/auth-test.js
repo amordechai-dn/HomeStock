@@ -507,28 +507,17 @@ async function rejects(name, fn) {
   ok('mapItemToCloud keeps bilingual names + full data blob',
     cloudRow.name_he === '\u05EA\u05D4' && cloudRow.data && cloudRow.data.name === 'Tea');
 
-  console.log('\n[sync: baked config = zero-config per device]');
-  require('../config.js'); // loads window.HOMESTOCK_CONFIG baked defaults
-  var baked = AppI.syncGetConfig();
-  ok('baked config ships a Supabase URL + anon key', /supabase\.co/.test(baked.url) && baked.anonKey.length > 10);
-  ok('anon key is a PUBLIC publishable key (sb_publishable_ / JWT)', /^sb_publishable_|^eyJ/.test(baked.anonKey));
-  ok('app is configured out-of-the-box (no manual entry needed)', AppI.syncConfigured() === true);
-  // Settings override beats baked config; removing it falls back to baked.
-  localStorage.setItem('pantry.sync.url', 'https://override.example.co');
-  localStorage.setItem('pantry.sync.anonKey', 'override-key-123');
-  var ov = AppI.syncGetConfig();
-  ok('Settings override takes precedence over baked config',
-    ov.url === 'https://override.example.co' && ov.anonKey === 'override-key-123');
-  localStorage.removeItem('pantry.sync.url');
-  localStorage.removeItem('pantry.sync.anonKey');
-  ok('removing override falls back to baked config', AppI.syncGetConfig().url === baked.url);
-  // If the baked values were ever blanked, the app stays dormant (no errors).
-  var savedCfg = global.window.HOMESTOCK_CONFIG;
-  global.window.HOMESTOCK_CONFIG = { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' };
-  ok('blanked baked config -> dormant (syncConfigured false)', AppI.syncConfigured() === false);
-  ok('auto-redeem is a no-op when unconfigured (resolves false)',
-    (await AppI.syncAutoRedeem('sometoken')) === false);
-  global.window.HOMESTOCK_CONFIG = savedCfg;
+  console.log('\n[retired provider cannot block local operations]');
+  require('../config.js');
+  ok('retired cloud provider is explicitly disabled',global.window.HOMESTOCK_CONFIG.CLOUD_SYNC_ENABLED===false);
+  ok('no retired provider credentials are shipped',!global.window.HOMESTOCK_CONFIG.SUPABASE_URL && !global.window.HOMESTOCK_CONFIG.SUPABASE_ANON_KEY);
+  ok('app starts without a cloud backend',AppI.syncConfigured()===false);
+  localStorage.setItem('pantry.sync.url','https://old-backend.example');
+  localStorage.setItem('pantry.sync.anonKey','old-public-key');
+  ok('stale saved settings cannot reactivate retired sync',AppI.syncConfigured()===false);
+  ok('stale settings are ignored when reading configuration',AppI.syncGetConfig().url==='' && AppI.syncGetConfig().anonKey==='');
+  ok('old device-link tokens cannot trigger the retired backend',(await AppI.syncAutoRedeem('old-link-token'))===false);
+  localStorage.removeItem('pantry.sync.url');localStorage.removeItem('pantry.sync.anonKey');
 
   console.log('\n[sync: #link= parsing + QR/deep-link round-trip]');
   global.location = { hash: '#link=ABC123_-token', search: '', pathname: '/', origin: 'https://x' };
@@ -1063,6 +1052,17 @@ async function rejects(name, fn) {
     var rejected=false;try{AppI.parseStockQuantity(value);}catch(e){rejected=true;}
     ok('editor rejects invalid quantity: '+value,rejected);
   });
+
+  var resetSpend=recordedTotal();
+  var resetShopping=(await DB.getAllShopping()).length;
+  localStorage.setItem('pantry.sync.url','https://retired-unreachable.example');
+  localStorage.setItem('pantry.sync.anonKey','stale-key');
+  await AppI.clearInventoryRecords(DB);
+  ok('inventory can be reset while retired backend is unavailable',(await DB.getAll()).length===0);
+  ok('reset preserves the separate shopping list',(await DB.getAllShopping()).length===resetShopping);
+  ok('reset preserves recorded expenses',recordedTotal()===resetSpend);
+  ok('reset never reactivates stale backend configuration',AppI.syncConfigured()===false);
+  localStorage.removeItem('pantry.sync.url');localStorage.removeItem('pantry.sync.anonKey');
 
   console.log('\n============================');
   console.log('PASS ' + pass + '  FAIL ' + fail);

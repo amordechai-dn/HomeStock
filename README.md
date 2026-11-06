@@ -3,14 +3,14 @@
 An **offline-first Progressive Web App** for tracking the food you keep at home —
 organized into **Kitchen / Bathroom / House** spaces, with kitchen and bathroom subspaces, with barcode
 scanning, a separate shopping list, a **Hebrew interface** with full RTL,
-one household profile, and optional **cross-device cloud sync**.
+one household profile, and **automatic on-device saving**.
 
 Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It works
 100% offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.3.0`
+**Current version:** `v3.3.1`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -84,17 +84,12 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
   and pins its stable ID, preserving its inventory and sync identity.
 - Other legacy profiles remain stored; no profile data is deleted.
 
-### Cross-device cloud sync (optional)
-- **Offline-first** and **dormant by default**; powered by **Supabase**.
-- **Anonymous auth** (each device gets its own JWT) with **Row-Level Security**;
-  a **household** UUID is the shared identity.
-- **Zero-config**: backend URL + anon key are **baked into `config.js`**, so a
-  device is ready on first open (an optional advanced override exists).
-- **Device linking** via **QR code / deep link / short code** (crypto-random,
-  digest-only, short-lived tokens).
-- Auto-sync: **push-on-change** (debounced), **pull on focus / reconnect** and a
-  lightweight **periodic pull**, with **last-write-wins** conflict resolution and
-  a **conflict dialog** for quantity clashes.
+### Automatic saving and cloud status
+- Inventory, shopping lists and expenses save automatically on the current device.
+- Clearing inventory works offline without cloud setup; shopping lists and expense history are preserved.
+- The retired Supabase provider is disabled, ships no backend credentials and ignores old saved overrides.
+- Cross-device synchronization is **not active** until a replacement shared-storage service is connected.
+- Legacy sync code and schema files remain for reference, but are not loaded by the app.
 
 ### Platform
 - **Hebrew interface** with full **RTL** layout (CSS logical properties).
@@ -111,10 +106,9 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - **Local storage:** **IndexedDB** (per-user database), with a **localStorage
   fallback**; monthly log and settings in per-user localStorage keys.
 - **Service worker:** precache + cache-first, offline navigation, self-updating.
-- **Backend (optional):** **Supabase** — Postgres + **GoTrue** anonymous auth +
-  **PostgREST** REST API + **Row-Level Security**.
+- **Backend:** no active cloud backend. The retired provider is disabled.
 - **Vendored libraries (local, no CDN):** [`@zxing/library`](https://github.com/zxing-js/library)
-  for barcode decoding and a small **QR-code generator** for device linking.
+  for barcode decoding. The legacy QR generator is not loaded by the current app.
 - **Hosting:** **GitHub Pages** (static).
 
 ---
@@ -151,21 +145,14 @@ Deployment is just a git push to the Pages repo:
 
 ---
 
-## Cloud sync setup
+## Cross-device sync status
 
-Full click-by-click guide: **[`sync/SYNC_SETUP.md`](./sync/SYNC_SETUP.md)**. In short:
+Cloud synchronization is not currently active. The old provider has been
+retired; no manual sync setup or backend settings are exposed in the app.
+A replacement requires an authenticated shared-storage service and a new
+adapter before computer/phone synchronization can be offered.
 
-1. Create a free **Supabase** project.
-2. **Authentication → Providers:** enable **Anonymous sign-ins**.
-3. **SQL Editor:** run the entire **[`sync/schema.sql`](./sync/schema.sql)**
-   (idempotent — creates tables, indexes, RLS policies, and device-link RPCs).
-4. Paste the **Project URL + anon key** into `config.js` (already baked for this
-   deployment) — or use the in-app advanced override.
-5. On a device: **Settings → Sync → Enable sync**; add more devices by
-   **scanning the QR / opening the link** (auto-joins the household).
-
-The **anon key is the only key in the frontend** and is safe to ship — all access
-is gated by Row-Level Security.
+The files under `sync/` are legacy reference material, not current setup instructions.
 
 ---
 
@@ -176,7 +163,7 @@ index.html            App shell + script order
 design.css            Kitchen-shelf visual design, responsive navigation and typography
 fonts/                Locally bundled Rubik variable font (OFL)
 styles.css            Base components (logical properties → RTL-safe), responsive
-config.js             Baked Supabase URL + anon key (public by design)
+config.js             Runtime flags; retired cloud provider disabled
 i18n.js               English + Hebrew strings + RTL handling
 data/foods.js         Local bilingual food database (autocomplete + emoji)
 db.js                 Per-user IndexedDB persistence (localStorage fallback)

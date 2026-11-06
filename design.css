@@ -410,3 +410,5 @@ button:disabled { cursor: wait; opacity: .5; }
   .editor-section-title { margin-block-end: 12px; }
   .product-editor-footer { padding-block-end: 14px; }
 }
+.settings-storage-note { display: flex; align-items: center; gap: 9px; padding: 13px 10px; font-size: 12px; color: #69768d; background: #f4f7fb; border-radius: 8px; line-height: 1.7; }
+.settings-storage-note .ui-icon { width: 17px; height: 17px; color: #5a8570; }

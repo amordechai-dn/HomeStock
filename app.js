@@ -3239,6 +3239,7 @@
 
   // Effective config: Settings (localStorage) overrides config.js. Pure read.
   function syncGetConfig() {
+    if(window.HOMESTOCK_CONFIG && window.HOMESTOCK_CONFIG.CLOUD_SYNC_ENABLED === false) return {url:'',anonKey:''};
     var url = '';
     var anon = '';
     try {
@@ -4172,50 +4173,24 @@
   }
 
   function openClearInventory() {
-    var overlay = h('div', { class: 'overlay center' });
-    function close() { overlay.remove(); }
-    var confirm = h('button', { class: 'btn danger', type: 'button', onclick: function () {
-      if (syncMgr && syncMgr._syncing) {
-        showToast('הסנכרון פועל כרגע. נסו שוב בעוד כמה שניות.');
-        return;
-      }
-      if (syncConfigured() && !syncMgr) {
-        showToast('כדי למחוק גם את המלאי בענן, הפעילו סנכרון והמתינו לחיבור.');
-        return;
-      }
-      confirm.disabled = true;
-      var manager = syncMgr;
-      if (manager) manager.stop();
-      var remote = manager ? manager._push().then(function () {
-        return manager.repo.selectSince('inventory_items', syncLoadState().cloudUserId, null);
-      }) : Promise.resolve([]);
-      remote.then(function (rows) {
-        // remove() emits normal delete mutations, including cloud-only IDs,
-        // so pending deletes survive connection loss in the existing queue.
-        return clearInventoryRecords(window.PantryDB, (rows || []).map(function (r) { return r.id; }));
-      }).then(function () {
-        return load();
-      }).then(function () {
-        recomputeShortfall();
-        close();
-        renderMain();
-        showToast('כל פריטי המלאי נמחקו');
-      }).catch(function (err) {
-        console.error('Clear inventory failed', err);
-        showToast('לא ניתן להשלים את המחיקה. בדקו את החיבור ונסו שוב.');
-      }).then(function () {
-        confirm.disabled = false;
-        if (manager) manager.start();
-      });
-    } }, 'מחיקת כל המלאי');
-    overlay.appendChild(h('div', { class: 'dialog' },
-      h('h2', { class: 'dialog-title', text: 'להתחיל עם מלאי ריק?' }),
-      h('p', { text: 'כל פריטי המלאי יימחקו, כולל מהמלאי המסונכרן. רשימת הקניות תישמר. לא ניתן לבטל את המחיקה.' }),
-      h('div', { class: 'actions' },
-        h('button', { class: 'btn cancel', type: 'button', onclick: close }, 'ביטול'),
-        confirm
-      )
-    ));
+    var overlay=h('div',{class:'overlay center'});
+    var busy=false;
+    function close(){if(!busy)overlay.remove();}
+    var confirm=h('button',{class:'btn danger',type:'button',onclick:function(){
+      if(busy)return;
+      busy=true;confirm.disabled=true;
+      clearInventoryRecords(window.PantryDB).then(function(){return load();}).then(function(){
+        recomputeShortfall();overlay.remove();renderMain();showToast('כל פריטי המלאי נמחקו מהמכשיר');
+      }).catch(function(error){
+        console.error('Local inventory reset failed',error);
+        showToast('לא ניתן להשלים את המחיקה במכשיר. נסו שוב.');
+      }).then(function(){busy=false;confirm.disabled=false;});
+    }},'מחיקת כל המלאי');
+    overlay.appendChild(h('div',{class:'dialog',role:'dialog','aria-modal':'true','aria-label':'מחיקת כל המלאי'},
+      h('h2',{class:'dialog-title',text:'להתחיל עם מלאי ריק?'}),
+      h('p',{text:'פריטי המלאי יימחקו מהמכשיר הזה. רשימת הקניות והיסטוריית ההוצאות יישמרו. לא ניתן לבטל את המחיקה.'}),
+      h('div',{class:'actions'},h('button',{class:'btn cancel',type:'button',onclick:close},'ביטול'),confirm)));
+    overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
     document.body.appendChild(overlay);
   }
 
@@ -4256,7 +4231,7 @@
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
       row('הוצאות ומעקב חודשי', 'סיכום קניות, הוצאות ומלאי', function () { close(); openMonthly(); }),
-      row(t('settings.sync'), t('settings.syncSub'), function () { close(); openSyncSettings(); }),
+      h('p',{class:'settings-storage-note'},uiIcon('check'),h('span',{text:'השינויים נשמרים אוטומטית במכשיר הזה.'})),
       row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
       h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
     );
