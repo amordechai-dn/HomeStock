@@ -1,6 +1,6 @@
 /* Service worker: precache + cache-first, offline-capable, self-updating.
    Bump VERSION on every deploy to trigger an update for installed PWAs. */
-var VERSION = 'v3.2.0';
+var VERSION = 'v3.2.1';
 var CACHE_PREFIX = 'homestock:' + self.registration.scope + ':';
 var CACHE = CACHE_PREFIX + VERSION;
 
@@ -19,6 +19,7 @@ var ASSETS = [
   './db.js',
   './auth.js',
   './app.js',
+  './dropdown.js',
   './pwa.js',
   // Scanner library: precached so the lazy load (on first scanner open) still
   // resolves from cache offline, but it is NOT on the startup/parse path.

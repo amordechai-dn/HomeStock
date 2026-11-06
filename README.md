@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.2.0`
+**Current version:** `v3.2.1`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -26,6 +26,11 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - **+/- quantity steppers** and an **"Out"** badge at zero.
 - **Category emoji** icons (item-specific emoji falls back to its category).
 - **Desired amounts (par levels)** per item and **monthly restock tracking**.
+
+### Dropdowns
+- Hebrew, RTL menus for month and unit selection, with explicit selected states.
+- Keyboard support: arrows, Home/End, Enter, Escape, Tab and Hebrew type-ahead.
+- Menus adapt to available screen space, remain outside scrolling dialogs, and release listeners when closed.
 
 ### Prices and expenses
 - Optional unit prices in ILS, stored as integer agorot; blank is unknown, zero is free.

@@ -1224,6 +1224,7 @@
     var myReopen = function () { openShoppingForm(existing); };
     reopenTop = myReopen;
     function close() {
+      if(unitSel)unitSel.destroy();
       overlay.remove();
       if (reopenTop === myReopen) reopenTop = prevReopen;
     }
@@ -1238,11 +1239,10 @@
       class: 'input', type: 'number', min: '1', inputmode: 'numeric',
       value: String(editing ? (existing.quantity || 1) : 1),
     });
-    var unitSel = h('select', { class: 'input' });
-    UNITS.forEach(function (u) {
-      var o = h('option', { value: u, text: t('units.' + u) });
-      if ((editing ? existing.unit : 'pcs') === u) o.selected = true;
-      unitSel.appendChild(o);
+    var unitSel = window.HomeDropdown.create({
+      label:'יחידת מידה',
+      value:editing ? existing.unit : 'pcs',
+      options:UNITS.map(function(unit){return {value:unit,label:t('units.'+unit)};})
     });
 
     var price = priceField(editing ? existing.unitPriceAgorot : null,function(){return Number(qtyInput.value)||0;},'עלות מתוכננת');
@@ -1255,7 +1255,7 @@
       h('label', { class: 'field-label', text: t('shopping.quantity') }),
       qtyInput,
       h('label', { class: 'field-label', text: t('form.unit') }),
-      unitSel
+      unitSel.element
     );
     card.appendChild(price.element);
     card.appendChild(h('p',{class:'price-note',text:'ההוצאה תירשם רק לאחר סימון הפריט כנרכש.'}));
@@ -2212,6 +2212,7 @@
     };
     reopenTop = myReopen;
     function close() {
+      if(select)select.destroy();
       overlay.remove();
       if (reopenTop === myReopen) reopenTop = prevReopen;
     }
@@ -2317,14 +2318,10 @@
       }
     }
 
-    var select = h('select', {
-      class: 'month-select',
-      onchange: function (e) {
-        renderContent(e.target.value);
-      },
-    });
-    keys.forEach(function (k) {
-      select.appendChild(h('option', { value: k, text: monthLabel(k) }));
+    var select = window.HomeDropdown.create({
+      label:t('monthly.month'),icon:'calendar',menuLabel:'בחירת חודש לתצוגה',
+      options:keys.map(function(key){return {value:key,label:monthLabel(key),description:key===current?'החודש הנוכחי':''};}),
+      onChange:function(value){renderContent(value);}
     });
 
     var dialog = h(
@@ -2337,7 +2334,7 @@
         h('button', { class: 'sheet-close', onclick: close, 'aria-label': t('a11y.close') }, '✕')
       ),
       h('label', { class: 'field-label', text: t('monthly.month') }),
-      select,
+      select.element,
       content
     );
     overlay.appendChild(dialog);
