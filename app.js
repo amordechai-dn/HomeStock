@@ -1297,6 +1297,14 @@
 
   // Re-render the current base screen (mobile page vs. inventory+panel) without
   // reloading data — used on breakpoint crossing and language change.
+  function pageAddress(view) {
+    var hash='#/'+view;
+    if(location.hash!==hash)history.pushState(null,'',hash);
+  }
+  window.addEventListener('popstate',function(){
+    if(!window.CurrentUser||!window.CurrentUser.id())return;
+    currentView=location.hash.slice(2)||'inventory';renderCurrentView();
+  });
   function renderCurrentView() {
     var active=document.activeElement;
     var focusKey=active&&root&&root.contains(active)&&active.getAttribute('data-focus-key');
@@ -1313,12 +1321,12 @@
   // statuses consistent after local edits and incoming device updates.
   function refreshAfterMutation() { renderCurrentView(); }
 
-  function openShopping() { currentView='shopping';renderShopping();window.scrollTo({top:0,behavior:'auto'}); }
+  function openShopping() { pageAddress('shopping');currentView='shopping';renderShopping();window.scrollTo({top:0,behavior:'auto'}); }
 
   function renderShopping() {
     if(!hasDOM())return;
     if(!root)root=document.getElementById('root');
-    currentView='shopping';root.innerHTML='';root.appendChild(renderNavigation());
+    pageAddress('shopping');currentView='shopping';root.innerHTML='';root.appendChild(renderNavigation());
     var page=h('main',{class:'kitchen-workspace shopping-workspace',id:'main-content',tabindex:'-1'});
     page.appendChild(h('header',{class:'kitchen-header'},h('div',{},
       h('h1',{text:'הקנייה הבאה'}),h('p',{class:'kitchen-subtitle',text:'מסמנים מה נקנה. המלאי וההוצאות מתעדכנים יחד.'}))));
@@ -1381,8 +1389,8 @@
     }));
     links.appendChild(actionButton('רשימת קניות','bag','nav-link' + (currentView === 'shopping' ? ' active':''),openShopping));
     links.appendChild(actionButton('סריקת מוצר','scan','nav-link nav-scan',openScanner));
-    links.appendChild(actionButton('הוצאות','calendar','nav-link nav-monthly',openMonthly));
-    links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings',openSettings));
+    links.appendChild(actionButton('הוצאות','calendar','nav-link nav-monthly'+(currentView==='expenses'?' active':''),openMonthly));
+    links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings'+(currentView==='settings'?' active':''),openSettings));
     nav.appendChild(links);
     var current=links.querySelector('.active');if(current)current.setAttribute('aria-current','page');
     return nav;
@@ -1453,7 +1461,7 @@
 
   function renderMain() {
     if(!hasDOM())return;if(!root)root=document.getElementById('root');
-    currentView='inventory';shoppingListEl=null;shoppingListMode=null;
+    pageAddress('inventory');currentView='inventory';shoppingListEl=null;shoppingListMode=null;
     root.innerHTML='';root.appendChild(renderNavigation());
     var summary=Home.summary(items),month=window.PantryDB.getMonthlyLog()[ym()]||{};
     var workspace=h('main',{class:'kitchen-workspace',id:'main-content',tabindex:'-1'});
@@ -1853,7 +1861,7 @@
 
   // ---- Monthly restock view ----
   function openMonthly(opts) {
-    currentView="expenses";
+    currentView="expenses";pageAddress("expenses");
     opts = opts || {};
     var previousFocus=document.activeElement;
     recomputeShortfall();
@@ -1863,7 +1871,7 @@
     if (keys.indexOf(current) === -1) keys.push(current);
     keys.sort().reverse();
 
-    var overlay = h('div', { class: 'standalone-page' });
+    var overlay = h('div', { class: 'kitchen-workspace standalone-page',id:'main-content' });
     // Reopen preserving the selected month across a language change.
     var prevReopen = reopenTop;
     var myReopen = function () {
@@ -1995,11 +2003,11 @@
 
     var dialog = h(
       'div',
-      { class: 'dialog monthly-dialog', role:'dialog','aria-modal':'true','aria-label':t('monthly.title') },
+      { class: 'page-content monthly-page', role:'main','aria-label':t('monthly.title') },
       h(
         'div',
         { class: 'sheet-header' },
-        h('h2', { class: 'dialog-title', text: t('monthly.title') }),
+        h('h1', { class: 'page-title', text: t('monthly.title') }),
         h('button', { class: 'sheet-close', onclick: close, 'aria-label': t('a11y.close') }, '✕')
       ),
       h('label', { class: 'field-label', text: t('monthly.month') }),
@@ -4028,7 +4036,7 @@
       body.appendChild(advanced);
     }
 
-    var dialog = h('div', { class: 'dialog settings-dialog' },
+    var dialog = h('div', { class: 'page-content settings-page' },
       h('div', { class: 'sheet-header' },
         h('h2', { class: 'dialog-title', text: t('sync.title') }),
         h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: close }, '✕')
@@ -4156,9 +4164,9 @@
   }
 
   function openSettings() {
-    currentView="settings";
+    currentView="settings";pageAddress("settings");
     var cu = window.CurrentUser;
-    var overlay = h('div', { class: 'standalone-page' });
+    var overlay = h('div', { class: 'kitchen-workspace standalone-page',id:'main-content' });
 
     // Reopen (translated) after a live language change, like the other dialogs.
     var prevReopen = reopenTop;
@@ -4180,9 +4188,9 @@
       );
     }
 
-    var dialog = h('div', { class: 'dialog settings-dialog' },
+    var dialog = h('div', { class: 'page-content settings-page' },
       h('div', { class: 'sheet-header' },
-        h('h2', { class: 'dialog-title', text: t('settings.title') }),
+        h('h1', { class: 'page-title', text: t('settings.title') }),
         h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: close }, '✕')
       ),
       h('div', { class: 'settings-account' },
@@ -4218,7 +4226,7 @@
       .then(function () { return startGitHubSync(); })
       .then(function () {
         recomputeShortfall();
-        renderMain();
+        currentView=location.hash.slice(2)||'inventory';renderCurrentView();
         // If we arrived via a device-link URL / QR, honor that explicit action
         // first (advanced path). Otherwise auto-join the deterministic,
         // profile-based household so the SAME profile shares across devices with

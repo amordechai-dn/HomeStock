@@ -429,7 +429,9 @@ button:disabled { cursor: wait; opacity: .5; }
 .scan-data-credit { display:inline-block; margin-block:0 14px; color:var(--primary); font-size:12px; text-underline-offset:3px; }
 .scan-row input.scan-row-name { min-width:100px; font-size:14px; }
 
-.standalone-page { margin-inline-start:var(--nav-width,210px);padding:40px;min-height:100dvh; }
-.standalone-page > .dialog { width:100%;max-width:1000px;margin:auto;max-height:none;overflow:visible;box-shadow:none; }
+/* Full workspace pages, using the same responsive layout as inventory. */
+.standalone-page { min-height:100dvh; }
+.page-content { width:100%;max-width:1000px;margin-inline:auto; }
+.page-title { font-size:clamp(28px,4vw,40px);margin:0 0 28px; }
 .standalone-page .sheet-close { display:none; }
-@media(max-width:760px){.standalone-page{margin-inline-start:0;padding:20px 16px 100px;}}
+.settings-page .settings-row { width:100%; }
