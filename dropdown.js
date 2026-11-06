@@ -69,7 +69,7 @@
       var topOffset=window.visualViewport ? window.visualViewport.offsetTop : 0;
       var below=height+topOffset-rect.bottom-16;
       var above=rect.top-topOffset-16;
-      var flip=below<Math.min(270,options.length*49+40) && above>below;
+      var flip=below<Math.min(270,options.length*49+(config.menuLabel?40:14)) && above>below;
       var available=Math.max(80,flip?above:below);
       popup.style.width=Math.min(Math.max(rect.width,180),width-24)+'px';
       popup.style.maxHeight=Math.min(360,available)+'px';
@@ -93,7 +93,7 @@
       if(popup || !options.length)return;
       popup=node('div','dropdown-popup');
       popup.dir='rtl';
-      popup.appendChild(node('div','dropdown-menu-heading',config.menuLabel || 'בחירת '+config.label));
+      if(config.menuLabel) popup.appendChild(node('div','dropdown-menu-heading',config.menuLabel));
       list=node('div','dropdown-list');
       list.id=id+'-list';list.setAttribute('role','listbox');list.setAttribute('aria-label',config.label);
       options.forEach(function(option,index){

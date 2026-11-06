@@ -1087,7 +1087,7 @@
         )
       );
     }
-    container.appendChild(head);
+    if (mode === 'sidebar') container.appendChild(head);
     if (collapsed) return; // header-only when collapsed
 
     // Add-item control — opens the dedicated Shopping List add form (writes to
@@ -1352,8 +1352,7 @@
     var page = h('main', { class: 'kitchen-workspace shopping-workspace', id:'main-content' });
     page.appendChild(h('header',{class:'kitchen-header'},h('div',{},
       h('p',{class:'today-label',text:'לקנייה הבאה'}),h('h1',{text:'רשימת קניות'}),
-      h('p',{class:'kitchen-subtitle',text:'רק מה שחסר. הכול ברשימה אחת.'})),
-      actionButton('חזרה למלאי','arrow','kitchen-button secondary',function(){currentView='inventory';renderMain();})));
+      h('p',{class:'kitchen-subtitle',text:'רק מה שחסר. הכול ברשימה אחת.'}))));
     var list=h('div',{class:'shopping-page'});
     renderShoppingList(list,'page');page.appendChild(list);root.appendChild(page);
   }
@@ -1407,12 +1406,9 @@
     }));
     links.appendChild(actionButton('רשימת קניות','bag','nav-link' + (currentView === 'shopping' ? ' active':''),openShopping));
     links.appendChild(actionButton('סריקת מוצר','scan','nav-link nav-scan',openScanner));
-    links.appendChild(actionButton('הוצאות חודשיות','calendar','nav-link nav-monthly',openMonthly));
+    links.appendChild(actionButton('הוצאות','calendar','nav-link nav-monthly',openMonthly));
     links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings',openSettings));
     nav.appendChild(links);
-    nav.appendChild(h('div',{class:'nav-bottom'},
-      h('div',{class:'nav-note'},uiIcon('leaf'),h('p',{text:'לדעת מה יש.\nלקנות רק מה שצריך.'})),
-      h('span',{class:'version',id:'version',text:'גרסה ' + String(window.APP_VERSION || '').replace(/^v/,'')})));
     return nav;
   }
 
@@ -1439,7 +1435,7 @@
     container.innerHTML = '';
     cardRefs = {};
     var filtered = filteredInventory(items,inventoryQuery,inventoryLocation,inventorySpace);
-    var count = h('div',{class:'inventory-caption','aria-live':'polite',text: filtered.length ? tc('summary.items',filtered.length) + ' במלאי' : 'המלאי שלי'});
+    var count = h('div',{class:'inventory-caption'+(inventoryQuery?'':' sr-only'),'aria-live':'polite',text: filtered.length ? tc('summary.items',filtered.length) + ' במלאי' : 'המלאי שלי'});
     container.appendChild(count);
     if (!filtered.length) {
       var isEmpty = !items.some(function(item){return locationSpace(item.location)===inventorySpace;});
@@ -1448,9 +1444,8 @@
         h('h2',{text:isEmpty ? 'יש מקום לדברים טובים.' : 'לא מצאנו פריטים כאן.'}),
         h('p',{text:isEmpty ? (inventorySpace==='Kitchen' ? 'כל המקרר, המקפיא והמזווה במקום אחד.\nהוסיפו את מה שכבר יש במטבח.' : inventorySpace==='Bathroom' ? 'סבון, שמפו ונייר טואלט.\nמקום לכל מה שיש בשירותים ובמקלחת.' : 'מוצרי ניקיון, סוללות וכל מה שצריך לבית.\nהוסיפו מוצר ותמיד תדעו מה יש.') : 'נסו שם אחר או עברו למקום אחסון אחר.'}));
       empty.appendChild(isEmpty ? h('div',{class:'empty-actions'},
-        actionButton('הוספת מוצר ראשון','plus','kitchen-button primary',function(){openForm(null);}),
-        actionButton('סריקת ברקוד','scan','kitchen-button plain',openScanner)) :
-        actionButton('הצגת כל המלאי','shelf','kitchen-button plain',function(){inventoryQuery='';inventoryLocation='all';renderMain();}));
+        actionButton('הוספת מוצר ראשון','plus','kitchen-button primary',function(){openForm(null);})) :
+        actionButton('איפוס הסינון','shelf','kitchen-button plain',function(){inventoryQuery='';inventoryLocation='all';renderMain();}));
       container.appendChild(empty);
       return;
     }
@@ -1478,8 +1473,7 @@
         h('h1',{text:'הבית שלי'}),h('p',{class:'kitchen-subtitle',text:'כל מה שיש בבית, במקום אחד.'})),
       h('div',{class:'kitchen-header-actions'},
         syncConfigured() ? h('button',{class:'icon-btn sync-indicator',id:'sync-indicator','aria-label':t('sync.a11y'),title:t('sync.title'),onclick:openSyncSettings},uiIcon('cloud')):null,
-        actionButton('סריקת ברקוד','scan','kitchen-button secondary header-scan',openScanner),
-        actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);})));
+        items.some(function(item){return locationSpace(item.location)===inventorySpace;}) ? actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);}) : null));
     workspace.appendChild(header);
     var layout=h('div',{class:'main-layout kitchen-layout'});
     var content=h('div',{class:'content-col'});
@@ -1512,16 +1506,14 @@
     layout.appendChild(content);
     if(isWide()) {
       var aside=h('aside',{class:'shopping-panel'+(shopCollapsed()?' collapsed':''),'aria-label':'רשימת הקניות שלי'});
-      aside.appendChild(h('div',{class:'receipt-label',text:'לקנייה הבאה'}));
       var inner=h('div',{class:'shopping-panel-inner'});
       renderShoppingList(inner,'sidebar');aside.appendChild(inner);
-      aside.appendChild(h('div',{class:'receipt-footer'},uiIcon('check'),h('span',{text:'קונים לפי הרשימה. חוזרים עם מה שצריך.'})));
+      aside.appendChild(h('div',{class:'receipt-footer','aria-hidden':'true'}));
       layout.appendChild(aside);
     } else {shoppingListEl=null;shoppingListMode=null;}
     workspace.appendChild(layout);
-    workspace.appendChild(h('footer',{class:'kitchen-footer',text:'מטבח, חדר רחצה ובית. עכשיו יודעים איפה הכול.'}));
     root.appendChild(workspace);
-    if(items.length) root.appendChild(actionButton('הוספת מוצר','plus','mobile-add',function(){openForm(null);}));
+    if(items.some(function(item){return locationSpace(item.location)===inventorySpace;})) root.appendChild(actionButton('הוספת מוצר','plus','mobile-add',function(){openForm(null);}));
   }
 
   function itemById(id) {
@@ -1835,11 +1827,10 @@
 
     var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});
     var footerError=h('p',{class:'editor-error',role:'alert'});
-    var cancelButton=h('button',{class:'btn cancel',type:'button',onclick:function(){close();}},'ביטול');
     var saveButton=actionButton(editing?'שמירת שינויים':'הוספת מוצר','check','btn save editor-save',save);
     var deleteButton=editing?h('button',{class:'editor-delete',type:'button','aria-label':'מחיקת מוצר',title:'מחיקת מוצר',onclick:function(){confirmDelete(existing,function(){close(true);});}},uiIcon('trash')):null;
     sheet.appendChild(h('footer',{class:'product-editor-footer'},consequence,footerError,
-      h('div',{class:'editor-actions'+(editing?' with-delete':'')},deleteButton,cancelButton,saveButton)));
+      h('div',{class:'editor-actions'+(editing?' with-delete':'')},deleteButton,saveButton)));
 
     function updateSummary(){
       if(!price)return;
@@ -1863,7 +1854,7 @@
     price.input.addEventListener('input',updateSummary);
     updateSummary();
     function setSaving(value){
-      saving=value;saveButton.disabled=value;cancelButton.disabled=value;closeButton.disabled=value;
+      saving=value;saveButton.disabled=value;closeButton.disabled=value;
       if(deleteButton)deleteButton.disabled=value;
       body.inert=value;
       saveButton.querySelector('span:last-child').textContent=value?'שומר…':editing?'שמירת שינויים':'הוספת מוצר';
@@ -2092,7 +2083,7 @@
     }
 
     var select = window.HomeDropdown.create({
-      label:t('monthly.month'),icon:'calendar',menuLabel:'בחירת חודש לתצוגה',
+      label:t('monthly.month'),icon:'calendar',
       options:keys.map(function(key){return {value:key,label:monthLabel(key),description:key===current?'החודש הנוכחי':''};}),
       onChange:function(value){renderContent(value);}
     });
@@ -4230,10 +4221,9 @@
         )
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
-      row('הוצאות ומעקב חודשי', 'סיכום קניות, הוצאות ומלאי', function () { close(); openMonthly(); }),
       h('p',{class:'settings-storage-note'},uiIcon('check'),h('span',{text:'השינויים נשמרים אוטומטית במכשיר הזה.'})),
       row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
-      h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
+      h('div', { class: 'settings-version', id: 'version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
     );
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
