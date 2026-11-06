@@ -369,3 +369,13 @@ button,input,textarea,select { font-family:inherit; }
 @media(min-width:1024px) and (max-width:1200px){
  .kitchen-workspace { --desktop-rail:184px; }
 }
+
+/* Native page snapshots crossfade without moving the fixed navigation. */
+:root { view-transition-name:none; }
+#main-content { view-transition-name:workspace; }
+::view-transition-group(workspace) { animation-duration:180ms; animation-timing-function:ease-out; }
+::view-transition-old(workspace),::view-transition-new(workspace) { animation-duration:180ms; mix-blend-mode:normal; }
+::view-transition { pointer-events:none; }
+@media(prefers-reduced-motion:reduce){
+ ::view-transition-group(workspace),::view-transition-old(workspace),::view-transition-new(workspace){animation:none!important;}
+}

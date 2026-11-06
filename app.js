@@ -1397,8 +1397,22 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">' + (paths[name] || paths.shelf) + '</svg>' });
   }
 
+  var pageTransition=null;
+  function transitionPage(action){
+    if(!document.startViewTransition||window.matchMedia('(prefers-reduced-motion: reduce)').matches){action();return;}
+    if(pageTransition)pageTransition.skipTransition();
+    var transition=document.startViewTransition(function(){action();});
+    pageTransition=transition;
+    transition.ready.catch(function(){});
+    transition.finished.catch(function(){}).then(function(){if(pageTransition===transition)pageTransition=null;});
+  }
   function actionButton(label, icon, cls, action) {
-    return h('button', { type: 'button', class: cls, 'aria-label':label, onclick: action }, uiIcon(icon), h('span', {text:label}));
+    return h('button', { type: 'button', class: cls, 'aria-label':label, onclick: function(event){
+      if(cls.split(' ').indexOf('nav-link')>=0){
+        if(event.currentTarget.getAttribute('aria-current')==='page')return;
+        transitionPage(function(){action();});
+      }else action(event);
+    } }, uiIcon(icon), h('span', {text:label}));
   }
 
   function prepareWorkspace(){
@@ -4298,7 +4312,7 @@
       var previous=lastView;lastView=currentView;
       if(animation){animation.cancel();animation=null;}
       if(previous!==null)window.scrollTo({top:history.state&&history.state.scrollY||0,behavior:'instant'});
-      if(previous===null||!page.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+      if(pageTransition||previous===null||!page.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
       animation=page.animate([
         {opacity:.65},
         {opacity:1}
