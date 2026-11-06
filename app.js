@@ -1905,9 +1905,7 @@
     recomputeShortfall();
     var log = window.PantryDB.getMonthlyLog();
     var current = ym();
-    var keys = Object.keys(log);
-    if (keys.indexOf(current) === -1) keys.push(current);
-    keys.sort().reverse();
+    var keys = Home.expenseMonths(current,log);
 
     var overlay = h('div', { class: 'kitchen-workspace standalone-page',id:'main-content' });
     // Reopen preserving the selected month across a language change.

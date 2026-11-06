@@ -70,5 +70,18 @@
     entries.forEach(function(entry){if(Number.isSafeInteger(entry.amountAgorot)&&entry.amountAgorot>=0)result[space(entry)]+=entry.amountAgorot;});
     return result;
   }
-  root.HomeModel={space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  function expenseMonths(current,log){
+    var start='2026-11',end=current<start?start:current,keys=[];
+    var year=2026,month=11;
+    while(year+'-'+String(month).padStart(2,'0')<=end){
+      keys.push(year+'-'+String(month).padStart(2,'0'));
+      month++;if(month===13){month=1;year++;}
+    }
+    // Preserve access to recorded past months without generating future months.
+    Object.keys(log||{}).forEach(function(key){
+      if(/^\d{4}-(0[1-9]|1[0-2])$/.test(key)&&key>=start&&key<=end&&keys.indexOf(key)<0)keys.push(key);
+    });
+    return keys.sort().reverse();
+  }
+  root.HomeModel={expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);

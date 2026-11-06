@@ -29,3 +29,8 @@ assert.deepEqual(estimate,{totalAgorot:1300,unknown:1,count:3});
 assert.deepEqual(M.expensesBySpace([{location:'Fridge',amountAgorot:100},{location:'Toilet',amountAgorot:150},{location:'House',amountAgorot:200},{amountAgorot:-4}]),{Kitchen:100,Bathroom:150,House:200});
 assert.equal(JSON.stringify(data),original,'all selectors preserve source records');
 console.log('PASS: Hebrew/global search, filters, ordering, room summaries, fractional/idempotent shopping plans, unit separation, partial estimates, historical room expenses and immutable selectors');
+
+assert.deepEqual(M.expenseMonths('2026-11',{'2026-08':{}}),['2026-11']);
+assert.deepEqual(M.expenseMonths('2027-02',{}),['2027-02','2027-01','2026-12','2026-11']);
+assert.deepEqual(M.expenseMonths('2026-12',{'2028-01':{}}),['2026-12','2026-11']);
+console.log('PASS: expense month timeline starts November 2026, includes empty months, crosses years and excludes future months');
