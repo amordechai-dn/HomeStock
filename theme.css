@@ -83,7 +83,6 @@ html[data-theme] .segment-item.active,
 html[data-theme] .dropdown-option[aria-selected="true"] { background:var(--primary-soft); color:var(--primary-dark); border-color:var(--border); }
 html[data-theme] .nav-link.active .ui-icon { background:var(--primary-soft); box-shadow:none; }
 html[data-theme] .status-filter.active { background:var(--surface-raised); color:var(--primary-dark); border-color:var(--border); }
-html[data-theme] .brand-mark,
 html[data-theme] .kitchen-button.primary,
 html[data-theme] .btn.save,
 html[data-theme] .btn.primary,

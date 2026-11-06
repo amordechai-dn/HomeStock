@@ -1,6 +1,6 @@
 /* Service worker: precache + cache-first, offline-capable, self-updating.
    Bump VERSION on every deploy to trigger an update for installed PWAs. */
-var VERSION = 'v4.1.0';
+var VERSION = 'v4.1.1';
 var CACHE_PREFIX = 'homestock:' + self.registration.scope + ':';
 var CACHE = CACHE_PREFIX + VERSION;
 
@@ -16,6 +16,10 @@ var ASSETS = [
   './workspace.css',
   './theme.css',
   './theme.js',
+  './brand.js',
+  './icons/icon.svg',
+  './icons/logo-mark.svg',
+  './icons/logo-mark-light.svg',
   './home-model.js',
   './fonts/Rubik.ttf',
   './config.js',

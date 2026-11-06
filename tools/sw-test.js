@@ -47,6 +47,8 @@ async function lifecycle(w, name) {
   await lifecycle(w, 'install');
   assert(w.promoted());
   assert(w.requests.length > 10);
+  assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/brand.js');}));
+  assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/icons/icon.svg');}));
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/theme.js');}));
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/theme.css');}));
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/home-model.js');}));
@@ -55,12 +57,12 @@ async function lifecycle(w, name) {
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/dropdown.js');}));
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/design.css');}));
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/fonts/Rubik.ttf');}));
-  assert(w.requests.every(function (r) { return r.cache === 'reload' && new URL(r.url).searchParams.get('__release') === 'v4.1.0'; }));
+  assert(w.requests.every(function (r) { return r.cache === 'reload' && new URL(r.url).searchParams.get('__release') === 'v4.1.1'; }));
   await lifecycle(w, 'activate');
   assert.deepEqual(w.removed, [w.prefix + 'old']);
   var response;
   w.handlers.fetch({request:{method:'GET',url:'https://example.github.io/HomeStock/app.js?v=2.2.1'},respondWith:function(p){response=p;}});
-  assert.equal((await response).url, 'https://example.github.io/HomeStock/app.js?__release=v4.1.0');
+  assert.equal((await response).url, 'https://example.github.io/HomeStock/app.js?__release=v4.1.1');
   var intercepted = false;
   w.handlers.fetch({request:{method:'GET',url:'https://example.github.io/another-app/'},respondWith:function(){intercepted=true;}});
   assert.equal(intercepted,false);

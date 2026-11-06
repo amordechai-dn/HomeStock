@@ -1371,7 +1371,7 @@
   function renderNavigation() {
     var nav = h('nav', { class: 'kitchen-nav', 'aria-label': 'ניווט ראשי' });
     nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'הום סטוק — המלאי שלי'},
-      h('span',{class:'brand-mark'},uiIcon('shelf')),
+      h('span',{class:'brand-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),
       h('span',{class:'brand-word',dir:'rtl',text:'הום סטוק'})));
     nav.appendChild(h('p',{class:'nav-caption',text:'כל הבית. במקום אחד.'}));
     nav.appendChild(h('a',{class:'skip-link',href:'#main-content',text:'דילוג לתוכן'}));
@@ -1459,7 +1459,7 @@
     var workspace=h('main',{class:'kitchen-workspace',id:'main-content',tabindex:'-1'});
     workspace.appendChild(h('header',{class:'kitchen-header'},h('div',{},
       h('p',{class:'today-label',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
-      h('h1',{text:'הבית שלי'}),h('p',{class:'kitchen-subtitle',text:items.length?productCount(summary.total)+' בבית. '+(summary.attention?summary.attention+' צריכים השלמה.':'יש מהכול.'): 'מהמטבח ועד ארון הניקיון. יודעים מה יש ומה חסר.'})),
+      h('div',{class:'home-heading'},h('span',{class:'mobile-home-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),h('h1',{text:'הבית שלי'})),h('p',{class:'kitchen-subtitle',text:items.length?productCount(summary.total)+' בבית. '+(summary.attention?summary.attention+' צריכים השלמה.':'יש מהכול.'): 'מהמטבח ועד ארון הניקיון. יודעים מה יש ומה חסר.'})),
       items.length?actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);}):null));
     var rooms=h('div',{class:'space-tabs','aria-label':'אזורי הבית'});
     SPACES.forEach(function(space){

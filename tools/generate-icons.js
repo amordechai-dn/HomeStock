@@ -1,4 +1,4 @@
-// Generates HomeStock's cobalt fridge/shelf mark using pure Node + zlib.
+// Generates HomeStock's house-and-shelves logo using pure Node + zlib.
 // Standard tiles have transparent rounded corners; maskable versions keep
 // the mark inside the safe zone. Run: node tools/generate-icons.js
 const zlib = require('zlib');
@@ -42,28 +42,25 @@ function encodePng(width, height, rgba) {
   return Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))]);
 }
 
-// ---- Palette (HomeStock brand) ----
-const COBALT = [48, 71, 201]; // #3047C9 primary
-const APRICOT = [237, 133, 83]; // #ED8553 handle accent
-const WHITE = [255, 255, 255];
-
-// ---- Geometry helpers (all in normalized [0,1] space) ----
-function inRoundedRect(u, v, rn) {
-  // distance from the point to the "core" rect inset by rn on all sides
-  const qx = Math.max(rn - u, u - (1 - rn), 0);
-  const qy = Math.max(rn - v, v - (1 - rn), 0);
-  return qx * qx + qy * qy <= rn * rn;
+// ---- House with three storage compartments: canonical SVG geometry ----
+const Brand = require('../brand.js');
+const FOREST = [49,95,69]; // #315f45
+const SAGE = [224,230,217]; // #e0e6d9
+function inRoundedRect(u,v,rn) {
+  const qx=Math.max(rn-u,u-(1-rn),0),qy=Math.max(rn-v,v-(1-rn),0);
+  return qx*qx+qy*qy<=rn*rn;
 }
-function inRect(x, y, x0, y0, x1, y1) {
-  return x >= x0 && x <= x1 && y >= y0 && y <= y1;
+function segmentDistance(x,y,a,b) {
+  const dx=b[0]-a[0],dy=b[1]-a[1];
+  const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy)));
+  return Math.hypot(x-a[0]-t*dx,y-a[1]-t*dy);
 }
-// Fridge/shelf mark matches the app navigation: two compartments, two handles.
-function emblemColor(x, y) {
-  if (!inRect(x, y, .18, .06, .82, .94)) return null;
-  if (!inRect(x, y, .23, .11, .77, .89)) return WHITE;
-  if (inRect(x, y, .23, .39, .77, .44)) return WHITE;
-  if (inRect(x, y, .62, .20, .67, .31) || inRect(x, y, .62, .53, .67, .70)) return APRICOT;
-  return COBALT;
+function emblemColor(x,y) {
+  const px=x*64,py=y*64;
+  for(const points of Brand.paths)for(let i=1;i<points.length;i++){
+    if(segmentDistance(px,py,points[i-1],points[i])<=Brand.strokeWidth/2)return SAGE;
+  }
+  return null;
 }
 
 function render(size, opts) {
@@ -72,7 +69,7 @@ function render(size, opts) {
   const S = size * SS;
   const rgba = Buffer.alloc(size * size * 4);
   const rn = 0.22; // rounded-rect corner radius (normalized)
-  const ei = maskable ? 0.26 : 0.16; // emblem inset (larger safe zone for maskable)
+  const ei = maskable ? 0.12 : 0.10; // emblem inset (larger safe zone for maskable)
   const es = 1 - 2 * ei;
 
   for (let py = 0; py < size; py++) {
@@ -86,10 +83,10 @@ function render(size, opts) {
           let alpha;
           const insideTile = maskable ? true : inRoundedRect(u, v, rn);
           if (!insideTile) {
-            col = WHITE;
+            col = SAGE;
             alpha = 0; // transparent corners
           } else {
-            col = COBALT;
+            col = FOREST;
             alpha = 255;
             const em = emblemColor((u - ei) / es, (v - ei) / es);
             if (em) col = em;
@@ -123,8 +120,18 @@ function write(name, buf) {
 [16, 32, 48, 72, 96, 128, 192, 256, 384, 512].forEach(function (s) {
   write('icon-' + s + '.png', render(s, { maskable: false }));
 });
-// Apple touch icon (no transparency needed, but rounded tile is fine).
-write('apple-touch-icon-180.png', render(180, { maskable: false }));
+// Apple touch icon: opaque full bleed; iOS supplies its own corner mask.
+write('apple-touch-icon-180.png', render(180, { maskable: true }));
 // Maskable (full-bleed, mark within safe zone).
 write('icon-maskable-192.png', render(192, { maskable: true }));
 write('icon-maskable-512.png', render(512, { maskable: true }));
+
+// Vector assets use exactly the same paths as all PNG sizes and the UI.
+function vector(name,color) {
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="הום סטוק" style="color:'+color+'">'+Brand.pathMarkup+'</svg>\n';
+  fs.writeFileSync(path.join(OUT_DIR,name),svg);
+}
+vector('logo-mark.svg','#315f45');
+vector('logo-mark-light.svg','#b9d7bd');
+const tile='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="הום סטוק"><rect width="64" height="64" rx="14" fill="#315f45"/><g transform="translate(6.4 6.4) scale(.8)" style="color:#e0e6d9">'+Brand.pathMarkup+'</g></svg>\n';
+fs.writeFileSync(path.join(OUT_DIR,'icon.svg'),tile);

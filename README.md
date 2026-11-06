@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.1.0`
+**Current version:** `v4.1.1`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -288,3 +288,15 @@ still works for the current session. `theme.css` covers workspace, popups,
 editor, inputs, dropdowns and native controls in both palettes. Text token
 contrast, saved state, invalid preferences and storage failures are checked by
 `node tools/theme-test.js`.
+
+
+### Logo and app icons
+
+The HomeStock mark is a house outline with two shelves: three storage spaces
+inside one home. `brand.js` defines the canonical geometry used by the interface
+and `tools/generate-icons.js`. The navigation wordmark stays Hebrew (הום סטוק),
+and the small-screen home heading includes the standalone mark. Interface marks
+follow the current appearance theme. `icons/logo-mark.svg` and
+`icons/logo-mark-light.svg` are transparent vector variants; `icons/icon.svg` and
+all PNG sizes use a forest/sage tile. Maskable icons keep the mark inside their
+safe zone. Regenerate every format with `node tools/generate-icons.js`.
