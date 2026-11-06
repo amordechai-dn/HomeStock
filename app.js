@@ -1578,7 +1578,7 @@
   function refresh() {
     return load().then(function () {
       recomputeShortfall();
-      renderMain();
+      renderCurrentView();
     });
   }
 
@@ -3105,9 +3105,9 @@
     function save() {
       var dn = nameInput.value.trim() || cu.username() || cu.displayName();
       window.Auth.updateProfile({ displayName: dn, avatar: state.avatar, lang: state.lang });
-      if(githubSync)githubSync.sync();
-      renderMain();
+      if(githubSync)githubSync.sync().catch(function(){showToast('הפרופיל נשמר במכשיר. הסנכרון ינסה שוב בהמשך.');});
       close();
+      renderCurrentView();
     }
 
     var dialog = h(
@@ -4111,7 +4111,7 @@
       if(busy)return;
       busy=true;confirm.disabled=true;
       clearInventoryRecords(window.PantryDB).then(function(){return load();}).then(function(){
-        recomputeShortfall();overlay.remove();renderMain();showToast('פריטי המלאי נמחקו. מכשירים מחוברים יתעדכנו אוטומטית.');
+        recomputeShortfall();overlay.remove();renderCurrentView();showToast('פריטי המלאי נמחקו. מכשירים מחוברים יתעדכנו אוטומטית.');
       }).catch(function(error){
         console.error('Local inventory reset failed',error);
         showToast('לא ניתן להשלים את המחיקה במכשיר. נסו שוב.');
@@ -4242,9 +4242,9 @@
           h('div', { class: 'settings-account-name', dir: 'auto', text: cu ? cu.displayName() : '' })
         )
       ),
-      row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
-      row('אותם הנתונים בכל המכשירים', githubStatusText(), function(){close();openGitHubConnection();}),
-      row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
+      row(t('settings.editProfile'), null, function () { openProfile(); }),
+      row('אותם הנתונים בכל המכשירים', githubStatusText(), function(){openGitHubConnection();}),
+      row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { openClearInventory(); }),
       h('div', { class: 'settings-version', id: 'version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
     );
     overlay.appendChild(dialog);
