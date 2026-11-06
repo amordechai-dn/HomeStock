@@ -428,3 +428,6 @@ button:disabled { cursor: wait; opacity: .5; }
 .page-title { font-size:clamp(28px,4vw,40px);margin:0 0 28px; }
 .standalone-page .sheet-close { display:none; }
 .settings-page .settings-row { width:100%; }
+
+.editor-location-details { display:grid; gap:16px; margin-block-start:20px; }
+.editor-location-details .note { min-height:70px; resize:vertical; }
