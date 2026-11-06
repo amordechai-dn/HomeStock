@@ -1297,12 +1297,14 @@
 
   // Re-render the current base screen (mobile page vs. inventory+panel) without
   // reloading data — used on breakpoint crossing and language change.
+  var scannerCleanup=null;
   var restoringNavigation=false;
   function routeView(){
     var view=location.hash.slice(2);
-    return ['inventory','shopping','expenses','settings'].indexOf(view)>=0?view:'inventory';
+    return ['inventory','shopping','expenses','settings','scanner'].indexOf(view)>=0?view:'inventory';
   }
   function pageAddress(view) {
+    if(view!=='scanner'&&scannerCleanup){var cleanup=scannerCleanup;scannerCleanup=null;cleanup();}
     if(restoringNavigation)return;
     var hash='#/'+view;
     try{
@@ -1320,7 +1322,9 @@
       // Close editor overlays through their cleanup handlers before restoring a page.
       var overlays=document.querySelectorAll('.overlay');
       if(overlays.length)overlays[overlays.length-1].dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
-      currentView=routeView();renderCurrentView();
+      var nextView=routeView();
+      if(nextView!=='scanner'&&scannerCleanup){var cleanup=scannerCleanup;scannerCleanup=null;cleanup();}
+      currentView=nextView;renderCurrentView();
       window.scrollTo({top:event.state&&event.state.scrollY||0,behavior:'instant'});
     }finally{restoringNavigation=false;}
   });
@@ -1330,7 +1334,7 @@
     var active=document.activeElement;
     var focusKey=active&&root&&root.contains(active)&&active.getAttribute('data-focus-key');
     var selection=focusKey==='inventory-search'?[active.selectionStart,active.selectionEnd]:null;
-    if(currentView==='shopping')renderShopping();else if(currentView==='expenses')openMonthly();else if(currentView==='settings')openSettings();else renderMain();
+    if(currentView==='shopping')renderShopping();else if(currentView==='expenses')openMonthly();else if(currentView==='settings')openSettings();else if(currentView==='scanner'){if(!document.querySelector('.scanner-page'))openScanner();}else renderMain();
     if(focusKey){
       var target=Array.prototype.find.call(root.querySelectorAll('[data-focus-key]'),function(node){return node.getAttribute('data-focus-key')===focusKey;});
       if(target){target.focus({preventScroll:true});if(selection)target.setSelectionRange(selection[0],selection[1]);}
@@ -1409,7 +1413,7 @@
       currentView='inventory'; inventoryLocation='all'; renderMain();window.scrollTo({top:0,behavior:'auto'});
     }));
     links.appendChild(actionButton('רשימת קניות','bag','nav-link' + (currentView === 'shopping' ? ' active':''),openShopping));
-    links.appendChild(actionButton('סריקת מוצר','scan','nav-link nav-scan',openScanner));
+    links.appendChild(actionButton('סריקת מוצר','scan','nav-link nav-scan'+(currentView==='scanner'?' active':''),openScanner));
     links.appendChild(actionButton('הוצאות','calendar','nav-link nav-monthly'+(currentView==='expenses'?' active':''),openMonthly));
     links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings'+(currentView==='settings'?' active':''),openSettings));
     nav.appendChild(links);
@@ -2234,6 +2238,15 @@
   }
 
   function openScanner() {
+    if(scannerCleanup){var cleanup=scannerCleanup;scannerCleanup=null;cleanup();}
+    currentView='scanner';pageAddress('scanner');
+    if(!root)root=document.getElementById('root');
+    root.innerHTML='';root.appendChild(renderNavigation());
+    var scannerPage=h('main',{class:'kitchen-workspace scanner-page',id:'main-content'},
+      h('h1',{class:'page-title',text:'סריקת מוצר'}),
+      h('p',{text:'כוונו את המצלמה לברקוד, או הזינו אותו ידנית.'}));
+    root.appendChild(scannerPage);
+
     // No camera support → manual barcode entry (no need to load ZXing).
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       openManualBarcode({ onSaved: function () { refresh(); } });
@@ -2249,7 +2262,7 @@
     var aborted = false;
     var loader = h(
       'div',
-      { class: 'overlay scanner center' },
+      { class: 'scanner-content' },
       h(
         'div',
         { class: 'scan-loading' },
@@ -2260,7 +2273,8 @@
     loader.addEventListener('click', function (e) {
       if (e.target === loader) { aborted = true; loader.remove(); }
     });
-    document.body.appendChild(loader);
+    scannerPage.appendChild(loader);
+    scannerCleanup=function(){aborted=true;loader.remove();};
     loadZXing()
       .then(function () {
         if (loader.parentNode) loader.remove();
@@ -2322,7 +2336,7 @@
     var tipsShown = false;
     var TIP_MS = 6000; // show guidance if nothing found after ~6s (keep scanning)
 
-    var overlay = h('div', { class: 'overlay scanner center' });
+    var overlay = h('div', { class: 'scanner-content' });
     var video = h('video', { class: 'scan-video' });
     video.muted=true;video.autoplay=true;video.playsInline=true;
     video.setAttribute('playsinline', 'true');
@@ -2386,7 +2400,7 @@
     );
     var cancelBtn = h(
       'button',
-      { class: 'btn cancel', type: 'button', onclick: function () { close(); } },
+      { class: 'btn cancel', type: 'button', onclick: function () { close();renderMain(); } },
       t('form.cancel')
     );
 
@@ -2401,7 +2415,10 @@
       h('div', { class: 'actions' }, cancelBtn, manualBtn)
     );
     overlay.appendChild(panel);
-    document.body.appendChild(overlay);
+    var page=document.querySelector('.scanner-page');
+    if(!page)return;
+    page.appendChild(overlay);
+    scannerCleanup=close;
 
     // Pause decoding but KEEP the live stream (instant resume for the
     // single-scan result / manual dialogs). No camera re-acquisition needed.
