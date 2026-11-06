@@ -47,12 +47,12 @@ async function lifecycle(w, name) {
   await lifecycle(w, 'install');
   assert(w.promoted());
   assert(w.requests.length > 10);
-  assert(w.requests.every(function (r) { return r.cache === 'reload' && new URL(r.url).searchParams.get('__release') === 'v2.2.1'; }));
+  assert(w.requests.every(function (r) { return r.cache === 'reload' && new URL(r.url).searchParams.get('__release') === 'v2.2.2'; }));
   await lifecycle(w, 'activate');
   assert.deepEqual(w.removed, [w.prefix + 'old']);
   var response;
   w.handlers.fetch({request:{method:'GET',url:'https://example.github.io/HomeStock/app.js?v=2.2.1'},respondWith:function(p){response=p;}});
-  assert.equal((await response).url, 'https://example.github.io/HomeStock/app.js?__release=v2.2.1');
+  assert.equal((await response).url, 'https://example.github.io/HomeStock/app.js?__release=v2.2.2');
   var intercepted = false;
   w.handlers.fetch({request:{method:'GET',url:'https://example.github.io/another-app/'},respondWith:function(){intercepted=true;}});
   assert.equal(intercepted,false);

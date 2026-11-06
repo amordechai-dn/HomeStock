@@ -4253,6 +4253,65 @@
     document.body.appendChild(overlay);
   }
 
+  function clearInventoryRecords(db, remoteIds) {
+    return db.getAll().then(function (rows) {
+      var ids = {};
+      rows.forEach(function (row) { ids[row.id] = true; });
+      (remoteIds || []).forEach(function (id) { ids[id] = true; });
+      return Object.keys(ids).reduce(function (chain, id) {
+        return chain.then(function () { return db.remove(id); });
+      }, Promise.resolve());
+    });
+  }
+
+  function openClearInventory() {
+    var overlay = h('div', { class: 'overlay center' });
+    function close() { overlay.remove(); }
+    var confirm = h('button', { class: 'btn danger', type: 'button', onclick: function () {
+      if (syncMgr && syncMgr._syncing) {
+        showToast('הסנכרון פועל כרגע. נסו שוב בעוד כמה שניות.');
+        return;
+      }
+      if (syncConfigured() && !syncMgr) {
+        showToast('כדי למחוק גם את המלאי בענן, הפעילו סנכרון והמתינו לחיבור.');
+        return;
+      }
+      confirm.disabled = true;
+      var manager = syncMgr;
+      if (manager) manager.stop();
+      var remote = manager ? manager._push().then(function () {
+        return manager.repo.selectSince('inventory_items', syncLoadState().cloudUserId, null);
+      }) : Promise.resolve([]);
+      remote.then(function (rows) {
+        // remove() emits normal delete mutations, including cloud-only IDs,
+        // so pending deletes survive connection loss in the existing queue.
+        return clearInventoryRecords(window.PantryDB, (rows || []).map(function (r) { return r.id; }));
+      }).then(function () {
+        return load();
+      }).then(function () {
+        recomputeShortfall();
+        close();
+        renderMain();
+        showToast('כל פריטי המלאי נמחקו');
+      }).catch(function (err) {
+        console.error('Clear inventory failed', err);
+        showToast('לא ניתן להשלים את המחיקה. בדקו את החיבור ונסו שוב.');
+      }).then(function () {
+        confirm.disabled = false;
+        if (manager) manager.start();
+      });
+    } }, 'מחיקת כל המלאי');
+    overlay.appendChild(h('div', { class: 'dialog' },
+      h('h2', { class: 'dialog-title', text: 'להתחיל עם מלאי ריק?' }),
+      h('p', { text: 'כל פריטי המלאי יימחקו, כולל מהמלאי המסונכרן. רשימת הקניות תישמר. לא ניתן לבטל את המחיקה.' }),
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn cancel', type: 'button', onclick: close }, 'ביטול'),
+        confirm
+      )
+    ));
+    document.body.appendChild(overlay);
+  }
+
   function openSettings() {
     var cu = window.CurrentUser;
     var overlay = h('div', { class: 'overlay center' });
@@ -4291,6 +4350,7 @@
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
       row(t('settings.sync'), t('settings.syncSub'), function () { close(); openSyncSettings(); }),
+      row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
       h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + (window.APP_VERSION || '') })
     );
     overlay.appendChild(dialog);
@@ -4369,6 +4429,7 @@
     // Two DISTINCT screens: fast one-tap switching vs. full CRUD management.
     // Pure, DOM-free helpers exposed for the automated logic harness.
     _internals: {
+      clearInventoryRecords: clearInventoryRecords,
       detectLang: detectLang,
       resolveNames: resolveNames,
       localName: localName,

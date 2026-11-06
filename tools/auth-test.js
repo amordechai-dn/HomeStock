@@ -985,6 +985,16 @@ async function rejects(name, fn) {
     ok(k + ' (Hebrew translation present)', en !== k && he !== k && en === he && I18N.getLang() === 'he');
   });
 
+  var cleared = [];
+  await AppI.clearInventoryRecords({
+    getAll: function () { return Promise.resolve([{id:'local'}, {id:'shared'}]); },
+    remove: function (id) { cleared.push(id); return Promise.resolve(); }
+  }, ['shared', 'cloud']);
+  ok('clear inventory removes local and cloud-only IDs once', cleared.sort().join(',') === 'cloud,local,shared');
+  await rejects('clear inventory reports storage failures', function () {
+    return AppI.clearInventoryRecords({getAll:function(){return Promise.reject(new Error('storage'));}});
+  });
+
   console.log('\n============================');
   console.log('PASS ' + pass + '  FAIL ' + fail);
   console.log('============================');
