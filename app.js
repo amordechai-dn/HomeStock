@@ -1718,12 +1718,11 @@
     var noteInput=h('textarea',{class:'input note',rows:'2',value:state.note,'aria-label':'הערה למוצר',placeholder:'מותג מועדף, גודל אריזה או תזכורת לקנייה הבאה'});
     // textarea values are properties, not HTML value attributes.
     noteInput.value=state.note;
-    var extras=h('details',{class:'editor-extras'},
-      h('summary',{'aria-label':'יעד חודשי והערות'},h('span',{},h('strong',{text:'עוד קצת פרטים'}),h('span',{text:'יעד חודשי והערות'})),h('span',{class:'editor-extras-plus','aria-hidden':'true',text:'+'})),
+    var extras=h('section',{class:'editor-section editor-extras','aria-label':'כמות רצויה והערות'},
+      h('h3',{class:'editor-section-title',text:'כמות רצויה והערות'}),
       h('div',{class:'editor-extras-body'},
         h('label',{class:'editor-caption'},'כמות רצויה בבית',targetInput),
         h('label',{class:'editor-caption'},'הערה למוצר',noteInput)));
-    if(state.note || state.desiredAmount>0)extras.open=true;
     body.appendChild(extras);sheet.appendChild(body);
 
     var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});

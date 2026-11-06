@@ -10,7 +10,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.3.1`
+**Current version:** `v4.3.2`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -32,7 +32,7 @@ offline and **auto-updates** whenever a new version is deployed.
 ### Product editor
 - Product identity first, with catalog suggestions and a compact category selector.
 - Direct quantity entry, unit selection, price and storage location in focused sections.
-- Monthly targets and notes are expandable. A persistent save tray previews any new expense.
+- Desired stock and notes are always visible as a regular form section. A persistent save tray previews any new expense.
 - Keyboard focus stays within the dialog; the editor adapts to the visible phone viewport.
 
 ### Dropdowns

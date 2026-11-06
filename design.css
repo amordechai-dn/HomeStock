@@ -342,14 +342,8 @@ button:disabled { cursor: wait; opacity: .5; }
 .editor-place .location-picker .ui-icon { width: 20px; height: 20px; }
 .editor-place .location-picker-label { margin: 0 0 -6px; font-size: 11px; }
 .editor-place .location-subspaces .segment-item { font-size: 11px; padding: 10px 3px; gap: 3px; min-width: 0; }
-.editor-extras { margin-block-start: 18px; border: 1px solid #e7eaf3; border-radius: 10px; }
-.editor-extras > summary { list-style: none; cursor: pointer; padding: 15px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.editor-extras > summary::-webkit-details-marker { display: none; }
-.editor-extras summary strong { font-size: 12px; color: #515d7c; font-weight: 500; }
-.editor-extras summary span span { color: #8991a6; font-size: 11px; margin-inline-start: 10px; }
-.editor-extras-plus { font-size: 19px; color: #7380aa; line-height: 1; }
-.editor-extras[open] .editor-extras-plus { transform: rotate(45deg); }
-.editor-extras-body { padding: 0 16px 18px; display: grid; grid-template-columns: minmax(0,.65fr) minmax(0,1.35fr); gap: 16px; align-items: start; }
+.editor-extras { margin-block-start: 18px; }
+.editor-extras-body { display: grid; grid-template-columns: minmax(0,.65fr) minmax(0,1.35fr); gap: 16px; align-items: start; }
 .editor-extras .note { min-height: 70px; resize: vertical; }
 .product-editor-footer { flex: 0 0 auto; padding: 12px 26px calc(18px + env(safe-area-inset-bottom,0px)); background: #fff; border-block-start: 1px solid #e7ebf5; }
 .editor-save-summary { font-size: 11px; line-height: 1.65; color: #7a8299; margin-block-end: 10px; min-height: 18px; }
@@ -391,7 +385,6 @@ button:disabled { cursor: wait; opacity: .5; }
   .editor-place .location-picker .ui-icon { width: 17px; height: 17px; }
   .editor-place .location-picker { gap: 11px; }
   .editor-extras-body { grid-template-columns: minmax(0,1fr); }
-  .editor-extras summary span span { display: block; margin: 3px 0 0; }
   .product-editor-footer { padding: 10px 20px calc(14px + env(safe-area-inset-bottom,0px)); }
   .editor-actions { gap: 8px; }
   .editor-actions .btn { font-size: 13px; min-height: 47px; padding-inline: 8px; }
