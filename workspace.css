@@ -278,3 +278,78 @@ h1,h2,h3 { text-wrap:balance; }
 /* Keep navigation anchored while the destination page gently enters. */
 .nav-link { transition:background-color 180ms ease,color 180ms ease; }
 @media(prefers-reduced-motion:reduce){.nav-link{transition:none;}}
+
+/* Device-specific reading scale. Rubik, Hebrew RTL and the original palette
+   stay consistent; density follows the space and input method available. */
+:root { --read-body:16px; --read-label:14px; --read-small:13px; --read-title:36px; }
+body { font-size:var(--read-body); line-height:1.6; }
+button,input,textarea,select { font-family:inherit; }
+.kitchen-header h1,.page-title { font-size:var(--read-title); line-height:1.2; }
+.kitchen-subtitle,.scan-status,.settings-row-sub,.expense-disclaimer { font-size:var(--read-label); line-height:1.7; }
+.item-open .card-name,.shopping-item-open .card-name { font-size:16px; line-height:1.45; }
+.item-open .card-meta,.shopping-item-open .card-meta { font-size:var(--read-small); line-height:1.55; }
+.space-tab-name { font-size:17px; }
+.space-tab-count,.room-status { font-size:var(--read-small); line-height:1.5; }
+.settings-row-label { font-size:16px; }
+.settings-page .settings-row { min-height:76px; padding-block:18px; }
+.expense-row { gap:12px; }
+.expense-row > div { min-width:0; overflow-wrap:anywhere; }
+.page-content p,.shared-dialog p { max-width:72ch; }
+.product-editor .editor-caption,.product-editor .field-label { font-size:14px; line-height:1.5; }
+.product-editor .editor-section-title { font-size:17px; line-height:1.4; }
+.product-editor .editor-price-hint,.product-editor .editor-save-summary { font-size:13px; line-height:1.6; }
+.product-editor .input,.profile-dialog .input,.shared-dialog .input { font-size:16px; min-height:46px; }
+@media(min-width:1024px){
+ :root { --read-title:40px; }
+ .kitchen-workspace { padding-inline:clamp(28px,4vw,72px); }
+ .nav-link { font-size:15px; }
+ .inventory-search { font-size:16px; }
+ .shelf-items .card { min-height:100px; }
+ .page-content { max-width:960px; }
+ .settings-page { max-width:760px; margin-inline-start:0; }
+ .product-editor { max-width:820px; }
+ .product-editor-body { padding:28px 32px; }
+}
+@media(max-width:1023px){
+ .kitchen-workspace { padding-block-end:calc(112px + env(safe-area-inset-bottom,0px)); }
+ .nav-link { min-height:48px; }
+ .dropdown-trigger,.storage-tab,.status-filter { min-height:44px; }
+ .product-editor .segment-item { min-height:44px; }
+ .product-editor .editor-quantity .step-btn { min-width:48px; height:52px; }
+}
+@media(max-width:600px){
+ :root { --read-title:30px; --read-label:14px; --read-small:13px; }
+ .kitchen-workspace { padding-inline:16px; }
+ .kitchen-header h1,.page-title { font-size:var(--read-title); }
+ .kitchen-subtitle { font-size:14px; line-height:1.65; }
+ .space-tab { padding-inline:5px; min-height:132px; }
+ .space-tab-name { font-size:15px; }
+ .space-tab-count,.room-status { font-size:12px; }
+ .inventory-section-title { font-size:22px; }
+ .shelf-heading h3 { font-size:16px; }
+ .shopping-nudge strong { font-size:15px; }
+ .shopping-nudge span,.month-glance span { font-size:13px; }
+ .shopping-nudge.has-needs > .kitchen-button { font-size:14px; }
+ .inventory-search,.dropdown-trigger,.scanner-content .btn { font-size:16px; }
+ .item-open .card-name { font-size:16px; }
+ .item-open .card-meta { font-size:13px; }
+ .item-open { min-width:0; }
+ .expense-room { font-size:13px; grid-template-columns:78px minmax(24px,1fr) 86px; }
+ .expense-row { flex-wrap:wrap; }
+ .shopping-brief p,.trip-count { font-size:13px; }
+ .settings-page .settings-row { padding-inline:8px; }
+ .product-editor-body { padding:22px 18px; }
+ .product-editor .editor-name { font-size:25px; }
+ .product-editor .editor-caption,.product-editor .field-label { font-size:15px; }
+ .product-editor .editor-price-hint,.product-editor .editor-save-summary { font-size:14px; }
+ .product-editor .editor-category .dropdown-trigger { font-size:14px;min-height:44px; }
+ .product-editor .editor-place .segment-item { font-size:14px; }
+ .product-editor .editor-header { padding-inline:18px; }
+}
+@media(max-width:359px){
+ .kitchen-workspace { padding-inline:12px; }
+ .space-tabs { gap:6px; }
+ .space-tab-name { font-size:14px; }
+ .space-tab-count,.room-status { font-size:12px; }
+ .product-editor .editor-stock-controls { grid-template-columns:minmax(0,1fr); }
+}
