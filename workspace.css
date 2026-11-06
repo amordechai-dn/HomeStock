@@ -366,6 +366,6 @@ button,input,textarea,select { font-family:inherit; }
    margin-inline-end:auto;
  }
 }
-@media(min-width:1024px) and (max-width:1250px){
+@media(min-width:1024px) and (max-width:1200px){
  .kitchen-workspace { --desktop-rail:184px; }
 }
