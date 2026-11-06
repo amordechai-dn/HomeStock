@@ -10,7 +10,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.2.0`
+**Current version:** `v4.2.1`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -273,15 +273,7 @@ local preview databases and are never seeded into the deployed app.
 
 ### Appearance
 
-Dim sage is the default (`#c3cec0` canvas with sage surfaces). Settings → מראה
-האפליקציה also offers יער כהה. `theme.js` applies the saved choice before styles
-and first paint, updates the browser theme color and native color scheme, and
-keeps tabs in the same browser consistent. The choice is device-local and does
-not modify or sync household data. If browser storage is blocked, switching
-still works for the current session. `theme.css` covers workspace, popups,
-editor, inputs, dropdowns and native controls in both palettes. Text token
-contrast, saved state, invalid preferences and storage failures are checked by
-`node tools/theme-test.js`.
+The original workspace palette is used throughout the app. The sage/forest theme overrides and appearance selector have been removed. Previously saved appearance preferences are ignored.
 
 
 ### Logo and app icons
@@ -290,7 +282,7 @@ The HomeStock mark is a house outline with two shelves: three storage spaces
 inside one home. `brand.js` defines the canonical geometry used by the interface
 and `tools/generate-icons.js`. The navigation wordmark stays Hebrew (הום סטוק),
 and the small-screen home heading includes the standalone mark. Interface marks
-follow the current appearance theme. `icons/logo-mark.svg` and
+use the original workspace colors. `icons/logo-mark.svg` and
 `icons/logo-mark-light.svg` are transparent vector variants; `icons/icon.svg` and
 all PNG sizes use a forest/sage tile. Maskable icons keep the mark inside their
 safe zone. Regenerate every format with `node tools/generate-icons.js`.

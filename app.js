@@ -4159,20 +4159,6 @@
     document.body.appendChild(overlay);closeButton.focus();
   }
 
-  function renderAppearancePicker(){
-    var appearance=h('fieldset',{class:'theme-picker'},h('legend',{text:'מראה האפליקציה'}));
-    var choices=h('div',{class:'theme-options'});
-    [{id:'sage',label:'מרווה מעומעמת'},{id:'forest',label:'יער כהה'}].forEach(function(choice){
-      var radio=h('input',{type:'radio',name:'appearance',value:choice.id,'aria-label':choice.label,
-        onchange:function(){if(this.checked)window.HomeTheme.set(choice.id);}});
-      radio.checked=window.HomeTheme.get()===choice.id;
-      choices.appendChild(h('label',{class:'theme-choice'},radio,h('span',{text:choice.label})));
-    });
-    appearance.appendChild(choices);
-
-    return appearance;
-  }
-
   function openSettings() {
     var cu = window.CurrentUser;
     var overlay = h('div', { class: 'overlay center' });
@@ -4208,7 +4194,6 @@
           h('div', { class: 'settings-account-name', dir: 'auto', text: cu ? cu.displayName() : '' })
         )
       ),
-      renderAppearancePicker(),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
       row('אותם הנתונים בכל המכשירים', githubStatusText(), function(){close();openGitHubConnection();}),
       row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),

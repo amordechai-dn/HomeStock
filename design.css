@@ -424,3 +424,7 @@ button:disabled { cursor: wait; opacity: .5; }
 .shared-connect-form .input { width:100%; box-sizing:border-box; }
 .shared-hint { font-size:12px; color:var(--muted); }
 .shared-connect-form .btn,.shared-dialog > .btn { width:100%; margin-top:12px; }
+
+/* Product lookup and editable batch names. */
+.scan-data-credit { display:inline-block; margin-block:0 14px; color:var(--primary); font-size:12px; text-underline-offset:3px; }
+.scan-row input.scan-row-name { min-width:100px; font-size:14px; }
