@@ -1,0 +1,31 @@
+'use strict';
+const assert=require('node:assert/strict');
+require('../home-model.js');const M=global.HomeModel;
+const data=[{id:'milk',name:'חָלָב',nameEn:'Milk',quantity:1,desiredAmount:3,location:'Fridge',unit:'pcs',unitPriceAgorot:650,updatedAt:'2026-11-01'},
+ {id:'rice',name:'אורז',quantity:0,location:'Pantry',unit:'kg',unitPriceAgorot:1290,updatedAt:'2026-11-02'},
+ {id:'soap',name:'סבון ידיים',note:'לעור רגיש',quantity:2,desiredAmount:1,location:'Shower',unit:'pcs',updatedAt:'2026-11-03'},
+ {id:'battery',name:'סוללות',quantity:0,location:'House',unit:'pack',updatedAt:'2026-11-04'},
+ {id:'oil',name:'שמן',quantity:.5,desiredAmount:1,location:'Pantry',unit:'liter',updatedAt:'2026-11-05'}];
+assert.equal(M.shoppingEstimate([{quantity:.29,unitPriceAgorot:50}]).totalAgorot,15,'estimate rounds decimal half-agora exactly');
+const original=JSON.stringify(data),s=M.summary(data);
+assert.deepEqual([s.total,s.attention,s.out],[5,4,2]);assert.equal(s.rooms.Kitchen.attention,3);
+assert.equal(M.select(data,{query:'חלב',space:'Bathroom'})[0].id,'milk','global search ignores selected room');
+assert.equal(M.select(data,{query:'סבון רגיש'})[0].id,'soap','tokens may match names and notes');
+assert.equal(M.select(data,{query:'MILK'})[0].id,'milk');
+assert.equal(M.select(data,{space:'Kitchen',location:'Pantry',filter:'attention'}).length,2);
+assert.equal(M.select(data,{space:'Bathroom',filter:'attention'}).length,0);
+assert.equal(M.select(data,{space:'Kitchen',sort:'recent'})[0].id,'oil');
+assert.equal(M.select(data,{sort:'attention'})[0].quantity,0);
+let plan=M.shoppingPlan(data,[]);assert.equal(plan.length,4);
+assert.equal(plan.find(x=>x.item.id==='oil').quantity,.5,'weighed shortages must not round up');
+assert.equal(plan.find(x=>x.item.id==='rice').quantity,1,'out-of-stock without target can be planned');
+const shopping=plan.map(x=>({...x.item,id:'shopping-'+x.item.id,quantity:x.quantity}));
+assert.equal(M.shoppingPlan(data,shopping).length,0,'repeated top-up is idempotent');
+shopping.find(x=>x.nameEn==='Milk').quantity=1;
+assert.equal(M.shoppingPlan(data,shopping)[0].quantity,1,'only the uncovered quantity is added');
+assert.equal(M.shoppingPlan([data[1]],[{name:'אורז',quantity:2,unit:'pcs'}]).length,1,'different units remain independent');
+const estimate=M.shoppingEstimate([{quantity:2,unitPriceAgorot:650},{quantity:1},{quantity:1,unitPriceAgorot:0},{quantity:1,unitPriceAgorot:400,purchased:true}]);
+assert.deepEqual(estimate,{totalAgorot:1300,unknown:1,count:3});
+assert.deepEqual(M.expensesBySpace([{location:'Fridge',amountAgorot:100},{location:'Toilet',amountAgorot:150},{location:'House',amountAgorot:200},{amountAgorot:-4}]),{Kitchen:100,Bathroom:150,House:200});
+assert.equal(JSON.stringify(data),original,'all selectors preserve source records');
+console.log('PASS: Hebrew/global search, filters, ordering, room summaries, fractional/idempotent shopping plans, unit separation, partial estimates, historical room expenses and immutable selectors');

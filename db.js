@@ -185,6 +185,15 @@
     });
   }
 
+  // Indexed lookup for queued quantity updates; no inventory-wide scan.
+  function getItem(id) {
+    if(!scoped())return scopeError();
+    if(!useIDB)return Promise.resolve(lsRead().find(function(item){return item.id===id;})||null);
+    return tx('readonly').then(function(store){return new Promise(function(resolve,reject){
+      var req=store.get(id);req.onsuccess=function(){resolve(req.result||null);};req.onerror=function(){reject(req.error);};
+    });});
+  }
+
   function create(input) {
     if (!scoped()) return scopeError();
     var now = new Date().toISOString();
@@ -718,6 +727,7 @@
       return currentUser;
     },
     getAll: getAll,
+    getItem: getItem,
     applySyncSnapshot: applySyncSnapshot,
     create: create,
     put: put,

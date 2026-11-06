@@ -78,6 +78,7 @@ require('../db.js');
 require('../auth.js');
 require('../data/foods.js'); // sets self.FOODS (=> window.FOODS)
 window.FOODS = self.FOODS;
+require('../home-model.js');
 require('../app.js'); // exposes window.App._internals (DOM-free helpers)
 var Auth = global.window.Auth;
 var CurrentUser = global.window.CurrentUser;
@@ -1052,6 +1053,21 @@ async function rejects(name, fn) {
     var rejected=false;try{AppI.parseStockQuantity(value);}catch(e){rejected=true;}
     ok('editor rejects invalid quantity: '+value,rejected);
   });
+
+  var rapid=await DB.create({name:'בדיקת לחיצות מהירות',quantity:1,unit:'pcs',location:'House'});
+  AppI.setItems(await DB.getAll());
+  await Promise.all([AppI.changeQty(rapid,1),AppI.changeQty(rapid,1),AppI.changeQty(rapid,-1)]);
+  ok('rapid quantity taps are serialized without lost updates',(await DB.getAll()).find(function(row){return row.id===rapid.id;}).quantity===2);
+  var originalPut=DB.put;
+  DB.put=function(){return Promise.reject(new Error('simulated write failure'));};
+  await AppI.changeQty(rapid,1);DB.put=originalPut;
+  ok('failed quantity write leaves committed stock unchanged',(await DB.getAll()).find(function(row){return row.id===rapid.id;}).quantity===2);
+  await AppI.changeQty(rapid,1);
+  ok('queue recovers after failed write',(await DB.getAll()).find(function(row){return row.id===rapid.id;}).quantity===3);
+  var once=await AppI.addToShoppingList({name:'קנייה בלחיצה כפולה',quantity:1,unitPriceAgorot:100});
+  var beforeDouble=recordedTotal();
+  await Promise.all([AppI.purchaseShoppingItem(once),AppI.purchaseShoppingItem(once)]);
+  ok('double activation makes one purchase only',recordedTotal()===beforeDouble+100);
 
   var resetSpend=recordedTotal();
   var resetShopping=(await DB.getAllShopping()).length;

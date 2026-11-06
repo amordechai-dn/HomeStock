@@ -3,14 +3,14 @@
 An **offline-first Progressive Web App** for tracking the food you keep at home —
 organized into **Kitchen / Bathroom / House** spaces, with kitchen and bathroom subspaces, with barcode
 scanning, a separate shopping list, a **Hebrew interface** with full RTL,
-one household profile, and **automatic on-device saving**.
+one household profile, **automatic on-device saving**, and optional **automatic GitHub device sync**.
 
 Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It works
 100% offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.4.0`
+**Current version:** `v4.0.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -22,7 +22,9 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - Spaces: **מטבח** (מקפיא, מקרר, מזווה), **חדר רחצה** (שירותים, מקלחת), and **בית** (items stored directly).
 - Pick a space and subspace when adding or moving items. Existing kitchen locations keep their stable IDs.
 - Add / edit / delete items with **name, location, category, quantity + unit, note**.
-- Cards grouped by **Fridge / Freezer / Pantry** with per-section counts.
+- Products grouped by storage place across all three rooms, with shortages first.
+- Global Hebrew search (including unpointed Hebrew, name aliases and notes), stock-status filters and sorting.
+- One action tops up missing shopping quantities; repeating it does not duplicate the same need.
 - **+/- quantity steppers** and an **"Out"** badge at zero.
 - **Category emoji** icons (item-specific emoji falls back to its category).
 - **Desired amounts (par levels)** per item and **monthly restock tracking**.
@@ -249,3 +251,27 @@ Local profile names/avatars, UI preferences, and lookup caches stay device-local
 Verification: `node tools/github-sync-test.js` exercises two independent device
 stores, offline changes, merged expenses/counters, deletions, racing edits, SHA
 conflicts, photos, restart, token removal, and private-only writes.
+
+
+### HomeStock 4 workspace
+
+The home screen is a room overview and inventory workbench. A green/slate palette,
+compact room summaries, explicit stock states and one stable creation action serve
+both phone and desktop. Search spans every room; room-only storage filters hide
+while searching. Status filters and group ordering stay consistent after updates.
+The dedicated shopping page works at every viewport size and shows a partial
+estimate when prices are missing. Expenses show room totals from immutable
+purchase locations. Empty households expose the first-product action immediately.
+
+`home-model.js` contains side-effect-free selection, shortage planning, room
+summaries and exact agorot arithmetic. `workspace.css` contains the new workspace
+layout; `design.css` retains editor/scanner/dropdown component styling. Quantity
+taps are serialized per product and use an IndexedDB key lookup, so rapid taps
+cannot race or count failed writes as purchases. A purchase guard prevents double
+activation. Semantic product buttons, named quantities, keyboard search (`/`),
+focus restoration, a skip link, and reduced-motion support improve accessibility.
+
+Additional checks: `node tools/home-model-test.js` and `node tools/auth-test.js`.
+The latter exercises rapid quantity taps, write failure/recovery and double
+purchase activation. Sample household records used for screenshots live only in
+local preview databases and are never seeded into the deployed app.
