@@ -1306,6 +1306,7 @@
     currentView=location.hash.slice(2)||'inventory';renderCurrentView();
   });
   function renderCurrentView() {
+    if(!hasDOM())return;
     if(!root)root=document.getElementById('root');
     var active=document.activeElement;
     var focusKey=active&&root&&root.contains(active)&&active.getAttribute('data-focus-key');
