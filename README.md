@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.0.1`
+**Current version:** `v4.1.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -275,3 +275,16 @@ Additional checks: `node tools/home-model-test.js` and `node tools/auth-test.js`
 The latter exercises rapid quantity taps, write failure/recovery and double
 purchase activation. Sample household records used for screenshots live only in
 local preview databases and are never seeded into the deployed app.
+
+
+### Appearance
+
+Dim sage is the default (`#c3cec0` canvas with sage surfaces). Settings → מראה
+האפליקציה also offers יער כהה. `theme.js` applies the saved choice before styles
+and first paint, updates the browser theme color and native color scheme, and
+keeps tabs in the same browser consistent. The choice is device-local and does
+not modify or sync household data. If browser storage is blocked, switching
+still works for the current session. `theme.css` covers workspace, popups,
+editor, inputs, dropdowns and native controls in both palettes. Text token
+contrast, saved state, invalid preferences and storage failures are checked by
+`node tools/theme-test.js`.
