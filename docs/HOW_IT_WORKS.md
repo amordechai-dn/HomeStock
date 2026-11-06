@@ -1,5 +1,10 @@
 # HomeStock — How it works
 
+> As of v2.2.0, HomeStock opens directly into one pinned household profile and
+> uses Hebrew with RTL throughout. The user picker, profile management, demo
+> inventory, and language controls have been removed. Legacy profile storage
+> and bilingual product metadata described below remain for data compatibility.
+
 A technical tour of the architecture, data model, and sync engine. Everything is
 **vanilla client-side JS** (no framework/build); the optional backend is
 **Supabase** (Postgres + anonymous auth + PostgREST + RLS). This document tracks

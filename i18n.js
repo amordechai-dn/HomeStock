@@ -626,18 +626,10 @@
   var RTL_LANGS = ['he'];
   var STORAGE_BASE = 'pantry.lang';
   var storageKey = STORAGE_BASE; // per-user key set via setUser()
-  var lang = 'en';
+  var lang = 'he';
 
   function isRtlLang(l) {
     return RTL_LANGS.indexOf(l) !== -1;
-  }
-
-  function detect() {
-    try {
-      var nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
-      if (nav.indexOf('he') === 0 || nav.indexOf('iw') === 0) return 'he';
-    } catch (e) {}
-    return 'en';
   }
 
   function lookup(l, path) {
@@ -674,35 +666,18 @@
     document.documentElement.dir = rtl ? 'rtl' : 'ltr';
   }
 
-  function setLang(l) {
-    if (l !== 'en' && l !== 'he') return;
-    lang = l;
-    try {
-      localStorage.setItem(storageKey, l);
-    } catch (e) {}
+  // HomeStock has one supported UI language, regardless of old preferences.
+  function setLang() {
+    lang = 'he';
+    try { localStorage.setItem(storageKey, lang); } catch (e) {}
     applyDir();
   }
 
-  function init() {
-    var stored = null;
-    try {
-      stored = localStorage.getItem(storageKey);
-    } catch (e) {}
-    lang = stored === 'en' || stored === 'he' ? stored : detect();
-    applyDir();
-  }
+  function init() { setLang(); }
 
-  // Namespace language settings per logged-in user (independent per user).
-  // Loads that user's stored language if any; otherwise keeps the current one.
-  // Pass null/undefined to return to the shared (pre-login) key.
   function setUser(id) {
     storageKey = STORAGE_BASE + (id ? '.' + id : '');
-    var stored = null;
-    try {
-      stored = localStorage.getItem(storageKey);
-    } catch (e) {}
-    if (stored === 'en' || stored === 'he') lang = stored;
-    applyDir();
+    setLang();
   }
 
   window.I18N = {

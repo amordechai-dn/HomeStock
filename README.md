@@ -2,15 +2,15 @@
 
 An **offline-first Progressive Web App** for tracking the food you keep at home —
 grouped by where you store it (**Fridge / Freezer / Pantry**), with barcode
-scanning, a separate shopping list, bilingual **English / Hebrew** (full RTL),
-passwordless multi-user profiles, and optional **cross-device cloud sync**.
+scanning, a separate shopping list, a **Hebrew interface** with full RTL,
+one household profile, and optional **cross-device cloud sync**.
 
 Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It works
 100% offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v2.1.0`
+**Current version:** `v2.2.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -55,12 +55,12 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
   **low-stock suggestions** based on desired amounts.
 - Responsive: a **sticky side panel** on desktop, a full page on mobile.
 
-### Profiles & multi-user
-- **Passwordless open profiles** — tap to enter, no login. Each profile keeps an
-  isolated inventory, shopping list, monthly plans, barcode mappings, products,
-  images and settings.
-- **Switch User** (fast profile switch) vs **Manage Users** (create/edit/delete)
-  are separate flows; the active profile is remembered across reopens.
+### Single household profile
+- Opens straight into inventory, with no user picker or language selector.
+- Uses Hebrew regardless of browser language or previously saved preferences.
+- Reuses the active legacy profile (then Aviraz or the oldest available profile)
+  and pins its stable ID, preserving its inventory and sync identity.
+- Other legacy profiles remain stored; no profile data is deleted.
 
 ### Cross-device cloud sync (optional)
 - **Offline-first** and **dormant by default**; powered by **Supabase**.
@@ -75,7 +75,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
   a **conflict dialog** for quantity clashes.
 
 ### Platform
-- **Bilingual EN/HE** with full **RTL** layout (CSS logical properties).
+- **Hebrew interface** with full **RTL** layout (CSS logical properties).
 - **Installable PWA** with **offline support** and **automatic updates**.
 - **Responsive** across phones → desktop; green / dark-blue brand theme.
 
@@ -189,6 +189,7 @@ Launch it from the home-screen icon for a full-screen, offline app.
 
 | Version | Highlights |
 | --- | --- |
+| **v2.2.0** | One household profile, direct startup, Hebrew-only interface |
 | **v2.0.1** | Barcode scanner fix: resilient own decode loop, detection feedback, timeout tips, debug overlay |
 | **v2.0.0** | Polished responsive header/toolbar + app-wide responsive layout (cloud-sync milestone) |
 | **v1.15.0** | Shopping List as a separate, independent feature/model |

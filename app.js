@@ -1228,32 +1228,6 @@
   // the open dialog comes back translated with its state intact.
   var reopenTop = null;
 
-  // Immediate, full, no-refresh re-render of the entire visible UI in the new
-  // language. Preserves: which base screen is shown (picker vs. inventory),
-  // the active user, scroll position, and any open state-preserving dialog.
-  function changeLanguage(l) {
-    if (l !== 'en' && l !== 'he') return;
-    if (window.I18N.getLang() === l) return;
-    var reopen = reopenTop; // capture before overlays are torn down
-    var y = window.scrollY || 0;
-    window.I18N.setLang(l); // updates <html lang/dir> + persists per user
-    // Tear down existing overlays/toasts; tracked dialogs are rebuilt below.
-    Array.prototype.slice
-      .call(document.querySelectorAll('.overlay, .toast'))
-      .forEach(function (o) {
-        o.remove();
-      });
-    reopenTop = null;
-    // Re-render whichever base screen is currently active (inventory+panel,
-    // the mobile Shopping page, or the picker).
-    if (window.CurrentUser && window.CurrentUser.id()) renderCurrentView();
-    else renderSwitchUser();
-    try {
-      window.scrollTo(0, y);
-    } catch (e) {}
-    if (reopen) reopen(); // bring back the open dialog, translated + stateful
-  }
-
   function renderMain() {
     if (!hasDOM()) return;
     if (!root) root = document.getElementById('root');
@@ -1280,19 +1254,6 @@
           });
 
     // Header
-    // Unified icon control (opens the language chooser, which shows EN/HE and
-    // the current selection). Icon-only keeps the toolbar uniform + uncluttered.
-    var langBtn = h(
-      'button',
-      {
-        class: 'icon-btn',
-        'aria-label': t('language.a11y'),
-        title: t('language.a11y') + ' (' + (window.I18N.getLang() === 'he' ? 'עברית' : 'English') + ')',
-        // Wrap so the click event isn't passed as the re-render callback.
-        onclick: function () { openLang(renderMain); },
-      },
-      '🌐'
-    );
     var monthlyBtn = h(
       'button',
       {
@@ -1341,18 +1302,6 @@
         )
       : null;
 
-    // Header avatar is now a pure ONE-TAP entry to the Switch User screen.
-    var profileBtn = h(
-      'button',
-      {
-        class: 'icon-btn profile-btn',
-        'aria-label': t('auth.switchUser'),
-        title: t('auth.switchUser'),
-        onclick: renderSwitchUser,
-      },
-      avatarEl('sm')
-    );
-
     var header = h(
       'header',
       { class: 'header' },
@@ -1365,7 +1314,7 @@
       h(
         'div',
         { class: 'header-actions' },
-        h('div', { class: 'header-btn-row' }, monthlyBtn, shoppingBtn, langBtn, syncBtn, settingsBtn, profileBtn),
+        h('div', { class: 'header-btn-row' }, monthlyBtn, shoppingBtn, syncBtn, settingsBtn),
         h('span', { class: 'version', id: 'version', text: window.APP_VERSION || '' })
       )
     );
@@ -2128,48 +2077,6 @@
           t('deleteConfirm.confirm')
         )
       )
-    );
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-  }
-
-  // ---- Language modal ----
-  function openLang(rerender) {
-    var overlay = h('div', { class: 'overlay center' });
-    function close() {
-      overlay.remove();
-    }
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) close();
-    });
-
-    function optionRow(code, label, flag) {
-      var active = window.I18N.getLang() === code;
-      return h(
-        'button',
-        {
-          class: 'lang-row' + (active ? ' active' : ''),
-          type: 'button',
-          onclick: function () {
-            close();
-            // Full re-render (base screen + any open dialog) in the new lang.
-            // `rerender` is kept for backward compat but changeLanguage already
-            // re-renders the active base screen.
-            changeLanguage(code);
-          },
-        },
-        h('span', { class: 'flag', text: flag }),
-        h('span', { class: 'lang-name', text: label }),
-        active ? h('span', { class: 'check', text: '✓' }) : null
-      );
-    }
-
-    var dialog = h(
-      'div',
-      { class: 'dialog' },
-      h('h2', { class: 'dialog-title', text: t('language.title') }),
-      optionRow('en', 'English', '🇬🇧'),
-      optionRow('he', 'עברית', '🇮🇱')
     );
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
@@ -3195,12 +3102,10 @@
     var bcInput = h('input', { class: 'input', type: 'text', value: barcode, readonly: 'readonly' });
     body.appendChild(bcInput);
 
-    // Names (English + Hebrew)
-    body.appendChild(h('label', { class: 'field-label', text: t('scan.enName') }));
+    // Keep imported names as metadata, with one visible product-name field.
     var enInput = h('input', { class: 'input', type: 'text', dir: 'auto', value: st.en, placeholder: t('form.namePlaceholder'), autocomplete: 'off' });
-    body.appendChild(enInput);
-    body.appendChild(h('label', { class: 'field-label', text: t('scan.heName') }));
-    var heInput = h('input', { class: 'input', type: 'text', value: st.he, dir: 'rtl', autocomplete: 'off' });
+    body.appendChild(h('label', { class: 'field-label', text: t('form.name') }));
+    var heInput = h('input', { class: 'input', type: 'text', value: st.he || st.en, dir: 'auto', autocomplete: 'off' });
     body.appendChild(heInput);
 
     if (product.brand)
@@ -3315,30 +3220,6 @@
     return { box: box, input: fileInput, rerender: render };
   }
 
-  // Local EN/עברית segmented control bound to a mutable `state.lang`.
-  // Optional onChange(lang) fires on selection — used by the profile dialog to
-  // switch the live UI immediately; omitted for new/edit-user forms where the
-  // choice is only that profile's stored preference.
-  function langSegment(state, onChange) {
-    var box = h('div', { class: 'segment' });
-    function render() {
-      box.innerHTML = '';
-      [['en', 'English'], ['he', 'עברית']].forEach(function (p) {
-        box.appendChild(h('button', {
-          class: 'segment-item' + (state.lang === p[0] ? ' active' : ''),
-          type: 'button',
-          onclick: function () {
-            state.lang = p[0];
-            render();
-            if (onChange) onChange(p[0]);
-          },
-        }, p[1]));
-      });
-    }
-    render();
-    return box;
-  }
-
   // Clear the base screen (remove any overlays/toasts + wipe root).
   function resetRoot() {
     if (!root) root = document.getElementById('root');
@@ -3357,249 +3238,7 @@
     );
   }
 
-  // Large avatar tile for the user cards.
-  function userAvatarTile(u) {
-    return u.avatar
-      ? h('div', { class: 'avatar xl has-img' }, h('img', { class: 'avatar-img', src: u.avatar, alt: '' }))
-      : h('div', { class: 'avatar xl', text: initialsOf(u.displayName || u.username) });
-  }
-
-  // ---- SWITCH USER screen (one-tap, no editing) ----
-  // Shown at boot (no active user) and from the header avatar. Tapping a
-  // profile switches to it immediately and returns to the app. This screen has
-  // NO create/edit/delete affordances — management lives in Manage Users.
-  function renderSwitchUser() {
-    resetRoot();
-    var activeId = window.CurrentUser ? window.CurrentUser.id() : null;
-    var users = window.Auth.listUsers();
-
-    function pick(id) {
-      // Fast path: tapping the already-active profile just returns to the app
-      // with NO database reload (its data is already in memory).
-      if (activeId && id === activeId) { renderMain(); return; }
-      var u = window.Auth.selectUser(id);
-      if (!u) { renderSwitchUser(); return; }
-      // enterApp() loads ONLY the selected user's scope (per-user IndexedDB).
-      enterApp().then(function () {
-        showToast(t('auth.welcome', { name: window.CurrentUser.displayName() }));
-      });
-    }
-
-    // Shared language toggle (also the default language for new profiles). Kept
-    // because it is a language control, not a user-management action.
-    var langSel = h('div', { class: 'segment auth-lang' });
-    [['en', 'English'], ['he', 'עברית']].forEach(function (pair) {
-      langSel.appendChild(
-        h('button', {
-          class: 'segment-item' + (window.I18N.getLang() === pair[0] ? ' active' : ''),
-          type: 'button',
-          onclick: function () { changeLanguage(pair[0]); },
-        }, pair[1])
-      );
-    });
-
-    var grid = h('div', { class: 'user-grid' });
-    users.forEach(function (u) {
-      grid.appendChild(
-        h('div', { class: 'user-card' + (u.id === activeId ? ' active' : ''), onclick: function () { pick(u.id); } },
-          u.id === activeId ? h('span', { class: 'user-active-badge', text: t('auth.activeUser') }) : null,
-          userAvatarTile(u),
-          h('div', { class: 'user-card-name', dir: 'auto', text: u.displayName || u.username }),
-          u.username ? h('div', { class: 'user-card-sub', text: '@' + u.username }) : null
-        )
-      );
-    });
-
-    root.appendChild(
-      h('div', { class: 'picker-screen' },
-        // Back to the app only when there is an active session to return to.
-        activeId ? screenTopBar(t('auth.switchUser'), function () { renderMain(); }) : null,
-        activeId ? null : h('img', { class: 'brand-logo', src: './icons/icon-192.png', alt: '' }),
-        activeId ? null : h('h1', { class: 'auth-title', text: t('app.title') }),
-        h('p', { class: 'auth-subtitle', text: activeId ? t('auth.switchUserSub') : t('auth.chooseUser') }),
-        langSel,
-        grid
-      )
-    );
-  }
-
-  // ---- MANAGE USERS screen (the ONLY place for create/edit/delete) ----
-  // Reached from Settings -> Manage Users. Tapping a card EDITS that profile
-  // (never switches); the add card creates one. Switching is not possible here.
-  function renderManageUsers() {
-    resetRoot();
-    var activeId = window.CurrentUser ? window.CurrentUser.id() : null;
-    var users = window.Auth.listUsers();
-
-    var grid = h('div', { class: 'user-grid' });
-    users.forEach(function (u) {
-      grid.appendChild(
-        h('div', { class: 'user-card manage', onclick: function () { renderEditUser(u); } },
-          u.id === activeId ? h('span', { class: 'user-active-badge', text: t('auth.activeUser') }) : null,
-          h('span', { class: 'user-edit-hint', 'aria-hidden': 'true', text: '✏️' }),
-          userAvatarTile(u),
-          h('div', { class: 'user-card-name', dir: 'auto', text: u.displayName || u.username }),
-          u.username ? h('div', { class: 'user-card-sub', text: '@' + u.username }) : null
-        )
-      );
-    });
-    // "Add user" card — creation lives only here.
-    grid.appendChild(
-      h('div', { class: 'user-card user-add', onclick: function () { renderCreateUser(); } },
-        h('div', { class: 'user-add-plus', text: '＋' }),
-        h('div', { class: 'user-card-name', text: t('auth.addUser') })
-      )
-    );
-
-    root.appendChild(
-      h('div', { class: 'picker-screen' },
-        screenTopBar(t('auth.manageUsers'), function () { renderMain(); }),
-        h('p', { class: 'auth-subtitle', text: t('auth.manageUsersSub') }),
-        grid
-      )
-    );
-  }
-
-  // Back-compat alias: any legacy caller lands on the fast Switch User screen.
-  var renderPicker = renderSwitchUser;
-
-  // ---- Create profile ----
-  function renderCreateUser() {
-    var overlay = h('div', { class: 'overlay center' });
-    function close() { overlay.remove(); }
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-
-    var state = { avatar: null, lang: window.I18N.getLang() };
-    var nameInput = h('input', { class: 'input', type: 'text', dir: 'auto', placeholder: t('auth.displayNamePlaceholder'), 'aria-label': t('auth.displayName') });
-    var userInput = h('input', {
-      class: 'input', type: 'text', placeholder: t('auth.usernamePlaceholder'), 'aria-label': t('auth.username'),
-      autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false',
-    });
-    var avc = avatarControl(state, function () { return initialsOf(nameInput.value); });
-    nameInput.addEventListener('input', function () { nameInput.classList.remove('error'); avc.rerender(); });
-    var langBox = langSegment(state);
-    var errEl = h('div', { class: 'auth-error', style: 'display:none' });
-
-    function create() {
-      var dn = nameInput.value.trim();
-      if (!dn) {
-        nameInput.classList.add('error');
-        errEl.textContent = t('auth.displayNameRequired');
-        errEl.style.display = 'block';
-        nameInput.focus();
-        return;
-      }
-      window.Auth.createUser({ displayName: dn, username: userInput.value.trim(), avatar: state.avatar, lang: state.lang })
-        .then(function (res) {
-          if (!res.ok) {
-            errEl.textContent = res.error === 'exists' ? t('auth.usernameTaken') : t('auth.displayNameRequired');
-            errEl.style.display = 'block';
-            return;
-          }
-          // Management context: create the profile but do NOT switch to it.
-          // Switching is a separate, one-tap action on the Switch User screen.
-          close();
-          renderManageUsers();
-          showToast(t('auth.userCreated'));
-        });
-    }
-
-    var dialog = h('div', { class: 'dialog profile-dialog' },
-      h('div', { class: 'sheet-header' },
-        h('h2', { class: 'dialog-title', text: t('auth.createUserTitle') }),
-        h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: close }, '✕')
-      ),
-      avc.box, avc.input,
-      h('label', { class: 'field-label', text: t('auth.displayName') }), nameInput,
-      h('label', { class: 'field-label', text: t('auth.usernameOptional') }), userInput,
-      h('label', { class: 'field-label', text: t('auth.preferredLanguage') }), langBox,
-      errEl,
-      h('div', { class: 'actions' },
-        h('button', { class: 'btn cancel', type: 'button', onclick: close }, t('form.cancel')),
-        h('button', { class: 'btn save', type: 'button', onclick: create }, t('auth.createButton'))
-      )
-    );
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-    setTimeout(function () { nameInput.focus(); }, 50);
-  }
-
-  // ---- Edit / delete a profile (from the picker) ----
-  function renderEditUser(u) {
-    var overlay = h('div', { class: 'overlay center' });
-    function close() { overlay.remove(); }
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-
-    var isActive = !!(window.CurrentUser && window.CurrentUser.id() === u.id);
-    var state = { avatar: u.avatar || null, lang: u.lang || window.I18N.getLang() };
-    var nameInput = h('input', { class: 'input', type: 'text', dir: 'auto', value: u.displayName || u.username || '', 'aria-label': t('auth.displayName') });
-    var avc = avatarControl(state, function () { return initialsOf(nameInput.value); });
-    nameInput.addEventListener('input', function () { avc.rerender(); });
-    var langBox = langSegment(state);
-
-    function save() {
-      var dn = nameInput.value.trim() || u.username || u.displayName || '';
-      window.Auth.updateUser(u.id, { displayName: dn, avatar: state.avatar, lang: state.lang });
-      if (isActive) {
-        window.Auth.updateProfile({ displayName: dn, avatar: state.avatar, lang: state.lang });
-        if (window.I18N.getLang() !== state.lang) window.I18N.setLang(state.lang);
-      }
-      close();
-      renderManageUsers();
-    }
-    function del() {
-      if (isActive) { showToast(t('auth.cannotDeleteActive')); return; }
-      confirmDeleteUser(u, function () { close(); renderManageUsers(); });
-    }
-
-    var dialog = h('div', { class: 'dialog profile-dialog' },
-      h('div', { class: 'sheet-header' },
-        h('h2', { class: 'dialog-title', text: t('auth.editUserTitle') }),
-        h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: close }, '✕')
-      ),
-      avc.box, avc.input,
-      h('label', { class: 'field-label', text: t('auth.displayName') }), nameInput,
-      u.username ? h('label', { class: 'field-label', text: t('auth.username') }) : null,
-      u.username ? h('div', { class: 'profile-username', text: '@' + u.username }) : null,
-      h('label', { class: 'field-label', text: t('auth.preferredLanguage') }), langBox,
-      h('div', { class: 'actions' },
-        h('button', { class: 'btn danger' + (isActive ? ' disabled' : ''), type: 'button', onclick: del }, t('auth.deleteUser')),
-        h('button', { class: 'btn save', type: 'button', onclick: save }, t('auth.save'))
-      )
-    );
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-  }
-
-  // Explicit destructive confirmation before deleting a profile + its data.
-  function confirmDeleteUser(u, onDone) {
-    var overlay = h('div', { class: 'overlay center' });
-    function close() { overlay.remove(); }
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-    var name = u.displayName || u.username || '';
-    var dialog = h('div', { class: 'dialog' },
-      h('h2', { class: 'dialog-title', text: t('auth.confirmDeleteTitle') }),
-      h('p', { class: 'dialog-msg', text: t('auth.confirmDeleteMsg', { name: name }) }),
-      h('div', { class: 'actions' },
-        h('button', { class: 'btn cancel', type: 'button', onclick: close }, t('form.cancel')),
-        h('button', {
-          class: 'btn danger', type: 'button',
-          onclick: function () {
-            window.Auth.deleteUser(u.id);
-            window.PantryDB.deleteUserData(u.id).then(function () {
-              close();
-              showToast(t('auth.userDeleted'));
-              if (onDone) onDone();
-            });
-          },
-        }, t('auth.deleteUser'))
-      )
-    );
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-  }
-
-  // ---- Active-user profile (edit self, switch, choose another) ----
+  // ---- Household profile ----
   function openProfile(opts) {
     opts = opts || {};
     var cu = window.CurrentUser;
@@ -3624,17 +3263,9 @@
     var nameInput = h('input', { class: 'input', type: 'text', dir: 'auto', value: opts.displayName != null ? opts.displayName : cu.displayName() || '', 'aria-label': t('auth.displayName') });
     var avc = avatarControl(state, function () { return initialsOf(nameInput.value) || cu.initials(); });
     nameInput.addEventListener('input', function () { avc.rerender(); });
-    // Tapping a language switches the whole UI immediately AND persists it as
-    // this profile's preference; changeLanguage reopens this dialog translated.
-    var langBox = langSegment(state, function (l) {
-      window.Auth.updateProfile({ lang: l });
-      changeLanguage(l);
-    });
-
     function save() {
       var dn = nameInput.value.trim() || cu.username() || cu.displayName();
       window.Auth.updateProfile({ displayName: dn, avatar: state.avatar, lang: state.lang });
-      if (window.I18N.getLang() !== state.lang) window.I18N.setLang(state.lang);
       renderMain();
       close();
     }
@@ -3652,8 +3283,6 @@
       nameInput,
       cu.username() ? h('label', { class: 'field-label', text: t('auth.username') }) : null,
       cu.username() ? h('div', { class: 'profile-username', text: '@' + cu.username() }) : null,
-      h('label', { class: 'field-label', text: t('auth.preferredLanguage') }),
-      langBox,
       h('div', { class: 'actions' },
         h('button', { class: 'btn cancel', type: 'button', onclick: close }, t('form.cancel')),
         h('button', { class: 'btn save', type: 'button', onclick: save }, t('auth.save'))
@@ -3665,9 +3294,7 @@
   }
 
   // ---- Settings (gear) ----
-  // Home for account + app management: edit profile, Switch User, Manage Users
-  // (the only place for create/edit/delete), language, and sign-out. Keeping
-  // these here frees the header avatar to be a pure one-tap Switch User entry.
+  // Household details and synchronization settings.
   // ============================ Cross-device sync ============================
   // DORMANT by default. Nothing here touches the network unless the app has a
   // Supabase URL + anon key AND this profile is linked to a cloud identity.
@@ -4640,12 +4267,6 @@
     }
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
 
-    var state = { lang: window.I18N.getLang() };
-    var langBox = langSegment(state, function (l) {
-      window.Auth.updateProfile({ lang: l });
-      changeLanguage(l);
-    });
-
     function row(label, sub, onClick) {
       return h('button', { class: 'settings-row', type: 'button', onclick: onClick },
         h('span', { class: 'settings-row-main' },
@@ -4669,12 +4290,7 @@
         )
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
-      row(t('auth.switchUser'), t('auth.switchUserSub'), function () { close(); renderSwitchUser(); }),
-      row(t('auth.manageUsers'), t('auth.manageUsersSub'), function () { close(); renderManageUsers(); }),
       row(t('settings.sync'), t('settings.syncSub'), function () { close(); openSyncSettings(); }),
-      h('label', { class: 'field-label', text: t('auth.preferredLanguage') }),
-      langBox,
-      h('button', { class: 'btn ghost', type: 'button', onclick: function () { close(); chooseAnother(); } }, t('auth.chooseAnother')),
       h('div', { class: 'settings-version', text: t('app.versionLabel') + ' ' + (window.APP_VERSION || '') })
     );
     overlay.appendChild(dialog);
@@ -4715,45 +4331,6 @@
       });
   }
 
-  // Clear only the active selection and return to the picker (deletes NO data).
-  function chooseAnother() {
-    syncStopEngine(); // stop this profile's periodic pull / listeners
-    window.Auth.logout();
-    window.PantryDB.setUser(null); // drop data scope
-    window.I18N.setUser(null); // back to the shared picker language
-    items = [];
-    shoppingItems = [];
-    renderSwitchUser();
-  }
-
-  // Seed the shared Guest profile's inventory with distinct sample data so
-  // per-user isolation is visibly demonstrable. Runs once (flag-guarded).
-  function seedGuestUserData() {
-    var FLAG = 'pantry.seed.guest.v1';
-    try {
-      if (localStorage.getItem(FLAG)) return Promise.resolve();
-    } catch (e) {}
-    if (!window.Auth.getUser('guest')) return Promise.resolve();
-    window.PantryDB.setUser('guest');
-    return window.PantryDB.getAll().then(function (existing) {
-      var chain = Promise.resolve();
-      if (!existing || !existing.length) {
-        [
-          { name: 'Coffee', quantity: 1, unit: 'g', categoryId: 'drinks', location: 'Pantry', emoji: '☕', desiredAmount: 2 },
-          { name: 'Pasta', quantity: 3, unit: 'pack', categoryId: 'dry', location: 'Pantry', emoji: '🍝', desiredAmount: 4 },
-          { name: 'Bananas', quantity: 0, unit: 'kg', categoryId: 'fruit', location: 'Pantry', emoji: '🍌', desiredAmount: 1 },
-          { name: 'Orange juice', quantity: 1, unit: 'L', categoryId: 'drinks', location: 'Fridge', emoji: '🧃' },
-        ].forEach(function (s) {
-          chain = chain.then(function () { return window.PantryDB.create(s); });
-        });
-      }
-      return chain.then(function () {
-        try { localStorage.setItem(FLAG, '1'); } catch (e) {}
-        window.PantryDB.setUser(null);
-      });
-    });
-  }
-
   // Re-render on breakpoint crossing (space-based, via CSS matchMedia — NOT
   // user-agent). Uses in-memory data, so inventory is never reloaded and the
   // active user / current view is preserved. Fires only when the ~1024px line
@@ -4775,19 +4352,14 @@
     // scrub it from the address bar; it is redeemed once a profile is active.
     pendingLinkToken = parseLinkToken();
     if (pendingLinkToken) cleanLinkUrl();
-    window.Auth.init() // migrate old password profiles -> open profiles; seed demos
-      .then(function () { return seedGuestUserData(); })
+    window.Auth.init()
       .then(function () {
-        // One-time migration of any pre-auth data into the seeded 'aviraz' user.
-        return window.PantryDB.migrateLegacyInto('aviraz');
+        return window.PantryDB.migrateLegacyInto(window.CurrentUser.id());
       })
-      .then(function () {
-        var st = window.Auth.restore(); // 'ok' | 'none'
-        if (st === 'ok') enterApp();
-        else renderSwitchUser();
-      })
-      .catch(function () {
-        renderSwitchUser();
+      .then(function () { return enterApp(); })
+      .catch(function (err) {
+        console.error('HomeStock startup failed', err);
+        document.getElementById('root').replaceChildren(h('p', { role: 'alert', text: 'לא ניתן לטעון את המלאי. נסו לרענן את הדף.' }));
       });
   }
 
@@ -4795,8 +4367,6 @@
     start: start,
     renderMain: renderMain,
     // Two DISTINCT screens: fast one-tap switching vs. full CRUD management.
-    renderSwitchUser: renderSwitchUser,
-    renderManageUsers: renderManageUsers,
     // Pure, DOM-free helpers exposed for the automated logic harness.
     _internals: {
       detectLang: detectLang,

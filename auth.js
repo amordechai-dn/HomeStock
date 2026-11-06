@@ -1,11 +1,9 @@
 /* ============================================================================
-   User layer — open passwordless household profiles (LOCAL, no server).
+   Single household profile, stored locally without a login screen.
 
-   HomeStock is a shared home-inventory app: profiles are NOT secure accounts,
-   they simply pick "who is using the app" so each person's inventory, lists,
-   monthly plans, barcode mappings, products, images and settings stay isolated
-   by a stable userId. There are NO passwords, NO hashing, NO login attempts —
-   tapping a profile enters immediately.
+   Startup pins the current legacy profile to preserve inventory and sync IDs.
+   Legacy profile records are retained for compatibility; user management is
+   no longer exposed in the app. All UI language preferences resolve to Hebrew.
 
    Modular pieces (behind stable interfaces so a real backend could be added):
      - UserRepository    : CRUD for profile records (localStorage-backed)
@@ -228,22 +226,25 @@
   };
 
   // ---- UserService (orchestrator; the app's only user dependency) ----
-  // Seed profiles preserved across the rebrand: Aviraz + a shared Guest.
-  var DEMO_USERS = [
-    { id: 'aviraz', username: 'aviraz', displayName: 'Aviraz' },
-    { id: 'guest', username: 'guest', displayName: 'Guest' },
-  ];
-
+  // Pin one existing profile so inventory and sync identifiers stay stable.
+  // Other legacy profiles remain stored, but are no longer exposed in the UI.
   function seed() {
-    DEMO_USERS.forEach(function (u) {
-      if (!UserRepository.getById(u.id) && !UserRepository.exists(u.username)) {
-        UserRepository.create(u);
-      }
+    var pinned = null;
+    try { pinned = localStorage.getItem('homestock.singleUser'); } catch (e) {}
+    var rec = (pinned && UserRepository.getById(pinned)) ||
+      UserRepository.getById(ActiveUserManager.get()) ||
+      UserRepository.getById('aviraz') || UserRepository.all()[0];
+    if (!rec) rec = UserRepository.create({
+      id: 'aviraz', username: 'aviraz', displayName: 'הבית שלי', lang: 'he'
     });
+    rec = UserRepository.update(rec.id, { lang: 'he' });
+    try { localStorage.setItem('homestock.singleUser', rec.id); } catch (e) {}
+    ActiveUserManager.set(rec.id);
+    UserContext._set(sanitize(rec));
   }
 
   var UserService = {
-    // Migrate old password profiles, then ensure demo profiles exist. Async for
+    // Migrate legacy profiles, then restore the single household profile. Async for
     // interface symmetry (nothing here actually awaits, but callers use .then).
     init: function () {
       return Promise.resolve().then(function () {

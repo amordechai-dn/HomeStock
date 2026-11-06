@@ -101,7 +101,7 @@ async function rejects(name, fn) {
 
   // 1) Migration: password profiles -> open profiles (once, idempotent, safe)
   console.log('\n[migration to passwordless]');
-  await Auth.init(); // runs UserMigration + seeds demo profiles
+  await Auth.init(); // migrates and selects the single existing profile
   var repo = Auth._internals.UserRepository;
   ok('aviraz credential removed', !('cred' in (repo.getById('aviraz') || {})));
   ok('test credential removed', !('cred' in (repo.getById('test') || {})));
@@ -115,12 +115,20 @@ async function rejects(name, fn) {
   // 2) Preserved + seeded profiles
   console.log('\n[profiles preserved + seeded]');
   var names = Auth.listUsers().map(function (u) { return u.id; }).sort();
-  ok('Aviraz + Guest + Test all present', names.join(',') === 'aviraz,guest,test');
+  ok('existing profiles preserved without seeding demos', names.join(',') === 'aviraz,test');
+  ok('opens directly into aviraz', CurrentUser.id() === 'aviraz');
+  ok('single profile pinned', _store['homestock.singleUser'] === 'aviraz');
   ok('aviraz has stable id "aviraz"', Auth.getUser('aviraz').id === 'aviraz');
   ok('aviraz keeps display name', Auth.getUser('aviraz').displayName === 'Aviraz');
-  ok('guest profile seeded', !!Auth.getUser('guest'));
+  ok('guest demo is not seeded', !Auth.getUser('guest'));
+  Auth.selectUser('test');
+  await Auth.init();
+  ok('restarts keep the pinned household identity', CurrentUser.id() === 'aviraz');
+  _store['pantry.lang.aviraz'] = 'en';
+  I18N.setUser('aviraz');
+  ok('old English preference becomes Hebrew RTL', I18N.getLang() === 'he' && document.documentElement.dir === 'rtl');
   ok('sanitized profile exposes no cred', !('cred' in Auth.getUser('aviraz')));
-  ok('re-init does not duplicate profiles', (await Auth.init(), Auth.listUsers().length === 3));
+  ok('re-init does not duplicate profiles', (await Auth.init(), Auth.listUsers().length === 2));
 
   // 3) Selecting a profile loads the correct (migrated) data
   console.log('\n[select profile -> data]');
@@ -193,9 +201,8 @@ async function rejects(name, fn) {
    'auth.deleteUser', 'auth.save', 'auth.displayName', 'auth.preferredLanguage', 'auth.userCreated',
    'auth.userDeleted', 'auth.confirmDeleteTitle', 'auth.confirmDeleteMsg', 'auth.chooseAnother',
    'auth.activeUser', 'form.cancel', 'app.tagline'].forEach(function (k) {
-    I18N.setLang('en'); var en = I18N.t(k, { name: 'X' });
-    I18N.setLang('he'); var he = I18N.t(k, { name: 'X' });
-    ok(k + ' (en+he present, non-key)', en !== k && he !== k && en !== he);
+    I18N.setLang('en');
+    ok(k + ' remains Hebrew with an old English preference', I18N.getLang() === 'he' && I18N.t(k, { name: 'X' }) !== k);
   });
 
   // 11) No password logic remains on the public API
@@ -231,7 +238,7 @@ async function rejects(name, fn) {
   console.log('\n[bilingual: localName fallback]');
   var dual = { name: 'Milk', nameEn: 'Milk', nameHe: 'חלב' };
   I18N.setLang('he'); ok('he UI shows Hebrew name', AppI.localName(dual) === 'חלב');
-  I18N.setLang('en'); ok('en UI shows English name', AppI.localName(dual) === 'Milk');
+  I18N.setLang('en'); ok('English request keeps Hebrew names', AppI.localName(dual) === 'חלב');
   var onlyHe = { name: 'חלב', nameEn: null, nameHe: 'חלב' };
   I18N.setLang('en'); ok('en UI falls back to Hebrew when no English', AppI.localName(onlyHe) === 'חלב');
   var legacy = { name: 'Legacy Milk' }; // pre-migration item (no nameEn/nameHe)
@@ -241,7 +248,7 @@ async function rejects(name, fn) {
   // Scan-session/barcode shape uses {name(en), he}
   var sess = { name: 'Milk', he: 'חלב' };
   I18N.setLang('he'); ok('session entry resolves he via .he', AppI.localName(sess) === 'חלב');
-  I18N.setLang('en'); ok('session entry resolves en via .name', AppI.localName(sess) === 'Milk');
+  I18N.setLang('en'); ok('session entry stays Hebrew after English request', AppI.localName(sess) === 'חלב');
 
   // 15) Name migration: idempotent, loss-free, no duplicates
   console.log('\n[bilingual: name migration]');
@@ -296,7 +303,7 @@ async function rejects(name, fn) {
   ['a11y.close', 'a11y.increase', 'a11y.decrease'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);
     I18N.setLang('he'); var he = I18N.t(k);
-    ok(k + ' (en+he present, non-key)', en !== k && he !== k);
+    ok(k + ' (Hebrew translation present)', en !== k && he !== k);
   });
 
   // 18) Shared barcode lookup pipeline (camera + manual entry funnel here)
@@ -353,26 +360,26 @@ async function rejects(name, fn) {
    'scan.debug.fps', 'scan.debug.last', 'scan.debug.status'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);
     I18N.setLang('he'); var he = I18N.t(k);
-    ok(k + ' (en+he present, non-key, distinct)', en !== k && he !== k && en !== he);
+    ok(k + ' (Hebrew remains selected)', en !== k && he !== k && en === he && I18N.getLang() === 'he');
   });
 
   // 20) Switch User vs Manage Users separation + fast switching
   console.log('\n[user UX: switch vs manage separation]');
   var App = global.window.App;
-  ok('Switch User + Manage Users are two DISTINCT screen renderers',
-    typeof App.renderSwitchUser === 'function' &&
-    typeof App.renderManageUsers === 'function' &&
-    App.renderSwitchUser !== App.renderManageUsers);
+  ok('user switching and management screens removed',
+    typeof App.renderSwitchUser === 'undefined' &&
+    typeof App.renderManageUsers === 'undefined');
   // New separation strings exist in both languages.
   ['auth.switchUser', 'auth.manageUsers', 'auth.switchUserSub', 'auth.manageUsersSub',
    'auth.back', 'settings.title', 'settings.editProfile'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);
     I18N.setLang('he'); var he = I18N.t(k);
-    ok(k + ' (en+he present, non-key)', en !== k && he !== k);
+    ok(k + ' (Hebrew translation present)', en !== k && he !== k);
   });
 
   // Switching sets the active user and loads THAT user's scope only.
   console.log('\n[user UX: switching loads correct scope]');
+  repo.create({ id: 'guest', username: 'guest', displayName: 'Legacy guest' });
   Auth.selectUser('guest'); DB.setUser(CurrentUser.id());
   ok('switch -> active user is guest', CurrentUser.id() === 'guest');
   var guestInv = await DB.getAll();
@@ -577,7 +584,7 @@ async function rejects(name, fn) {
    'shopping.markRestocked', 'shopping.remove', 'shopping.collapse', 'shopping.expand'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);
     I18N.setLang('he'); var he = I18N.t(k);
-    ok(k + ' (en+he present, non-key)', en !== k && he !== k);
+    ok(k + ' (Hebrew translation present)', en !== k && he !== k);
   });
 
   // ---------------------------------------------------------------------------
@@ -839,7 +846,7 @@ async function rejects(name, fn) {
    'shopping.suggestions', 'shopping.needQty', 'shopping.quantity', 'shopping.save'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);
     I18N.setLang('he'); var he = I18N.t(k);
-    ok(k + ' (en+he present, non-key)', en !== k && he !== k);
+    ok(k + ' (Hebrew translation present)', en !== k && he !== k);
   });
 
   // ---- Automatic profile-based household (v2.1.0) --------------------------
@@ -975,7 +982,7 @@ async function rejects(name, fn) {
    'scan.debug.error', 'scan.debug.format', 'scan.debug.yes', 'scan.debug.no'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);
     I18N.setLang('he'); var he = I18N.t(k);
-    ok(k + ' (en+he present, non-key)', en !== k && he !== k && en !== he);
+    ok(k + ' (Hebrew translation present)', en !== k && he !== k && en === he && I18N.getLang() === 'he');
   });
 
   console.log('\n============================');
