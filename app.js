@@ -1301,7 +1301,7 @@
     var active=document.activeElement;
     var focusKey=active&&root&&root.contains(active)&&active.getAttribute('data-focus-key');
     var selection=focusKey==='inventory-search'?[active.selectionStart,active.selectionEnd]:null;
-    if(currentView==='shopping')renderShopping();else renderMain();
+    if(currentView==='shopping')renderShopping();else if(currentView==='expenses')openMonthly();else if(currentView==='settings')openSettings();else renderMain();
     if(focusKey){
       var target=Array.prototype.find.call(root.querySelectorAll('[data-focus-key]'),function(node){return node.getAttribute('data-focus-key')===focusKey;});
       if(target){target.focus({preventScroll:true});if(selection)target.setSelectionRange(selection[0],selection[1]);}
@@ -1853,6 +1853,7 @@
 
   // ---- Monthly restock view ----
   function openMonthly(opts) {
+    currentView="expenses";
     opts = opts || {};
     var previousFocus=document.activeElement;
     recomputeShortfall();
@@ -1862,7 +1863,7 @@
     if (keys.indexOf(current) === -1) keys.push(current);
     keys.sort().reverse();
 
-    var overlay = h('div', { class: 'overlay center' });
+    var overlay = h('div', { class: 'standalone-page' });
     // Reopen preserving the selected month across a language change.
     var prevReopen = reopenTop;
     var myReopen = function () {
@@ -1871,7 +1872,7 @@
     reopenTop = myReopen;
     function close() {
       if(select)select.destroy();
-      overlay.remove();
+      overlay.remove();renderMain();
       if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
       if (reopenTop === myReopen) reopenTop = prevReopen;
     }
@@ -2006,19 +2007,11 @@
       content
     );
     overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
+    root.innerHTML='';root.appendChild(renderNavigation());root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
     var initial = opts.month && keys.indexOf(opts.month) !== -1 ? opts.month : current;
     select.value = initial;
     renderContent(initial);
-    overlay.addEventListener('keydown',function(e){
-      if(e.key==='Escape'){e.preventDefault();close();return;}
-      if(e.key!=='Tab')return;
-      var controls=Array.prototype.filter.call(dialog.querySelectorAll('button,input,[tabindex="0"]'),function(el){return !el.disabled&&el.getClientRects().length;});
-      var first=controls[0],last=controls[controls.length-1];
-      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
-      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
-    });
-    dialog.querySelector('.sheet-close').focus();
+    dialog.setAttribute('tabindex','-1');dialog.focus();
   }
 
   // ---- Toast ----
@@ -3061,6 +3054,7 @@
     function save() {
       var dn = nameInput.value.trim() || cu.username() || cu.displayName();
       window.Auth.updateProfile({ displayName: dn, avatar: state.avatar, lang: state.lang });
+      if(githubSync)githubSync.sync();
       renderMain();
       close();
     }
@@ -4101,6 +4095,8 @@
     var config=window.HOMESTOCK_CONFIG||{};
     githubSync=window.GitHubSync.create({db:window.PantryDB,userId:window.CurrentUser.id(),
       owner:config.GITHUB_OWNER,repo:config.GITHUB_DATA_REPO,
+      getProfile:function(){return {displayName:window.CurrentUser.displayName(),avatar:window.CurrentUser.avatar()};},
+      setProfile:function(value){window.Auth.updateProfile({displayName:value.displayName,avatar:value.avatar});},
       onRemote:function(){return load().then(function(){recomputeShortfall();renderCurrentView();});}});
     return githubSync.start().catch(function(){githubSyncError=true;});
   }
@@ -4160,15 +4156,16 @@
   }
 
   function openSettings() {
+    currentView="settings";
     var cu = window.CurrentUser;
-    var overlay = h('div', { class: 'overlay center' });
+    var overlay = h('div', { class: 'standalone-page' });
 
     // Reopen (translated) after a live language change, like the other dialogs.
     var prevReopen = reopenTop;
     var myReopen = function () { openSettings(); };
     reopenTop = myReopen;
     function close() {
-      overlay.remove();
+      overlay.remove();renderMain();
       if (reopenTop === myReopen) reopenTop = prevReopen;
     }
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
@@ -4200,7 +4197,7 @@
       h('div', { class: 'settings-version', id: 'version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
     );
     overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
+    root.innerHTML='';root.appendChild(renderNavigation());root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
   }
 
   // ---- Auth / boot ----

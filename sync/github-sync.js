@@ -4,7 +4,7 @@
  * offline edits and merge concurrent devices. Photos live in separate files. */
 (function(root){
   'use strict';
-  var TABLES=['items','shopping','expenses','counters','barcodes'];
+  var TABLES=['items','shopping','expenses','counters','barcodes','profile'];
   function empty(){return {version:1,records:{}};}
   function clone(x){return JSON.parse(JSON.stringify(x));}
   function canonical(value){
@@ -51,7 +51,7 @@
     var doc=meta.doc,previous=meta.observed || {items:[],shopping:[],monthly:{}};
     var clock=maxClock(doc);
     function put(key,value,initial){doc.records[key]={rev:[initial?0:++clock,device],value:clone(value)};}
-    ['items','shopping','barcodes'].forEach(function(table){
+    ['items','shopping','barcodes','profile'].forEach(function(table){
       function id(row){return table==='barcodes'?row.barcode:row.id;}
       var before={},after={};(previous[table]||[]).forEach(function(x){before[id(x)]=x;});(snapshot[table]||[]).forEach(function(x){after[id(x)]=x;});
       Object.keys(after).forEach(function(id){if(!equal(before[id],after[id]))put(table+'/'+id,after[id],!before[id]&&!doc.records[table+'/'+id]);});
@@ -97,7 +97,7 @@
       return fn();
     });chain=p.catch(function(){});return p;}
     async function readMeta(){meta=await store.get(key)||{doc:empty(),observed:{items:[],shopping:[],monthly:{}}};}
-    async function snapshot(){var data=await Promise.all([db.getAll(),db.getAllShopping(),db.getAllBarcodes()]);return {items:data[0],shopping:data[1],barcodes:data[2],monthly:db.getMonthlyLog()};}
+    async function snapshot(){var data=await Promise.all([db.getAll(),db.getAllShopping(),db.getAllBarcodes()]);return {items:data[0],shopping:data[1],barcodes:data[2],profile:options.getProfile?[Object.assign({id:"household"},options.getProfile())]:[],monthly:db.getMonthlyLog()};}
     async function captureNow(){capture(meta,await snapshot(),device);await store.set(key,meta);}
     async function api(path,token,method,body,raw){
       var control=new AbortController(),timeout=setTimeout(function(){control.abort();},25000);
@@ -170,6 +170,10 @@
           await downloadImages(meta.doc,credential.token);
           var desired=materialize(meta.doc,meta.observed.monthly);
           var result=await db.applySyncSnapshot(meta.observed,desired);
+          var remoteProfile=rows(meta.doc,'profile')[0];
+          var currentProfile=options.getProfile?Object.assign({id:'household'},options.getProfile()):null;
+          if(remoteProfile&&options.setProfile&&equal(currentProfile,(meta.observed.profile||[])[0]))options.setProfile(remoteProfile);
+          result.observed.profile=remoteProfile?[remoteProfile]:[];
           meta.observed=result.observed;
           await store.set(key,meta);
           await captureNow(); // preserve writes racing with remote application
