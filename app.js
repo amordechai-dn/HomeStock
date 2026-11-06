@@ -1719,8 +1719,8 @@
     // textarea values are properties, not HTML value attributes.
     noteInput.value=state.note;
     where.appendChild(h('div',{class:'editor-location-details'},
-      h('label',{class:'editor-caption'},'כמות רצויה בבית',targetInput),
-      h('label',{class:'editor-caption'},'הערה למוצר',noteInput)));
+      h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetInput),
+      h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערה למוצר'}),noteInput)));
     sheet.appendChild(body);
 
     var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});
