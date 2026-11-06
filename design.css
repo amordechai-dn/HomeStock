@@ -439,3 +439,5 @@ button:disabled { cursor: wait; opacity: .5; }
 
 .scanner-content { position:relative; width:100%; max-width:720px; margin:24px auto; }
 .scanner-content .scan-panel { width:100%;max-width:none;box-shadow:none;max-height:none; }
+
+.product-editor .editor-target { max-width:240px; }

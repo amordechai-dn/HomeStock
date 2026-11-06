@@ -1739,12 +1739,28 @@
       locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));
     body.appendChild(h('div',{class:'editor-main-grid'},stock,where));
 
-    var targetInput=h('input',{class:'input',type:'text',inputmode:'decimal',dir:'ltr',value:state.targetDraft!=null?state.targetDraft:formatQty(state.desiredAmount),'aria-label':'כמות רצויה בבית'});
+    var targetInput=h('input',{class:'editor-quantity-input',type:'text',inputmode:'decimal',dir:'ltr',value:state.targetDraft!=null?state.targetDraft:formatQty(state.desiredAmount),'aria-label':'כמות רצויה בבית'});
+    function changeTarget(delta){
+      var value;
+      try{value=parseStockQuantity(targetInput.value||'0');}
+      catch(error){targetInput.setAttribute('aria-invalid','true');targetInput.focus();return;}
+      targetInput.value=formatQty(Math.max(0,value+delta));
+      targetInput.removeAttribute('aria-invalid');
+      if(footerError)footerError.textContent='';
+    }
+    targetInput.addEventListener('input',function(){
+      try{parseStockQuantity(targetInput.value||'0');targetInput.removeAttribute('aria-invalid');}
+      catch(error){targetInput.setAttribute('aria-invalid','true');}
+    });
+    var targetStepper=h('div',{class:'stepper editor-quantity editor-target',role:'group','aria-label':'כמות רצויה בבית'},
+      h('button',{class:'step-btn',type:'button','aria-label':'הפחתת הכמות הרצויה',onclick:function(){changeTarget(-1);}},'−'),
+      targetInput,
+      h('button',{class:'step-btn primary',type:'button','aria-label':'הגדלת הכמות הרצויה',onclick:function(){changeTarget(1);}},'+'));
     var noteInput=h('textarea',{class:'input note',rows:'2',value:state.note,'aria-label':'הערה למוצר',placeholder:'מותג מועדף, גודל אריזה או תזכורת לקנייה הבאה'});
     // textarea values are properties, not HTML value attributes.
     noteInput.value=state.note;
     where.appendChild(h('div',{class:'editor-location-details'},
-      h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetInput),
+      h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetStepper),
       h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערה למוצר'}),noteInput)));
     sheet.appendChild(body);
 
@@ -1790,7 +1806,7 @@
         nameInput.setAttribute('aria-invalid','true');nameInput.focus();consequence.textContent='';footerError.textContent='מה שם המוצר?';return;
       }
       try{quantity=parseStockQuantity(quantityInput.value);}catch(e){quantityInput.setAttribute('aria-invalid','true');quantityInput.focus();consequence.textContent='';footerError.textContent='הזינו כמות תקינה מאפס ומעלה.';return;}
-      try{desired=parseStockQuantity(targetInput.value||'0');}catch(e){extras.open=true;targetInput.focus();footerError.textContent='הזינו יעד חודשי תקין מאפס ומעלה.';return;}
+      try{desired=parseStockQuantity(targetInput.value||'0');}catch(e){targetInput.setAttribute('aria-invalid','true');targetInput.focus();footerError.textContent='הזינו כמות רצויה תקינה מאפס ומעלה.';return;}
       try{unitPrice=price.read();}catch(e){consequence.textContent='';footerError.textContent='הזינו מחיר תקין עם עד שתי ספרות אחרי הנקודה.';return;}
       state.quantity=quantity;
       var name=nameInput.value.trim();
