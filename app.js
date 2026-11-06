@@ -1908,22 +1908,6 @@
     var keys = Home.expenseMonths(current,log);
 
     var overlay = h('div', { class: 'kitchen-workspace standalone-page',id:'main-content' });
-    // Reopen preserving the selected month across a language change.
-    var prevReopen = reopenTop;
-    var myReopen = function () {
-      openMonthly({ month: select.value });
-    };
-    reopenTop = myReopen;
-    function close() {
-      if(select)select.destroy();
-      overlay.remove();renderMain();
-      if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
-      if (reopenTop === myReopen) reopenTop = prevReopen;
-    }
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) close();
-    });
-
     var content = h('div', { class: 'monthly-content' });
 
     function monthLabel(key) {
@@ -2043,8 +2027,7 @@
       h(
         'div',
         { class: 'sheet-header' },
-        h('h1', { class: 'page-title', text: t('monthly.title') }),
-        h('button', { class: 'sheet-close', onclick: close, 'aria-label': t('a11y.close') }, '✕')
+        h('h1', { class: 'page-title', text: t('monthly.title') })
       ),
       h('label', { class: 'field-label', text: t('monthly.month') }),
       select.element,
@@ -4211,16 +4194,6 @@
     var cu = window.CurrentUser;
     var overlay = h('div', { class: 'kitchen-workspace standalone-page',id:'main-content' });
 
-    // Reopen (translated) after a live language change, like the other dialogs.
-    var prevReopen = reopenTop;
-    var myReopen = function () { openSettings(); };
-    reopenTop = myReopen;
-    function close() {
-      overlay.remove();renderMain();
-      if (reopenTop === myReopen) reopenTop = prevReopen;
-    }
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-
     function row(label, sub, onClick) {
       return h('button', { class: 'settings-row', type: 'button', onclick: onClick },
         h('span', { class: 'settings-row-main' },
@@ -4233,8 +4206,7 @@
 
     var dialog = h('div', { class: 'page-content settings-page' },
       h('div', { class: 'sheet-header' },
-        h('h1', { class: 'page-title', text: t('settings.title') }),
-        h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: close }, '✕')
+        h('h1', { class: 'page-title', text: t('settings.title') })
       ),
       h('div', { class: 'settings-account' },
         avatarEl('lg'),
