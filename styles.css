@@ -132,7 +132,7 @@ body {
   outline-offset: 2px;
 }
 .version {
-  font-size: 11px;
+  font-size:var(--font-detail,14px);
   font-weight: 600;
   color: var(--muted);
   letter-spacing: 0.3px;
@@ -214,7 +214,7 @@ body {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   cursor: pointer;
 }
 .shopping-remove:active {
@@ -238,7 +238,7 @@ body {
 }
 .shopping-suggest-sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
 }
 .shopping-suggestions {
   display: flex;
@@ -369,14 +369,14 @@ body {
   font-size: 16px;
 }
 .section-title {
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 800;
   color: var(--muted);
   letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 .section-count {
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
   color: var(--muted);
   background: var(--border);
@@ -449,7 +449,7 @@ body {
   align-items: center;
   gap: 8px;
   margin-block-start: 2px;
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 500;
   color: var(--muted);
 }
@@ -458,7 +458,7 @@ body {
   color: var(--danger);
   border-radius: 999px;
   padding: 1px 8px;
-  font-size: 11px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
 }
 .target-pill {
@@ -466,7 +466,7 @@ body {
   color: var(--primary-dark);
   border-radius: 999px;
   padding: 1px 8px;
-  font-size: 11px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
 }
 .restock-card {
@@ -524,7 +524,7 @@ body {
   color: var(--text);
 }
 .qty-unit {
-  font-size: 11px;
+  font-size:var(--font-detail,14px);
   font-weight: 600;
   color: var(--muted);
 }
@@ -661,7 +661,7 @@ body {
 
 .field-label {
   display: block;
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
   color: var(--muted);
   letter-spacing: 0.3px;
@@ -759,7 +759,7 @@ body {
   }
 }
 .ac-head {
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
   color: var(--muted);
   letter-spacing: 0.3px;
@@ -1070,13 +1070,13 @@ body {
   color: var(--primary-dark);
 }
 .stat-label {
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
   color: var(--muted);
   margin-block-start: 2px;
 }
 .monthly-needs-title {
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 800;
   color: var(--muted);
   letter-spacing: 0.4px;
@@ -1118,7 +1118,7 @@ body {
   text-overflow: ellipsis;
 }
 .monthly-item-miss {
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 600;
   color: var(--muted);
   text-align: end;
@@ -1204,7 +1204,7 @@ body {
   word-break: break-word;
 }
 .user-card-sub {
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   font-weight: 600;
   color: var(--muted);
 }
@@ -1214,7 +1214,7 @@ body {
   inset-inline-start: 8px;
   background: var(--primary);
   color: #fff;
-  font-size: 10px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
@@ -1315,7 +1315,7 @@ body {
 .avatar.sm {
   width: 32px;
   height: 32px;
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
 }
 .avatar.lg {
   width: 88px;
@@ -1462,7 +1462,7 @@ body {
 .scan-tips-list {
   margin: 0;
   padding-inline-start: 18px;
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   color: var(--muted);
   line-height: 1.5;
 }
@@ -1472,7 +1472,7 @@ body {
   margin-block-start: 12px;
 }
 .scan-session-title {
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   font-weight: 800;
   color: var(--muted);
   letter-spacing: 0.4px;
@@ -1538,13 +1538,13 @@ body {
   color: var(--text);
 }
 .scan-hero-sub {
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 600;
   color: var(--muted);
   margin-block-start: 2px;
 }
 .scan-hint {
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 600;
   color: var(--primary-dark);
   background: var(--primary-soft);
@@ -1553,7 +1553,7 @@ body {
   text-align: center;
 }
 .scan-meta {
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 600;
   color: var(--muted);
   margin-block-start: 8px;
@@ -1600,7 +1600,7 @@ body {
   font-weight: 700;
 }
 .settings-account-sub {
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   color: var(--muted);
 }
 .settings-row {
@@ -1627,7 +1627,7 @@ body {
   font-weight: 700;
 }
 .settings-row-sub {
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   color: var(--muted);
 }
 .settings-row-chevron {
@@ -1641,7 +1641,7 @@ body {
 .settings-version {
   text-align: center;
   color: var(--muted);
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   margin-block-start: 12px;
 }
 
@@ -1665,7 +1665,7 @@ body {
 }
 .sync-note {
   color: var(--muted);
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   margin: 0;
   line-height: 1.4;
 }
@@ -1702,7 +1702,7 @@ body {
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
 }
 .sync-indicator {
   font-size: 16px;
@@ -1727,7 +1727,7 @@ body {
 .sync-advanced > summary {
   cursor: pointer;
   color: var(--muted);
-  font-size: 13px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
   list-style: revert;
 }
@@ -1738,7 +1738,7 @@ body {
   border-block-start: 1px dashed rgba(255, 255, 255, 0.25);
 }
 .scan-debug-title {
-  font-size: 11px;
+  font-size:var(--font-detail,14px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1750,7 +1750,7 @@ body {
   justify-content: space-between;
   gap: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-size:var(--font-detail,14px);
   line-height: 1.6;
 }
 .scan-debug-label {
