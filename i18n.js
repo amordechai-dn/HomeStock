@@ -14,7 +14,7 @@
         locations_other: '{{count}} מיקומים',
         across: '{{items}} ב-{{locations}}',
       },
-      locations: { Fridge: 'מקרר', Freezer: 'מקפיא', Pantry: 'מזווה', Toilet: 'שירותים', Shower: 'מקלחת', House: 'בית' },
+      locations: { Fridge: 'מקרר', Freezer: 'מקפיא', Pantry: 'מזווה', Toilet: 'שירותים', Shower: 'מקלחת', House: 'כללי' },
       categories: {
         produce: 'ירקות',
         fruit: 'פירות',

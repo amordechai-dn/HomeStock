@@ -27,13 +27,13 @@
   var SPACES = [
     { id: 'Kitchen', label: 'מטבח', icon: 'shelf', defaultLocation: 'Pantry' },
     { id: 'Bathroom', label: 'חדר רחצה', icon: 'bath', defaultLocation: 'Toilet' },
-    { id: 'House', label: 'בית', icon: 'house', defaultLocation: 'House' }
+    { id: 'House', label: 'כללי', icon: 'house', defaultLocation: 'House' }
   ];
   // Legacy location IDs stay unchanged, preserving existing inventory/sync rows.
   var LOCATIONS = [
-    { id: 'Freezer', space: 'Kitchen', emoji: '❄️' },
-    { id: 'Fridge', space: 'Kitchen', emoji: '🧊' },
     { id: 'Pantry', space: 'Kitchen', emoji: '🗄️' },
+    { id: 'Fridge', space: 'Kitchen', emoji: '🧊' },
+    { id: 'Freezer', space: 'Kitchen', emoji: '❄️' },
     { id: 'Toilet', space: 'Bathroom', emoji: '🧻' },
     { id: 'Shower', space: 'Bathroom', emoji: '🚿' },
     { id: 'House', space: 'House', emoji: '🏠' }
@@ -1431,7 +1431,7 @@
     container.appendChild(h('p',{class:'inventory-caption sr-only',role:'status',text:productCount(filtered.length)+' בתצוגה'}));
     if(!filtered.length){
       var isEmpty=!items.some(function(item){return Home.space(item)===inventorySpace;})&&!inventoryQuery;
-      var title=inventoryQuery?'לא מצאנו התאמה.':isEmpty?'מה יש ב'+(inventorySpace==='Kitchen'?'מטבח':inventorySpace==='Bathroom'?'חדר הרחצה':'בית')+'?':inventoryStatus==='attention'?'לא חסר כאן דבר.':inventoryStatus==='out'?'יש מהכול.':'לא מצאנו התאמה.';
+      var title=inventoryQuery?'לא מצאנו התאמה.':isEmpty?'מה יש ב'+(inventorySpace==='Kitchen'?'מטבח':inventorySpace==='Bathroom'?'חדר הרחצה':'אזור הכללי')+'?':inventoryStatus==='attention'?'לא חסר כאן דבר.':inventoryStatus==='out'?'יש מהכול.':'לא מצאנו התאמה.';
       container.appendChild(h('section',{class:'kitchen-empty'},
         h('div',{class:'empty-room-symbol','aria-hidden':'true'},uiIcon(isEmpty?room.icon:'check')),
         h('h2',{text:title}),h('p',{text:isEmpty?'מתחילים במה שכבר נמצא בבית. מוסיפים מוצר, כמות ומחיר, והכול מקבל מקום.':inventoryQuery?'נסו שם אחר. החיפוש כולל מוצרים מכל אזורי הבית.':'אפשר לחזור לכל המוצרים או לבחור אזור אחר.'}),
@@ -1459,9 +1459,9 @@
     var workspace=h('main',{class:'kitchen-workspace',id:'main-content',tabindex:'-1'});
     workspace.appendChild(h('header',{class:'kitchen-header'},h('div',{},
       h('p',{class:'today-label',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
-      h('div',{class:'home-heading'},h('span',{class:'mobile-home-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),h('h1',{text:'הבית שלי'})),h('p',{class:'kitchen-subtitle',text:items.length?productCount(summary.total)+' בבית. '+(summary.attention?summary.attention+' צריכים השלמה.':'יש מהכול.'): 'מהמטבח ועד ארון הניקיון. יודעים מה יש ומה חסר.'})),
+      h('div',{class:'home-heading'},h('span',{class:'mobile-home-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),h('h1',{text:'בית'})),h('p',{class:'kitchen-subtitle',text:items.length?productCount(summary.total)+' בבית. '+(summary.attention?summary.attention+' צריכים השלמה.':'יש מהכול.'): 'מהמטבח ועד ארון הניקיון. יודעים מה יש ומה חסר.'})),
       items.length?actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);}):null));
-    var rooms=h('div',{class:'space-tabs','aria-label':'אזורי הבית'});
+    var rooms=h('div',{class:'space-tabs','aria-label':'בית — מטבח, חדר רחצה וכללי'});
     SPACES.forEach(function(space){
       var stat=summary.rooms[space.id],selected=inventorySpace===space.id&&!inventoryQuery;
       rooms.appendChild(h('button',{type:'button',class:'space-tab room-'+space.id.toLowerCase()+(selected?' active':''),'aria-pressed':String(selected),onclick:function(){

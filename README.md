@@ -10,7 +10,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.2.1`
+**Current version:** `v4.2.2`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -19,7 +19,7 @@ offline and **auto-updates** whenever a new version is deployed.
 ## Features
 
 ### Inventory
-- Spaces: **מטבח** (מקפיא, מקרר, מזווה), **חדר רחצה** (שירותים, מקלחת), and **בית** (items stored directly).
+- Spaces: **מטבח** (מקפיא, מקרר, מזווה), **חדר רחצה** (שירותים, מקלחת), and **כללי** (items stored directly), all under **בית**.
 - Pick a space and subspace when adding or moving items. Existing kitchen locations keep their stable IDs.
 - Add / edit / delete items with **name, location, category, quantity + unit, note**.
 - Products grouped by storage place across all three rooms, with shortages first.
