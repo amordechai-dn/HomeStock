@@ -538,8 +538,61 @@
   function setMonthlyLog(obj) {
     try {
       localStorage.setItem(MONTHLY_KEY, JSON.stringify(obj || {}));
+      notifyMutation('monthlyLog', 'upsert', obj || {});
       return true;
     } catch (e) { return false; }
+  }
+
+  // Apply incoming sync records without emitting local mutations or changing
+  // timestamps. Compare against the observed local value inside the write
+  // transaction: a local edit made during a fetch always survives import.
+  function applySyncSnapshot(expected, desired) {
+    if (!scoped()) return scopeError();
+    var observed = JSON.parse(JSON.stringify(expected));
+    var changed = false;
+    function same(a,b) { return JSON.stringify(a) === JSON.stringify(b); }
+    function plan(table, actual, write, remove) {
+      var old = {}, next = {}, current = {}, result = {};
+      expected[table].forEach(function(r){old[r.id]=r;result[r.id]=r;});
+      desired[table].forEach(function(r){next[r.id]=r;});
+      actual.forEach(function(r){current[r.id]=r;});
+      Object.keys(Object.assign({},old,next)).forEach(function(id){
+        if(!same(current[id],old[id]) || same(current[id],next[id])) return;
+        if(next[id]) { write(next[id]); result[id]=next[id]; }
+        else { remove(id); delete result[id]; }
+        changed=true;
+      });
+      observed[table]=Object.keys(result).map(function(id){return result[id];});
+    }
+    function monthly() {
+      var current=getMonthlyLog();
+      if(same(current,expected.monthly) && !same(current,desired.monthly)) {
+        // Synchronous write: no other mutation can interleave with this check.
+        localStorage.setItem(MONTHLY_KEY,JSON.stringify(desired.monthly));
+        observed.monthly=desired.monthly;changed=true;
+      }
+      return {observed:observed,changed:changed};
+    }
+    if(!useIDB) {
+      try {
+        var inv=lsRead(),shop=shopLsRead();
+        function update(arr,rec){var i=arr.findIndex(function(x){return x.id===rec.id;});if(i<0)arr.push(rec);else arr[i]=rec;}
+        plan('items',inv,function(r){update(inv,r);},function(id){inv=inv.filter(function(r){return r.id!==id;});});
+        plan('shopping',shop,function(r){update(shop,r);},function(id){shop=shop.filter(function(r){return r.id!==id;});});
+        localStorage.setItem(LS_KEY,JSON.stringify(inv));
+        localStorage.setItem(SHOP_LS_KEY,JSON.stringify(shop));
+        return Promise.resolve(monthly());
+      } catch(e) { return Promise.reject(e); }
+    }
+    return openDB().then(function(db){return new Promise(function(resolve,reject){
+      var tx=db.transaction([STORE,SHOP_STORE],'readwrite');
+      ['items','shopping'].forEach(function(table){
+        var store=tx.objectStore(table==='items'?STORE:SHOP_STORE),req=store.getAll();
+        req.onsuccess=function(){plan(table,req.result||[],function(r){store.put(r);},function(id){store.delete(id);});};
+      });
+      tx.oncomplete=function(){try{resolve(monthly());}catch(e){reject(e);}};
+      tx.onerror=tx.onabort=function(){reject(tx.error || new Error('Sync import failed'));};
+    });});
   }
 
   // ---- Delete ALL of a user's data (used by optional profile deletion) ----
@@ -665,6 +718,7 @@
       return currentUser;
     },
     getAll: getAll,
+    applySyncSnapshot: applySyncSnapshot,
     create: create,
     put: put,
     remove: remove,

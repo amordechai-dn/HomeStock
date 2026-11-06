@@ -2010,7 +2010,7 @@
         h('span',{class:'expense-heading',text:'הוצאות שנרשמו החודש'}),
         h('strong',{class:'expense-total',dir:'auto',text:formatMoney(expenseTotal(purchases))}),
         h('p',{text:purchases.length === 1 ? 'קנייה אחת עם מחיר שנרשם' : purchases.length ? purchases.length+' קניות עם מחיר שנרשם' : 'עדיין אין קניות עם מחיר בחודש הזה.'})));
-      content.appendChild(h('p',{class:'expense-disclaimer',text:'הסכום כולל רק תוספות למלאי עם מחיר. עדכון מחיר אינו משנה קניות קודמות. ההיסטוריה נשמרת במכשיר הזה.'}));
+      content.appendChild(h('p',{class:'expense-disclaimer',text:'הסכום כולל רק תוספות למלאי עם מחיר. עדכון מחיר אינו משנה קניות קודמות. ההיסטוריה נשמרת גם במכשירים המחוברים לאחר השלמת העדכון.'}));
       if(purchases.length) {
         var purchaseList=h('div',{class:'expense-list'});
         purchases.forEach(function(entry){
@@ -4171,7 +4171,7 @@
       if(busy)return;
       busy=true;confirm.disabled=true;
       clearInventoryRecords(window.PantryDB).then(function(){return load();}).then(function(){
-        recomputeShortfall();overlay.remove();renderMain();showToast('כל פריטי המלאי נמחקו מהמכשיר');
+        recomputeShortfall();overlay.remove();renderMain();showToast('פריטי המלאי נמחקו. מכשירים מחוברים יתעדכנו אוטומטית.');
       }).catch(function(error){
         console.error('Local inventory reset failed',error);
         showToast('לא ניתן להשלים את המחיקה במכשיר. נסו שוב.');
@@ -4179,10 +4179,89 @@
     }},'מחיקת כל המלאי');
     overlay.appendChild(h('div',{class:'dialog',role:'dialog','aria-modal':'true','aria-label':'מחיקת כל המלאי'},
       h('h2',{class:'dialog-title',text:'להתחיל עם מלאי ריק?'}),
-      h('p',{text:'פריטי המלאי יימחקו מהמכשיר הזה. רשימת הקניות והיסטוריית ההוצאות יישמרו. לא ניתן לבטל את המחיקה.'}),
+      h('p',{text:'פריטי המלאי יימחקו מהמכשיר הזה וגם מהמכשירים המחוברים. רשימת הקניות והיסטוריית ההוצאות יישמרו. לא ניתן לבטל את המחיקה.'}),
       h('div',{class:'actions'},h('button',{class:'btn cancel',type:'button',onclick:close},'ביטול'),confirm)));
     overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
     document.body.appendChild(overlay);
+  }
+
+  // GitHub is the only active cross-device adapter. The retired provider
+  // stays disabled and never receives this adapter's credentials or data.
+  var githubSync=null;
+  var githubSyncError=false;
+  function githubStatusText() {
+    if(githubSyncError)return 'לא ניתן להפעיל שמירה משותפת בדפדפן הזה';
+    var state=githubSync ? githubSync.status() : {phase:'local'};
+    var labels={local:'נשמר במכשיר הזה · חיבור מכשיר נוסף',syncing:'מעדכן את הנתונים המשותפים…',
+      pending:'השינויים נשמרו במכשיר וממתינים לשליחה',synced:'הנתונים המשותפים מעודכנים',
+      offline:'אין חיבור כרגע · השינויים יישלחו אוטומטית',auth:'החיבור פג · יש לחבר את המכשיר מחדש',
+      access:'אין גישה כרגע · בדקו את הרשאות החיבור',public:'השמירה נעצרה: מאגר הנתונים צריך להיות פרטי',
+      storage:'אין מספיק מקום לשמירה במכשיר', 'invalid-data':'לא ניתן לקרוא את הנתונים המשותפים',
+      size:'מאגר הנתונים גדול מדי · הנתונים המקומיים נשמרו',conflict:'מכשיר נוסף עדכן נתונים · מנסה שוב אוטומטית',
+      missing:'לא ניתן לגשת למאגר הנתונים · בדקו הרשאות'};
+    return labels[state.phase] || labels.local;
+  }
+  function startGitHubSync() {
+    if(!window.GitHubSync)return Promise.resolve();
+    var config=window.HOMESTOCK_CONFIG||{};
+    githubSync=window.GitHubSync.create({db:window.PantryDB,userId:window.CurrentUser.id(),
+      owner:config.GITHUB_OWNER,repo:config.GITHUB_DATA_REPO,
+      onRemote:function(){return load().then(function(){recomputeShortfall();renderCurrentView();});}});
+    return githubSync.start().catch(function(){githubSyncError=true;});
+  }
+  function openGitHubConnection() {
+    var overlay=h('div',{class:'overlay center'}),busy=false;
+    var config=window.HOMESTOCK_CONFIG||{};
+    var state=githubSync?githubSync.status():{connected:false};
+    var status=h('p',{class:'shared-status',role:'status',text:githubStatusText()});
+    var token=h('input',{class:'input',type:'password',dir:'ltr',autocomplete:'off',spellcheck:'false',
+      'aria-label':'מפתח חיבור אישי',placeholder:'github_pat_…'});
+    var error=h('p',{class:'editor-error',role:'alert'});
+    var unsub=function(){};
+    function close(){if(busy)return;unsub();token.value='';overlay.remove();}
+    var closeButton=h('button',{class:'sheet-close',type:'button','aria-label':'סגירה',onclick:close},'✕');
+    var connect=h('button',{class:'btn save',type:'button',onclick:function(){
+      if(busy||!githubSync)return;
+      busy=true;connect.disabled=true;closeButton.disabled=true;error.textContent='';
+      githubSync.connect(token.value).then(function(){
+        token.value='';form.remove();
+        status.textContent=githubStatusText();
+        showToast(githubSync.status().phase==='synced'?'המכשיר מחובר. הנתונים יתעדכנו אוטומטית.':'המכשיר חובר. העדכון יושלם כשהחיבור זמין.');
+      }).catch(function(e){
+        error.textContent=e.message==='token-format'?'הדביקו מפתח אישי מוגבל שמתחיל ב־github_pat_.':e.message==='public'?'מאגר הנתונים חייב להיות פרטי כדי להמשיך.':'החיבור לא הושלם. בדקו שהמפתח בתוקף ושיש לו גישה למאגר הנתונים עם הרשאת Contents לקריאה וכתיבה.';
+      }).then(function(){busy=false;connect.disabled=false;closeButton.disabled=false;});
+    }},'חיבור ושמירה אוטומטית');
+    // GitHub requires its account owner to issue this restricted credential.
+    // Never use the development CLI token or put a token in a URL/QR.
+    var url='https://github.com/settings/personal-access-tokens/new?name=HomeStock&description=HomeStock+device+sync&target_name='+encodeURIComponent(config.GITHUB_OWNER)+'&contents=write&expires_in=365';
+    var form=h('div',{class:'shared-connect-form'},
+      h('p',{text:'מחברים פעם אחת בכל מכשיר. אחר כך המלאי, רשימת הקניות וההוצאות מתעדכנים אוטומטית כשהאפליקציה פתוחה ומחוברת לאינטרנט.'}),
+      h('ol',{class:'shared-steps'},
+        h('li',{},h('a',{href:url,target:'_blank',rel:'noopener noreferrer',text:'יצירת מפתח חיבור ב־GitHub'})),
+        h('li',{text:'בחרו Only select repositories ואז HomeStock-data בלבד. ההרשאה הנדרשת היא Contents: Read and write.'}),
+        h('li',{text:'צרו את המפתח והדביקו אותו כאן. אין לשלוח אותו בצ׳אט.'})),
+      h('label',{class:'field-label'},'מפתח חיבור אישי',token),
+      h('p',{class:'shared-hint',text:'המפתח נשמר בדפדפן של המכשיר הזה ונשלח רק ל־GitHub. אפשר לבטל אותו בכל רגע בהגדרות GitHub.'}),error,connect);
+    var disconnect=state.connected?h('button',{class:'btn cancel',type:'button',onclick:function(){
+      if(busy)return;busy=true;disconnect.disabled=true;
+      githubSync.disconnect().then(function(){busy=false;close();showToast('המכשיר נותק. הנתונים המקומיים נשמרו.');}).catch(function(){busy=false;disconnect.disabled=false;error.textContent='לא ניתן לנתק כרגע. נסו שוב.';});
+    }},'ניתוק המכשיר הזה'):null;
+    overlay.appendChild(h('section',{class:'dialog shared-dialog',role:'dialog','aria-modal':'true','aria-label':'אותם הנתונים בכל המכשירים'},
+      h('div',{class:'sheet-header'},h('h2',{class:'dialog-title',text:'הבית שלכם, בכל מכשיר'}),closeButton),
+      status, state.connected && state.phase==='synced' ? h('p',{text:'הכול מחובר. אפשר להמשיך במחשב או בטלפון, והשינויים עוברים אוטומטית ביניהם.'}) : form,
+      h('p',{class:'shared-hint',text:'עובדים גם בלי אינטרנט. שינויים ממתינים במכשיר ונשלחים כשחוזרים לחיבור. בשינוי מקביל של אותו פריט נשמרת גרסה אחת. פריטים שונים והוצאות מתמזגים אוטומטית.'}),disconnect));
+    if(githubSync)unsub=githubSync.subscribe(function(){status.textContent=githubStatusText();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay)close();});
+    overlay.addEventListener('keydown',function(e){
+      if(e.key==='Escape'){e.preventDefault();close();}
+      if(e.key==='Tab'){
+        var targets=Array.prototype.filter.call(overlay.querySelectorAll('button,a,input'),function(el){return !el.disabled && el.getClientRects().length;});
+        var first=targets[0],last=targets[targets.length-1];
+        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+        else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+      }
+    });
+    document.body.appendChild(overlay);closeButton.focus();
   }
 
   function openSettings() {
@@ -4221,7 +4300,7 @@
         )
       ),
       row(t('settings.editProfile'), null, function () { close(); openProfile(); }),
-      h('p',{class:'settings-storage-note'},uiIcon('check'),h('span',{text:'השינויים נשמרים אוטומטית במכשיר הזה.'})),
+      row('אותם הנתונים בכל המכשירים', githubStatusText(), function(){close();openGitHubConnection();}),
       row('מחיקת כל המלאי', 'התחלה מחדש עם מלאי ריק', function () { close(); openClearInventory(); }),
       h('div', { class: 'settings-version', id: 'version', text: t('app.versionLabel') + ' ' + String(window.APP_VERSION || '').replace(/^v/,'') })
     );
@@ -4244,6 +4323,7 @@
         // One-time: give legacy single-name items a bilingual name pair.
         return migrateItemNames();
       })
+      .then(function () { return startGitHubSync(); })
       .then(function () {
         recomputeShortfall();
         renderMain();

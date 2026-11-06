@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.3.2`
+**Current version:** `v3.4.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -213,3 +213,39 @@ Launch it from the home-screen icon for a full-screen, offline app.
 | **v1.11.0** | Dormant-by-default Supabase cross-device sync |
 | **v1.10.0** | Switch User vs Manage Users separation |
 | **v1.9.0** | Scanner fixes + manual barcode entry |
+
+
+### Automatic device synchronization
+
+HomeStock uses GitHub's API and the separate **private** `amordechai-dn/HomeStock-data`
+repository. The public Pages repository contains only code and repository coordinates.
+The retired Supabase adapter remains disabled.
+
+Connect each browser once in Settings → אותם הנתונים בכל המכשירים. Create a
+fine-grained GitHub personal access token for **HomeStock-data only**, with
+Contents read/write and an expiration date. Paste it directly into the app,
+never into chat or source files. Tokens are stored only in the device's IndexedDB
+and sent only to `api.github.com`. Disconnect removes the local credential;
+revoke the token in GitHub to remove access everywhere. Browser storage is not a
+hardware credential vault: trusted app code on this origin can access it.
+
+Changes are queued locally, sent after a short debounce, and checked every 20
+seconds while the app is visible, on focus, and after reconnecting. iOS/background
+apps resume synchronization when reopened. Offline use remains available. The
+app shows connection errors in Settings; an expired token needs reconnecting.
+
+`household.json` contains revisioned inventory and shopping records, expense
+snapshots, per-device monthly counters, and permanent deletion tombstones.
+Different records and expense entries merge; concurrent changes to the same
+record use a deterministic logical revision (counter then device ID), so one
+version wins. Counter totals merge across devices. SHA-conditional GitHub writes
+retry conflicts without overwriting an unseen remote update. Data imported
+locally preserves timestamps and conditionally checks for in-flight local edits.
+Photos are separate content-addressed files under `images/`. The app refuses to
+send household data if the data repository has become public. Git history retains
+previous data, including deleted records/photos; this is not secure erasure.
+Local profile names/avatars, UI preferences, and lookup caches stay device-local.
+
+Verification: `node tools/github-sync-test.js` exercises two independent device
+stores, offline changes, merged expenses/counters, deletions, racing edits, SHA
+conflicts, photos, restart, token removal, and private-only writes.

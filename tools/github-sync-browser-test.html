@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>HomeStock IndexedDB sync check</title><style>body{font:16px system-ui;padding:24px;line-height:1.7}iframe{display:none}pre{white-space:pre-wrap}</style><h1>HomeStock browser sync checks</h1><pre id="result">Running…</pre><script>
+// Local-only fixture: two isolated browser globals with real IndexedDB stores.
+(async function(){
+ const result=document.getElementById('result');
+ if(!['localhost','127.0.0.1'].includes(location.hostname)){result.textContent='Run this verification on localhost.';return;}
+ const run=crypto.randomUUID(),files=new Map();let serial=0;
+ async function network(url,opt){
+  const route=url.split('/repos/owner/data')[1];let status=200,data;
+  if(!route)data={private:true};
+  else if(route.startsWith('/contents/')){
+   const key=route.slice(10),file=files.get(key);
+   if(opt.method==='PUT'){
+    const body=JSON.parse(opt.body);
+    if(file&&body.sha!==file.sha)status=409;
+    else{const raw=Uint8Array.from(atob(body.content),x=>x.charCodeAt(0));const doc=JSON.parse(new TextDecoder().decode(raw));files.set(key,{sha:'sha'+(++serial),doc});data={};}
+   }else if(!file)status=404;
+   else if(opt.headers.Accept==='application/vnd.github.raw+json')data=file.doc;
+   else data={sha:file.sha,encoding:'base64',content:btoa(unescape(encodeURIComponent(JSON.stringify(file.doc))))};
+  }else throw Error('Unexpected route');
+  return {ok:status===200,status,headers:{get:()=>null},json:async()=>structuredClone(data),text:async()=>JSON.stringify(data)};
+ }
+ async function device(id){
+  const frame=document.createElement('iframe');document.body.append(frame);
+  await new Promise(resolve=>{frame.onload=resolve;frame.srcdoc='<script src="../db.js"><\/script><script src="../sync/github-sync.js"><\/script>';});
+  const w=frame.contentWindow,db=w.PantryDB;db.setUser('sync-test-'+run+'-'+id);
+  const kv=new Map([['device',id]]),store={get:async k=>structuredClone(kv.get(k)),set:async(k,v)=>kv.set(k,structuredClone(v))};
+  const engine=w.GitHubSync.create({db,store,fetch:network,owner:'owner',repo:'data',userId:id,auto:false});
+  return {db,engine,frame};
+ }
+ function check(value,label){if(!value)throw Error(label);result.textContent+='\nPASS '+label;}
+ let a,b;
+ try{
+  result.textContent='Testing actual browser IndexedDB transactions';
+  a=await device('a');b=await device('b');
+  const item=await a.db.create({name:'חלב',quantity:2,unitPriceAgorot:700});
+  await a.db.putShopping({id:'list-1',name:'לחם',quantity:1});
+  a.db.setMonthlyLog({'2026-11':{restocked:2,consumed:0,shortfall:[],expenses:[{id:'expense-1',name:'חלב',amountAgorot:1400}]}});
+  await a.engine.start();await a.engine.connect('github_pat_TEST');
+  check(a.engine.status().phase==='synced','first device publishes');
+  await b.engine.start();await b.engine.connect('github_pat_TEST');
+  check((await b.db.getAll())[0].name==='חלב','Hebrew inventory transfers through IndexedDB');
+  check((await b.db.getAllShopping())[0].id==='list-1','shopping list transfers');
+  check(b.db.getMonthlyLog()['2026-11'].expenses[0].amountAgorot===1400,'expense snapshots transfer');
+  const old={items:await b.db.getAll(),shopping:await b.db.getAllShopping(),monthly:b.db.getMonthlyLog()};
+  const incoming=structuredClone(old);incoming.items[0].quantity=99;
+  const local=await b.db.getAll();local[0].quantity=7;await b.db.put(local[0]);
+  await b.db.applySyncSnapshot(old,incoming);
+  check((await b.db.getAll())[0].quantity===7,'transaction protects a concurrent local edit');
+  await b.engine.sync();await a.engine.sync();
+  check((await a.db.getAll())[0].quantity===7,'reverse direction updates first device');
+  await b.db.remove(item.id);await b.engine.sync();await a.engine.sync();
+  check((await a.db.getAll()).length===0,'deletions propagate');
+  check(a.db.getMonthlyLog()['2026-11'].expenses.length===1,'deleting inventory preserves expenses');
+  result.textContent+='\nALL BROWSER CHECKS PASSED';
+ }catch(error){result.textContent+='\nFAIL '+error.message;}
+ finally{for(const d of [a,b])if(d){d.engine.stop();await d.db.deleteUserData('sync-test-'+run+'-'+(d===a?'a':'b'));d.frame.remove();}}
+})();
+</script></html>

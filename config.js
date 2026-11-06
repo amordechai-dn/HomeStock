@@ -1,7 +1,6 @@
-/* Local-first runtime configuration. The retired cloud provider is disabled.
- * Existing cloud state is kept on-device for recovery, but old saved backend
- * settings must never silently reactivate it. A replacement needs its own
- * configured adapter before cross-device synchronization can be enabled. */
+/* Public repository coordinates only. No credentials belong in this file. */
 window.HOMESTOCK_CONFIG = {
-  CLOUD_SYNC_ENABLED: false,
+  CLOUD_SYNC_ENABLED: false, // retired provider remains disabled
+  GITHUB_OWNER: 'amordechai-dn',
+  GITHUB_DATA_REPO: 'HomeStock-data',
 };
