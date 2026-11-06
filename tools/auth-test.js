@@ -1056,6 +1056,14 @@ async function rejects(name, fn) {
   ok('shopping purchase carries price into inventory',bought.unitPriceAgorot===1234);
   ok('unit price travels in the cloud item payload',AppI.mapItemToCloud(bought,'household').data.unitPriceAgorot===1234);
 
+  ok('editor quantity accepts zero stock',AppI.parseStockQuantity('0')===0);
+  ok('editor quantity accepts fractional stock',AppI.parseStockQuantity('0.25')===0.25);
+  ok('editor quantity accepts decimal comma',AppI.parseStockQuantity('2,5')===2.5);
+  ['', '-1', 'abc', '1e3', 'Infinity', '9999999999999999999999'].forEach(function(value){
+    var rejected=false;try{AppI.parseStockQuantity(value);}catch(e){rejected=true;}
+    ok('editor rejects invalid quantity: '+value,rejected);
+  });
+
   console.log('\n============================');
   console.log('PASS ' + pass + '  FAIL ' + fail);
   console.log('============================');

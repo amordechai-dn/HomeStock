@@ -275,7 +275,7 @@
   }
 
   function formatQty(n) {
-    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+    return Number.isInteger(n) ? String(n) : new Intl.NumberFormat('he-IL',{useGrouping:false,maximumFractionDigits:6}).format(n);
   }
 
   // ---- Image pipeline (on-device compression, WebP-preferred, deduped) ----
@@ -1374,6 +1374,7 @@
     var paths = {
       bath: '<path d="M3 12h18v3a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-3Zm3 8v2m12-2v2M5 12V5a3 3 0 0 1 6 0"/><path d="M9 6h4"/>',
       house: '<path d="m3 11 9-8 9 8M5 10v11h14V10M10 21v-7h4v7"/>',
+      trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/>',
       shelf: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16M9 7v2m0 6v2"/>',
       bag: '<path d="M5 7h14l1 14H4L5 7Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/>',
       scan: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 8v8m3-8v8m4-8v8m3-8v8"/>',
@@ -1663,489 +1664,261 @@
     });
   }
 
-  // ---- Add / Edit form (modal) ----
+  function parseStockQuantity(value) {
+    var text=String(value == null ? '' : value).trim().replace(',','.');
+    if(!/^\d+(?:\.\d+)?$/.test(text)) throw new Error('invalid quantity');
+    var quantity=Number(text);
+    if(!Number.isFinite(quantity) || quantity>Number.MAX_SAFE_INTEGER) throw new Error('invalid quantity');
+    return quantity;
+  }
+
+  // A product passport: identity first, stock and place next, optional details
+  // last. Only the body scrolls; the consequence of Save stays in view.
+  var editorCounter=0;
   function openForm(existing, opts) {
-    opts = opts || {};
-    var prefill = opts.prefill || {};
-    var editing = !!existing;
-    // A language change re-opens this dialog with a live snapshot via
-    // opts.stateOverride, preserving in-progress edits.
-    var state = opts.stateOverride || {
-      // Display name shown in the input: the active-language name for an
-      // existing item, else the prefill.
-      name: editing ? itemName(existing) : prefill.name || '',
-      // Bilingual pair carried through save (null when unknown → fallback).
-      nameEn: editing ? existing.nameEn || null : prefill.nameEn || null,
-      nameHe: editing ? existing.nameHe || null : prefill.nameHe || null,
-      quantity: editing ? existing.quantity : 1,
-      unitPriceAgorot: editing ? existing.unitPriceAgorot : prefill.unitPriceAgorot,
-      unit: editing ? existing.unit : 'pcs',
-      categoryId: editing ? existing.categoryId : prefill.categoryId || 'other',
-      location: editing ? existing.location : prefill.location || defaultInventoryLocation(),
-      note: editing ? existing.note || '' : '',
-      desiredAmount: editing ? existing.desiredAmount || 0 : 0,
-      barcode: editing ? existing.barcode || null : prefill.barcode || null,
-      emoji: editing ? existing.emoji || null : prefill.emoji || null,
-      // Deduped image: full for detail/edit, thumb for the preview tile.
-      imageFull: editing ? fullImageFor(existing) : prefill.imageFull || prefill.image || null,
-      imageThumb: editing ? thumbImageFor(existing) : prefill.imageThumb || prefill.image || null,
+    opts=opts||{};
+    var prefill=opts.prefill||{};
+    var editing=!!existing;
+    var previousFocus=document.activeElement;
+    var originalQuantity=editing?existing.quantity:0;
+    var state=opts.stateOverride||{
+      name:editing?itemName(existing):prefill.name||'',
+      nameEn:editing?existing.nameEn:prefill.nameEn,
+      nameHe:editing?existing.nameHe:prefill.nameHe,
+      quantity:editing?existing.quantity:1,
+      unit:editing?existing.unit:prefill.unit||'pcs',
+      unitPriceAgorot:editing?existing.unitPriceAgorot:prefill.unitPriceAgorot,
+      categoryId:editing?existing.categoryId:prefill.categoryId||'other',
+      location:editing?existing.location:prefill.location||defaultInventoryLocation(),
+      note:editing?existing.note||'':'',
+      desiredAmount:editing?existing.desiredAmount||0:0,
+      barcode:editing?existing.barcode:prefill.barcode,
+      emoji:editing?existing.emoji:prefill.emoji,
+      imageFull:editing?fullImageFor(existing):prefill.imageFull||prefill.image||null,
+      imageThumb:editing?thumbImageFor(existing):prefill.imageThumb||prefill.image||null
     };
+    var saving=false, closed=false, suggestions=[], activeIndex=-1, searchTimer;
+    var titleId='product-editor-title-'+(++editorCounter);
+    var overlay=h('div',{class:'overlay editor-overlay'});
+    var sheet=h('div',{class:'sheet product-editor',role:'dialog','aria-modal':'true','aria-labelledby':titleId});
+    var body=h('div',{class:'sheet-body product-editor-body'});
+    var headerLocation=h('p',{class:'editor-breadcrumb'});
+    var title=h('h2',{class:'sheet-title',id:titleId,tabindex:'-1',text:editing?'עריכת מוצר':'מוצר חדש בבית'});
+    var closeButton=h('button',{class:'sheet-close',type:'button','aria-label':'סגירה',onclick:function(){close();}},'✕');
+    sheet.appendChild(h('div',{class:'grabber'}));
+    sheet.appendChild(h('div',{class:'sheet-header editor-header'},h('div',{},title,headerLocation),closeButton));
 
-    var overlay = h('div', { class: 'overlay' });
-    var sheet = h('div', { class: 'sheet' });
-
-    // Register a state-preserving reopener so a mid-edit language change brings
-    // the dialog back translated with current values intact.
-    var prevReopen = reopenTop;
-    var myReopen = function () {
-      openForm(existing, {
-        prefill: prefill,
-        stateOverride: {
-          name: nameInput.value,
-          nameEn: state.nameEn,
-          nameHe: state.nameHe,
-          quantity: state.quantity,
-          unitPriceAgorot: parseUnitPrice(price.input.value),
-          unit: state.unit,
-          categoryId: state.categoryId,
-          location: state.location,
-          note: noteInput.value,
-          desiredAmount: state.desiredAmount,
-          barcode: state.barcode,
-          emoji: state.emoji,
-          imageFull: state.imageFull,
-          imageThumb: state.imageThumb,
-        },
-      });
+    var prevReopen=reopenTop;
+    var myReopen=function(){
+      var snapshot=Object.assign({},state,{name:nameInput.value,note:noteInput.value,priceDraft:price.input.value,targetDraft:targetInput.value});
+      close(true);
+      openForm(existing,{prefill:prefill,stateOverride:snapshot});
     };
-    reopenTop = myReopen;
-
-    function close() {
+    reopenTop=myReopen;
+    function close(force) {
+      if(closed || (saving && force!==true))return;
+      closed=true;
+      clearTimeout(searchTimer);
+      window.removeEventListener('resize',fitEditorViewport);
+      if(window.visualViewport){window.visualViewport.removeEventListener('resize',fitEditorViewport);window.visualViewport.removeEventListener('scroll',fitEditorViewport);}
+      if(unitChoice)unitChoice.destroy();
+      if(categoryChoice)categoryChoice.destroy();
       overlay.remove();
-      if (reopenTop === myReopen) reopenTop = prevReopen;
+      if(reopenTop===myReopen)reopenTop=prevReopen;
+      if(previousFocus && previousFocus.isConnected)previousFocus.focus({preventScroll:true});
     }
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) close();
+    overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
+    overlay.addEventListener('keydown',function(event){
+      if(event.key==='Escape'){event.preventDefault();close();return;}
+      if(event.key!=='Tab')return;
+      var focusable=Array.prototype.slice.call(sheet.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]')).filter(function(el){return el.getClientRects().length>0;});
+      if(!focusable.length)return;
+      var first=focusable[0],last=focusable[focusable.length-1];
+      if(event.shiftKey && (document.activeElement===first || document.activeElement===title)){event.preventDefault();last.focus();}
+      else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
     });
 
-    sheet.appendChild(h('div', { class: 'grabber' }));
-    sheet.appendChild(
-      h(
-        'div',
-        { class: 'sheet-header' },
-        h('h2', {
-          class: 'sheet-title',
-          text: editing ? t('form.editTitle') : t('form.addTitle'),
-        }),
-        h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: close }, '✕')
-      )
-    );
-
-    var body = h('div', { class: 'sheet-body' });
-
-    // Photo — on-device image with emoji placeholder fallback.
-    body.appendChild(h('label', { class: 'field-label', text: t('form.photo') }));
-    var photo = photoControl(state);
-    function renderPhoto() {
-      photo.render();
-    }
-    body.appendChild(photo.row);
-    body.appendChild(photo.input);
-
-    // Name + autocomplete
-    var nameInput = h('input', {
-      class: 'input',
-      type: 'text',
-      dir: 'auto',
-      value: state.name,
-      placeholder: t('form.namePlaceholder'),
-      autocomplete: 'off',
-      autocorrect: 'off',
-      autocapitalize: 'off',
-      spellcheck: 'false',
+    var photo=photoControl(state);
+    var nameInput=h('input',{class:'input editor-name',type:'text',dir:'auto',value:state.name,'aria-label':'שם המוצר',placeholder:'מה מוסיפים לבית?',autocomplete:'off'});
+    var acBox=h('div',{class:'ac-box editor-suggestions',role:'listbox','aria-label':'הצעות למוצר',id:titleId+'-suggestions',style:'display:none'});
+    nameInput.setAttribute('aria-controls',acBox.id);
+    nameInput.setAttribute('aria-autocomplete','list');
+    nameInput.setAttribute('role','combobox');
+    nameInput.setAttribute('aria-expanded','false');
+    var categoryChoice=window.HomeDropdown.create({label:'קטגוריה',value:state.categoryId,
+      options:CATEGORIES.map(function(cat){return{value:cat.id,label:cat.emoji+' '+t('categories.'+cat.id)};}),
+      onChange:function(value){state.categoryId=value;state.emoji=null;photo.render();}
     });
-    var acBox = h('div', { class: 'ac-box', style: 'display:none' });
-    var suggestions = [];
-    var activeIdx = -1;
+    var identity=h('section',{class:'product-identity','aria-label':'פרטי המוצר'},
+      h('div',{class:'editor-photo'},photo.row,photo.input),
+      h('div',{class:'editor-identity-fields'},h('label',{class:'editor-caption'},'שם המוצר',nameInput),acBox,
+        h('div',{class:'editor-category'},h('span',{class:'editor-caption',text:'קטגוריה'}),categoryChoice.element)));
+    body.appendChild(identity);
 
-    // Applies a chosen food: fills name, emoji, category, and default unit.
-    function applyFood(f) {
-      nameInput.value = foodLabel(f);
-      state.name = nameInput.value;
-      // Catalog picks carry a known bilingual pair — store both sides.
-      state.nameEn = f.name || null;
-      state.nameHe = f.he || null;
-      state.emoji = f.emoji || null;
-      if (f.category) {
-        state.categoryId = f.category;
-        Array.prototype.forEach.call(chips.children, function (c, idx) {
-          c.className =
-            'chip' + (CATEGORIES[idx].id === f.category ? ' active' : '');
-        });
-      }
-      if (f.unit && UNITS.indexOf(f.unit) !== -1) {
-        state.unit = f.unit;
-        if (qtyUnit) qtyUnit.textContent = t('units.' + f.unit);
-        if (unitChips)
-          Array.prototype.forEach.call(unitChips.children, function (c, idx) {
-            c.className = 'chip unit' + (UNITS[idx] === f.unit ? ' active' : '');
-          });
-      }
-      renderPhoto();
-      closeAc();
+    function closeSuggestions(){acBox.style.display='none';acBox.innerHTML='';nameInput.setAttribute('aria-expanded','false');nameInput.removeAttribute('aria-activedescendant');suggestions=[];activeIndex=-1;}
+    function chooseFood(food){
+      nameInput.value=foodLabel(food);state.name=nameInput.value;
+      state.nameEn=food.name||null;state.nameHe=food.he||null;state.emoji=food.emoji||null;
+      if(food.category){state.categoryId=food.category;categoryChoice.value=food.category;}
+      if(food.unit && UNITS.indexOf(food.unit)!==-1){state.unit=food.unit;unitChoice.value=food.unit;}
+      photo.render();closeSuggestions();updateSummary();
     }
-
-    function closeAc() {
-      suggestions = [];
-      activeIdx = -1;
-      acBox.style.display = 'none';
-      acBox.innerHTML = '';
+    function highlightSuggestion(){
+      Array.prototype.forEach.call(acBox.children,function(row,index){row.classList.toggle('active',index===activeIndex);row.setAttribute('aria-selected',String(index===activeIndex));});
+      if(activeIndex>=0)nameInput.setAttribute('aria-activedescendant',titleId+'-food-'+activeIndex);
     }
+    function showSuggestions(){
+      if(closed)return;
+      suggestions=foodSearch(nameInput.value.trim());activeIndex=-1;acBox.innerHTML='';
+      if(!nameInput.value.trim() || !suggestions.length){closeSuggestions();return;}
+      suggestions.forEach(function(food,index){
+        acBox.appendChild(h('div',{class:'ac-item',role:'option',id:titleId+'-food-'+index,'aria-selected':'false',
+          onpointerdown:function(event){if(event.pointerType!=='touch')event.preventDefault();},
+          onclick:function(){chooseFood(food);nameInput.focus();}},
+          h('span',{class:'ac-emoji',text:food.emoji}),h('span',{class:'ac-name',text:foodLabel(food)})));
+      });
+      acBox.style.display='block';nameInput.setAttribute('aria-expanded','true');
+    }
+    nameInput.addEventListener('input',function(){
+      state.name=nameInput.value;state.nameEn=null;state.nameHe=null;state.emoji=null;
+      nameInput.removeAttribute('aria-invalid');if(footerError)footerError.textContent='';clearTimeout(searchTimer);searchTimer=setTimeout(showSuggestions,100);
+    });
+    nameInput.addEventListener('blur',function(){clearTimeout(searchTimer);searchTimer=setTimeout(closeSuggestions,170);});
+    nameInput.addEventListener('keydown',function(event){
+      if(acBox.style.display==='none')return;
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeSuggestions();}
+      else if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+        event.preventDefault();activeIndex=(activeIndex+(event.key==='ArrowDown'?1:-1)+suggestions.length)%suggestions.length;highlightSuggestion();
+      } else if(event.key==='Enter'&&activeIndex>=0){event.preventDefault();chooseFood(suggestions[activeIndex]);}
+    });
 
-    function renderAc() {
-      acBox.innerHTML = '';
-      var q = nameInput.value.trim();
-      if (!q) {
-        acBox.style.display = 'none';
-        return;
+    var quantityInput=h('input',{class:'editor-quantity-input',type:'text',inputmode:'decimal',dir:'ltr',value:formatQty(state.quantity),'aria-label':'כמות במלאי'});
+    var minus=h('button',{class:'step-btn',type:'button','aria-label':'הפחתת הכמות',onclick:function(){
+      state.quantity=Math.max(0,state.quantity-1);quantityInput.value=formatQty(state.quantity);quantityInput.removeAttribute('aria-invalid');updateSummary();
+    }},'−');
+    var plus=h('button',{class:'step-btn primary',type:'button','aria-label':'הגדלת הכמות',onclick:function(){
+      state.quantity=state.quantity+1;quantityInput.value=formatQty(state.quantity);quantityInput.removeAttribute('aria-invalid');updateSummary();
+    }},'+');
+    var unitChoice=window.HomeDropdown.create({label:'יחידת מידה',value:state.unit,
+      options:UNITS.map(function(unit){return{value:unit,label:t('units.'+unit)};}),
+      onChange:function(value){state.unit=value;updateSummary();}
+    });
+    quantityInput.addEventListener('input',function(){
+      try{state.quantity=parseStockQuantity(quantityInput.value);quantityInput.removeAttribute('aria-invalid');}
+      catch(e){quantityInput.setAttribute('aria-invalid','true');}
+      updateSummary();
+    });
+    var stock=h('section',{class:'editor-section editor-stock','aria-label':'כמות ומחיר'},
+      h('h3',{class:'editor-section-title',text:'כמה יש בבית?'}),
+      h('div',{class:'editor-stock-controls'},h('div',{class:'stepper editor-quantity'},minus,quantityInput,plus),
+        h('div',{class:'editor-unit'},unitChoice.element)));
+    var price=priceField(state.unitPriceAgorot,function(){return Math.max(0,state.quantity-originalQuantity);});
+    if(state.priceDraft!=null)price.input.value=state.priceDraft;
+    stock.appendChild(price.element);
+    stock.appendChild(h('p',{class:'editor-price-hint',text:'המחיר הוא ליחידת המידה שנבחרה. אין חובה להזין מחיר.'}));
+    var where=h('section',{class:'editor-section editor-place','aria-label':'מיקום בבית'},
+      h('h3',{class:'editor-section-title',text:'איפה המוצר נמצא?'}),
+      locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));
+    body.appendChild(h('div',{class:'editor-main-grid'},stock,where));
+
+    var targetInput=h('input',{class:'input',type:'text',inputmode:'decimal',dir:'ltr',value:state.targetDraft!=null?state.targetDraft:formatQty(state.desiredAmount),'aria-label':'כמות רצויה בבית'});
+    var noteInput=h('textarea',{class:'input note',rows:'2',value:state.note,'aria-label':'הערה למוצר',placeholder:'מותג מועדף, גודל אריזה או תזכורת לקנייה הבאה'});
+    // textarea values are properties, not HTML value attributes.
+    noteInput.value=state.note;
+    var extras=h('details',{class:'editor-extras'},
+      h('summary',{'aria-label':'יעד חודשי והערות'},h('span',{},h('strong',{text:'עוד קצת פרטים'}),h('span',{text:'יעד חודשי והערות'})),h('span',{class:'editor-extras-plus','aria-hidden':'true',text:'+'})),
+      h('div',{class:'editor-extras-body'},
+        h('label',{class:'editor-caption'},'כמות רצויה בבית',targetInput),
+        h('label',{class:'editor-caption'},'הערה למוצר',noteInput)));
+    if(state.note || state.desiredAmount>0)extras.open=true;
+    body.appendChild(extras);sheet.appendChild(body);
+
+    var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});
+    var footerError=h('p',{class:'editor-error',role:'alert'});
+    var cancelButton=h('button',{class:'btn cancel',type:'button',onclick:function(){close();}},'ביטול');
+    var saveButton=actionButton(editing?'שמירת שינויים':'הוספת מוצר','check','btn save editor-save',save);
+    var deleteButton=editing?h('button',{class:'editor-delete',type:'button','aria-label':'מחיקת מוצר',title:'מחיקת מוצר',onclick:function(){confirmDelete(existing,function(){close(true);});}},uiIcon('trash')):null;
+    sheet.appendChild(h('footer',{class:'product-editor-footer'},consequence,footerError,
+      h('div',{class:'editor-actions'+(editing?' with-delete':'')},deleteButton,cancelButton,saveButton)));
+
+    function updateSummary(){
+      if(!price)return;
+      if(footerError)footerError.textContent='';
+      price.update();
+      var space=SPACES.filter(function(s){return s.id===locationSpace(state.location);})[0];
+      headerLocation.textContent=space.label+(state.location==='House'?'':' / '+t('locations.'+state.location));
+      minus.disabled=state.quantity<=0;
+      if(quantityInput.getAttribute('aria-invalid')==='true'){
+        consequence.textContent='הזינו כמות תקינה מאפס ומעלה.';return;
       }
-      suggestions = foodSearch(q);
-      if (!suggestions.length) {
-        // Only show a "no matches" hint once the query is meaningful.
-        if (q.length >= 2) {
-          acBox.style.display = 'block';
-          acBox.appendChild(h('div', { class: 'ac-none', text: t('autocomplete.none') }));
-        } else {
-          acBox.style.display = 'none';
-        }
-        return;
+      try{
+        var unitPrice=parseUnitPrice(price.input.value);
+        var added=Math.max(0,state.quantity-originalQuantity);
+        var amount=purchaseAmount(added,unitPrice);
+        consequence.textContent=amount!==null ? 'תוספת של '+formatQty(added)+' '+t('units.'+state.unit)+' · הוצאה חדשה '+formatMoney(amount) :
+          unitPrice!==null && !added ? 'שמירת הפרטים לא תיצור הוצאה חדשה.' : 'המלאי יתעדכן. לא תירשם הוצאה ללא מחיר.';
+        consequence.classList.toggle('has-expense',amount!==null);
+      }catch(e){consequence.textContent='בדקו את המחיר: עד שתי ספרות אחרי הנקודה.';}
+    }
+    price.input.addEventListener('input',updateSummary);
+    updateSummary();
+    function setSaving(value){
+      saving=value;saveButton.disabled=value;cancelButton.disabled=value;closeButton.disabled=value;
+      if(deleteButton)deleteButton.disabled=value;
+      body.inert=value;
+      saveButton.querySelector('span:last-child').textContent=value?'שומר…':editing?'שמירת שינויים':'הוספת מוצר';
+    }
+    function save(){
+      if(saving)return;
+      footerError.textContent='';
+      var quantity,desired,unitPrice;
+      if(!nameInput.value.trim()){
+        nameInput.setAttribute('aria-invalid','true');nameInput.focus();consequence.textContent='';footerError.textContent='מה שם המוצר?';return;
       }
-      acBox.style.display = 'block';
-      acBox.appendChild(
-        h('div', { class: 'ac-head', text: t('autocomplete.suggestions') })
-      );
-      suggestions.forEach(function (f, idx) {
-        acBox.appendChild(
-          h(
-            'div',
-            {
-              class: 'ac-item' + (idx === activeIdx ? ' active' : ''),
-              // Use mousedown/touchstart so it fires before input blur.
-              onmousedown: function (e) {
-                e.preventDefault();
-                applyFood(f);
-              },
-            },
-            h('span', { class: 'ac-emoji', text: f.emoji }),
-            h('span', { class: 'ac-name', dir: 'auto', text: foodLabel(f) })
-          )
-        );
+      try{quantity=parseStockQuantity(quantityInput.value);}catch(e){quantityInput.setAttribute('aria-invalid','true');quantityInput.focus();consequence.textContent='';footerError.textContent='הזינו כמות תקינה מאפס ומעלה.';return;}
+      try{desired=parseStockQuantity(targetInput.value||'0');}catch(e){extras.open=true;targetInput.focus();footerError.textContent='הזינו יעד חודשי תקין מאפס ומעלה.';return;}
+      try{unitPrice=price.read();}catch(e){consequence.textContent='';footerError.textContent='הזינו מחיר תקין עם עד שתי ספרות אחרי הנקודה.';return;}
+      state.quantity=quantity;
+      var name=nameInput.value.trim();
+      var match=foodMatch(name);
+      var names=resolveNames(name,state.nameEn,state.nameHe);
+      var payload={name:name,nameEn:names.nameEn,nameHe:names.nameHe,quantity:quantity,
+        unit:state.unit,unitPriceAgorot:unitPrice,categoryId:state.categoryId,
+        location:state.location,note:noteInput.value.trim()||null,desiredAmount:desired,
+        barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
+      if(payload.categoryId==='other'&&match&&match.category)payload.categoryId=match.category;
+      var added=Math.max(0,quantity-originalQuantity);
+      var previousHash=editing?existing.imageHash:null;
+      var savedId=null;
+      setSaving(true);
+      var image=state.imageFull?storeImagePair({full:state.imageFull,thumb:state.imageThumb}):Promise.resolve(null);
+      image.then(function(hash){
+        payload.imageHash=hash;payload.image=null;
+        return editing?window.PantryDB.put(Object.assign({},existing,payload)):window.PantryDB.create(payload);
+      }).then(function(saved){
+        savedId=saved.id;
+        if(editing)Object.assign(existing,saved);
+        if(added){recordDelta(added);recordExpense(saved,added);}
+        if(previousHash&&previousHash!==saved.imageHash)return releaseImage(previousHash).catch(function(){});
+      }).then(function(){close(true);return refresh();}).then(function(){
+        var next=cardRefs[savedId]||document.querySelector('.nav-link.active');
+        if(next&&next.isConnected)next.focus({preventScroll:true});
+      }).catch(function(error){
+        console.error('Product save failed',error);
+        if(!closed){setSaving(false);footerError.textContent='לא ניתן לשמור כרגע. הפרטים נשמרו בטופס, נסו שוב.';}
       });
     }
-
-    var acTimer;
-    nameInput.addEventListener('input', function () {
-      state.name = nameInput.value;
-      state.emoji = null; // typing invalidates a previously chosen emoji
-      // Manual edits invalidate a previously chosen catalog pair; the correct
-      // bilingual pair is recomputed from the typed text on save.
-      state.nameEn = null;
-      state.nameHe = null;
-      nameInput.classList.remove('error');
-      clearTimeout(acTimer);
-      acTimer = setTimeout(renderAc, 120);
-    });
-    nameInput.addEventListener('keydown', function (e) {
-      if (acBox.style.display === 'none' || !suggestions.length) return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        activeIdx = (activeIdx + 1) % suggestions.length;
-        renderAc();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        activeIdx = (activeIdx - 1 + suggestions.length) % suggestions.length;
-        renderAc();
-      } else if (e.key === 'Enter') {
-        if (activeIdx >= 0) {
-          e.preventDefault();
-          applyFood(suggestions[activeIdx]);
-        }
-      } else if (e.key === 'Escape') {
-        closeAc();
-      }
-    });
-    nameInput.addEventListener('blur', function () {
-      setTimeout(closeAc, 150);
-    });
-
-    body.appendChild(h('label', { class: 'field-label', text: t('form.name') }));
-    body.appendChild(nameInput);
-    body.appendChild(acBox);
-
-    body.appendChild(h('label', {class:'field-label',text:'אזור בבית'}));
-    body.appendChild(locationPicker(function(){return state.location;},function(location){state.location=location;}));
-
-    // Category chips
-    body.appendChild(
-      h('label', { class: 'field-label', text: t('form.category') })
-    );
-    var chips = h('div', { class: 'chips' });
-    CATEGORIES.forEach(function (cat) {
-      chips.appendChild(
-        h(
-          'button',
-          {
-            class: 'chip' + (state.categoryId === cat.id ? ' active' : ''),
-            type: 'button',
-            onclick: function () {
-              state.categoryId = cat.id;
-              Array.prototype.forEach.call(chips.children, function (c, idx) {
-                c.className =
-                  'chip' + (CATEGORIES[idx].id === cat.id ? ' active' : '');
-              });
-              renderPhoto(); // placeholder emoji tracks the category
-            },
-          },
-          h('span', { text: cat.emoji }),
-          h('span', { text: t('categories.' + cat.id) })
-        )
-      );
-    });
-    body.appendChild(chips);
-
-    // Quantity stepper
-    body.appendChild(
-      h('label', { class: 'field-label', text: t('form.quantity') })
-    );
-    var qtyVal = h('span', { class: 'qty', text: formatQty(state.quantity) });
-    var qtyUnit = h('span', { class: 'qty-unit', text: t('units.' + state.unit) });
-    body.appendChild(
-      h(
-        'div',
-        { class: 'qty-box' },
-        h(
-          'div',
-          { class: 'stepper' },
-          h(
-            'button',
-            {
-              class: 'step-btn',
-              type: 'button',
-              onclick: function () {
-                state.quantity = Math.max(0, state.quantity - 1);
-                qtyVal.textContent = formatQty(state.quantity);
-              },
-            },
-            '−'
-          ),
-          h('div', { class: 'step-value' }, qtyVal, qtyUnit),
-          h(
-            'button',
-            {
-              class: 'step-btn primary',
-              type: 'button',
-              onclick: function () {
-                state.quantity = state.quantity + 1;
-                qtyVal.textContent = formatQty(state.quantity);
-              },
-            },
-            '+'
-          )
-        )
-      )
-    );
-
-    // Unit chips
-    var unitChips = h('div', { class: 'chips' });
-    UNITS.forEach(function (u) {
-      unitChips.appendChild(
-        h(
-          'button',
-          {
-            class: 'chip unit' + (state.unit === u ? ' active' : ''),
-            type: 'button',
-            onclick: function () {
-              state.unit = u;
-              qtyUnit.textContent = t('units.' + u);
-              Array.prototype.forEach.call(unitChips.children, function (c, idx) {
-                c.className = 'chip unit' + (UNITS[idx] === u ? ' active' : '');
-              });
-            },
-          },
-          t('units.' + u)
-        )
-      );
-    });
-    body.appendChild(unitChips);
-
-    var price = priceField(state.unitPriceAgorot, function(){return editing ? Math.max(0,state.quantity-existing.quantity) : state.quantity;});
-    body.appendChild(price.element);
-    body.appendChild(h('p',{class:'price-note',text:'הוספת כמות נרשמת כקנייה במחיר הזה. שינוי המחיר בלבד לא ישנה הוצאות קודמות.'}));
-    body.addEventListener('click', price.update);
-
-    // Desired amount (par level / monthly target)
-    body.appendChild(
-      h('label', { class: 'field-label', text: t('form.desired') })
-    );
-    var desVal = h('span', { class: 'qty', text: formatQty(state.desiredAmount) });
-    body.appendChild(
-      h(
-        'div',
-        { class: 'qty-box' },
-        h(
-          'div',
-          { class: 'stepper' },
-          h(
-            'button',
-            {
-              class: 'step-btn',
-              type: 'button',
-              onclick: function () {
-                state.desiredAmount = Math.max(0, state.desiredAmount - 1);
-                desVal.textContent = formatQty(state.desiredAmount);
-              },
-            },
-            '−'
-          ),
-          h('div', { class: 'step-value' }, desVal),
-          h(
-            'button',
-            {
-              class: 'step-btn primary',
-              type: 'button',
-              onclick: function () {
-                state.desiredAmount = state.desiredAmount + 1;
-                desVal.textContent = formatQty(state.desiredAmount);
-              },
-            },
-            '+'
-          )
-        )
-      )
-    );
-
-    // Note
-    body.appendChild(h('label', { class: 'field-label', text: t('form.note') }));
-    var noteInput = h('textarea', {
-      class: 'input note',
-      placeholder: t('form.notePlaceholder'),
-    });
-    noteInput.value = state.note;
-    body.appendChild(noteInput);
-
-    if (editing) {
-      body.appendChild(
-        h(
-          'button',
-          {
-            class: 'delete-btn',
-            type: 'button',
-            onclick: function () {
-              confirmDelete(existing, close);
-            },
-          },
-          t('form.delete')
-        )
-      );
+    function fitEditorViewport(){
+      var view=window.visualViewport;
+      overlay.style.height=(view?view.height:window.innerHeight)+'px';
+      overlay.style.top=(view?view.offsetTop:0)+'px';
+      overlay.style.bottom='auto';
     }
-
-    sheet.appendChild(body);
-
-    function save() {
-      var unitPrice;
-      try {unitPrice=price.read();} catch(e){return;}
-      var addedQuantity = editing ? Math.max(0,state.quantity-existing.quantity) : state.quantity;
-      var name = nameInput.value.trim();
-      if (!name) {
-        nameInput.focus();
-        nameInput.classList.add('error');
-        return;
-      }
-      // Best-effort emoji when the user didn't pick a suggestion.
-      var emoji = state.emoji;
-      if (!emoji) {
-        var m = foodMatch(name);
-        if (m) {
-          emoji = m.emoji;
-          if (state.categoryId === 'other' && m.category)
-            state.categoryId = m.category;
-        }
-      }
-      // Resolve the bilingual pair: use the catalog pick if still valid,
-      // otherwise detect the typed language and enrich from the catalog.
-      var names = resolveNames(name, state.nameEn, state.nameHe);
-      function finalize(imageHash) {
-        var payload = {
-          name: name,
-          nameEn: names.nameEn,
-          nameHe: names.nameHe,
-          quantity: state.quantity,
-          unitPriceAgorot: unitPrice,
-          unit: state.unit,
-          categoryId: state.categoryId,
-          location: state.location,
-          note: noteInput.value.trim() || null,
-          desiredAmount: state.desiredAmount,
-          barcode: state.barcode,
-          emoji: emoji || null,
-          imageHash: imageHash || null,
-        };
-        var p;
-        if (editing) {
-          var prevHash = existing.imageHash || null;
-          Object.keys(payload).forEach(function (k) {
-            existing[k] = payload[k];
-          });
-          existing.image = null; // drop any legacy inline copy
-          p = window.PantryDB.put(existing).then(function () {
-            if(addedQuantity) {recordDelta(addedQuantity);recordExpense(existing,addedQuantity);}
-            // GC the previous image if this was its last reference.
-            if (prevHash && prevHash !== imageHash) return releaseImage(prevHash);
-          });
-        } else {
-          p = window.PantryDB.create(payload).then(function (item) {
-            // Adding a new item counts as restocking that quantity.
-            if (item.quantity) {recordDelta(item.quantity);recordExpense(item,item.quantity);}
-            return item;
-          });
-        }
-        p.then(function () {
-          close();
-          refresh();
-        });
-      }
-
-      // Persist the (possibly new/unchanged) image first, deduped by hash.
-      if (state.imageFull) {
-        storeImagePair({ full: state.imageFull, thumb: state.imageThumb }).then(finalize);
-      } else {
-        finalize(null);
-      }
-    }
-
-    sheet.appendChild(
-      h(
-        'div',
-        { class: 'actions' },
-        h(
-          'button',
-          { class: 'btn cancel', type: 'button', onclick: close },
-          t('form.cancel')
-        ),
-        h(
-          'button',
-          { class: 'btn save', type: 'button', onclick: save },
-          editing ? t('form.save') : t('form.create')
-        )
-      )
-    );
-
-    overlay.appendChild(sheet);
-    document.body.appendChild(overlay);
-    if (!editing && !state.name)
-      setTimeout(function () {
-        nameInput.focus();
-      }, 50);
+    window.addEventListener('resize',fitEditorViewport);
+    if(window.visualViewport){window.visualViewport.addEventListener('resize',fitEditorViewport);window.visualViewport.addEventListener('scroll',fitEditorViewport);}
+    fitEditorViewport();
+    overlay.appendChild(sheet);document.body.appendChild(overlay);
+    setTimeout(function(){if(!closed){if(!editing&&!state.name)nameInput.focus();else title.focus({preventScroll:true});}},40);
   }
 
   // ---- Delete confirm ----
@@ -4563,6 +4336,7 @@
     // Pure, DOM-free helpers exposed for the automated logic harness.
     _internals: {
       locationSpace: locationSpace,
+      parseStockQuantity: parseStockQuantity,
       changeQty: changeQty,
       parseUnitPrice: parseUnitPrice,
       purchaseAmount: purchaseAmount,

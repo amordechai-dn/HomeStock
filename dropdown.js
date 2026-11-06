@@ -111,7 +111,13 @@
         row.addEventListener('click',function(){choose(index);});
         rows.push(row);list.appendChild(row);
       });
-      popup.appendChild(list);document.body.appendChild(popup);
+      popup.appendChild(list);
+      // Keep options inside the dialog's accessibility scope. A manual native
+      // popover provides a top-layer surface, escaping clipping and transforms.
+      var dialog=typeof trigger.closest==='function'?trigger.closest('[role="dialog"]'):null;
+      if(dialog && typeof popup.showPopover==='function') {
+        popup.setAttribute('popover','manual');dialog.appendChild(popup);popup.showPopover();
+      } else document.body.appendChild(popup);
       trigger.setAttribute('aria-expanded','true');
       position();
       setActive(Math.max(0,options.findIndex(function(o){return o.value===value;})),true);

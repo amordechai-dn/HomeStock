@@ -44,4 +44,16 @@ trigger.fire('click');trigger.fire('keydown','Tab');assert.equal(trigger.attrs['
 control.value='oct';assert.equal(control.value,'oct');
 trigger.fire('click');control.destroy();
 assert.equal(body.children.length,1);assert.equal(Object.keys(documentEvents).length,0);assert.equal(Object.keys(windowEvents).length,0);
+// A dialog-owned top-layer popup stays in the modal accessibility tree.
+var dialogHost=new Element();body.appendChild(dialogHost);
+Element.prototype.closest=function(){return dialogHost;};
+Element.prototype.showPopover=function(){this.wasShown=true;};
+var dialogControl=window.HomeDropdown.create({label:'קטגוריה',options:[{value:'a',label:'אחר'}]});
+dialogHost.appendChild(dialogControl.element);
+dialogControl.element.children[0].fire('click');
+var topLayer=dialogHost.children[1];
+assert.equal(topLayer.attrs.popover,'manual');assert.equal(topLayer.wasShown,true);
+assert.equal(topLayer.parent,dialogHost);
+dialogControl.destroy();assert.equal(dialogHost.children.length,1);
+assert.equal(Object.keys(documentEvents).length,0);
 console.log('PASS: keyboard selection, Hebrew type-ahead, cancellation, outside click, focus, phone bounds and listener cleanup');

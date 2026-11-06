@@ -10,7 +10,7 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v3.2.1`
+**Current version:** `v3.3.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -26,6 +26,12 @@ Built with **plain HTML/CSS/JS** — no framework, no build step, no CDNs. It wo
 - **+/- quantity steppers** and an **"Out"** badge at zero.
 - **Category emoji** icons (item-specific emoji falls back to its category).
 - **Desired amounts (par levels)** per item and **monthly restock tracking**.
+
+### Product editor
+- Product identity first, with catalog suggestions and a compact category selector.
+- Direct quantity entry, unit selection, price and storage location in focused sections.
+- Monthly targets and notes are expandable. A persistent save tray previews any new expense.
+- Keyboard focus stays within the dialog; the editor adapts to the visible phone viewport.
 
 ### Dropdowns
 - Hebrew, RTL menus for month and unit selection, with explicit selected states.
