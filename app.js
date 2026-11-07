@@ -1544,10 +1544,13 @@
     prepareWorkspace();
     var summary=Home.summary(items),month=window.PantryDB.getMonthlyLog()[ym()]||{};
     var workspace=h('main',{class:'kitchen-workspace',id:'main-content',tabindex:'-1'});
-    workspace.appendChild(h('header',{class:'kitchen-header'},h('div',{},
-      h('p',{class:'today-label',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
-      h('div',{class:'home-heading'},h('span',{class:'mobile-home-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),h('h1',{text:'בית'})),h('p',{class:'kitchen-subtitle',text:items.length?productCount(summary.total)+' בבית. '+(summary.attention?summary.attention+' צריכים השלמה.':'יש מהכול.'): 'מהמטבח ועד ארון הניקיון. יודעים מה יש ומה חסר.'})),
-      items.length?actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);}):null));
+    workspace.appendChild(h('header',{class:'kitchen-header inventory-inline-header'},
+      h('div',{class:'inventory-heading-line'},
+        h('h1',{text:'בית'}),
+        h('time',{class:'inventory-heading-date',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
+        h('span',{class:'inventory-heading-count',text:productCount(summary.total)+' בבית'}),
+        h('span',{class:'inventory-heading-status',text:summary.attention?summary.attention+' צריכים השלמה':'יש מהכול'})),
+      actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);})));
     var expiring=items.filter(function(item){var status=Home.expiry(item);return item.quantity>0&&status&&status.urgent;});
     if(expiring.length)workspace.appendChild(h('div',{class:'expiry-notice',role:'status'},
       h('strong',{text:'כדאי לבדוק את התוקף'}),

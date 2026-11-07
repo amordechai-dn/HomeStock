@@ -471,3 +471,15 @@ button,input,textarea,select { font-family:inherit; }
  .kitchen-nav .nav-settings { margin-block-start:0; }
  .kitchen-nav .nav-app-version { margin-block-start:auto;text-align:start; }
 }
+
+.inventory-inline-header { align-items:center;gap:20px; }
+.inventory-heading-line { display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;min-width:0; }
+.inventory-inline-header .inventory-heading-line h1 { font-size:30px;line-height:1.3;margin:0; }
+.inventory-heading-line > :not(h1) { font-size:16px;line-height:1.5;white-space:nowrap;color:var(--muted);padding-inline-start:20px;border-inline-start:1px solid var(--border); }
+.inventory-heading-line .inventory-heading-count { color:var(--text);font-weight:500; }
+@media(max-width:600px){
+ .inventory-heading-line { gap:8px 12px; }
+ .inventory-inline-header .inventory-heading-line h1 { font-size:26px; }
+ .inventory-heading-line > :not(h1) { font-size:14px;padding-inline-start:12px; }
+ .inventory-inline-header { align-items:flex-start;gap:10px; }
+}

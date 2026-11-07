@@ -10,7 +10,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.3.35`
+**Current version:** `v4.3.36`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
