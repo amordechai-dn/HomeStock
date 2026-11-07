@@ -1609,7 +1609,7 @@
       h('button',{type:'button',class:'item-open','aria-label':'עריכת '+itemName(item),'data-focus-key':'edit-'+item.id,onclick:function(){openForm(item);}},
         itemThumb(item),h('span',{class:'card-info'},h('span',{class:'card-name',dir:'auto',text:itemName(item)}),
           h('span',{class:'card-meta'},h('span',{class:'stock-label',text:label}),
-            item.noExpiry?h('span',{class:'expiry-label',text:'ללא תאריך תפוגה'}):item.expiryDate?h('span',{class:'expiry-label'+(Home.expiry(item)&&Home.expiry(item).urgent?' expiry-urgent':''),text:Home.expiry(item)?Home.expiry(item).label:''}):null,
+            !item.noExpiry&&item.expiryDate?h('span',{class:'expiry-label'+(Home.expiry(item)&&Home.expiry(item).urgent?' expiry-urgent':''),text:Home.expiry(item)?Home.expiry(item).label:''}):null,
             Number.isSafeInteger(item.unitPriceAgorot)?h('span',{class:'item-price',text:formatMoney(item.unitPriceAgorot)+' / '+unit}):null))),stepper);
   }
 
@@ -1670,7 +1670,7 @@
       location:editing?existing.location:prefill.location||defaultInventoryLocation(),
       note:editing?existing.note||'':'',
       desiredAmount:editing?existing.desiredAmount||0:0,
-      expiryDate:editing?existing.expiryDate||'':prefill.expiryDate||'',noExpiry:editing?!!existing.noExpiry:false,
+      expiryDate:editing?(existing.noExpiry?'':existing.expiryDate||''):prefill.expiryDate||'',
       barcode:editing?existing.barcode:prefill.barcode,
       emoji:editing?existing.emoji:prefill.emoji,
       imageFull:editing?fullImageFor(existing):prefill.imageFull||prefill.image||null,
@@ -1825,12 +1825,8 @@
     where.appendChild(h('div',{class:'editor-location-details'},
       h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערה למוצר'}),noteInput)));
     var expiryInput=h('input',{class:'input',type:'date',value:state.expiryDate,'aria-label':'תאריך תפוגה',oninput:function(){state.expiryDate=this.value;}});
-    var noExpiry=h('input',{type:'checkbox',checked:state.noExpiry,onchange:function(){state.noExpiry=this.checked;expiryInput.disabled=this.checked;}});
-    noExpiry.checked=state.noExpiry;expiryInput.disabled=state.noExpiry;
     stock.appendChild(h('section',{class:'editor-expiry'},
-      h('h3',{class:'editor-section-title',text:'תאריך תפוגה'}),expiryInput,
-      h('label',{class:'expiry-none'},noExpiry,'אין תאריך תפוגה'),
-      h('p',{class:'settings-help',text:'אפשר להשאיר ריק אם התאריך לא ידוע. התראה תופיע באפליקציה בשבוע שלפני התפוגה.'})));
+      h('h3',{class:'editor-section-title',text:'תאריך תפוגה'}),expiryInput));
     stock.appendChild(h('div',{class:'editor-location-details'},h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetStepper)));
     var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
     var voiceStatus=h('p',{class:'settings-help',role:'status',text:Speech?'אפשר לומר שם, כמות, מקום ומחיר. הדיבור עשוי להישלח לשירות הזיהוי של הדפדפן.':'זיהוי דיבור אינו נתמך בדפדפן הזה. אפשר למלא את השדות ידנית.'});
@@ -1845,7 +1841,7 @@
         if(draft.quantity!=null){state.quantity=draft.quantity;quantityInput.value=formatQty(draft.quantity);quantityInput.removeAttribute('aria-invalid');markVoice(quantityInput);filled.push('כמות');}
         if(draft.unitPriceAgorot!=null){price.input.value=String(draft.unitPriceAgorot/100);markVoice(price.input);filled.push('מחיר ליחידה');}
         if(draft.location){state.location=draft.location;var picker=where.querySelector('.location-picker');picker.replaceWith(locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));filled.push('מיקום');}
-        if(draft.expiryDate){state.expiryDate=draft.expiryDate;state.noExpiry=false;noExpiry.checked=false;expiryInput.disabled=false;expiryInput.value=draft.expiryDate;markVoice(expiryInput);filled.push('תאריך תפוגה');}
+        if(draft.expiryDate){state.expiryDate=draft.expiryDate;expiryInput.value=draft.expiryDate;markVoice(expiryInput);filled.push('תאריך תפוגה');}
         updateSummary();voiceStatus.textContent='נשמע: ״'+text+'״. מולאו: '+filled.join(', ')+'. בדקו ותקנו את השדות לפני השמירה.';
     }
     var dictationInput=h('textarea',{class:'input',rows:'3','aria-label':'תיאור מוצר בהכתבה',placeholder:'הכתיבו כאן בעזרת המחשב, או הדביקו תמלול'});
@@ -1917,7 +1913,7 @@
       var payload={name:name,nameEn:names.nameEn,nameHe:names.nameHe,quantity:quantity,
         unit:state.unit,unitPriceAgorot:unitPrice,categoryId:state.categoryId,
         location:state.location,note:noteInput.value.trim()||null,desiredAmount:desired,
-        expiryDate:state.noExpiry?null:state.expiryDate||null,noExpiry:state.noExpiry,
+        expiryDate:state.expiryDate||null,noExpiry:false,
         barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
       if(payload.categoryId==='other'&&match&&match.category)payload.categoryId=match.category;
       var added=Math.max(0,quantity-originalQuantity);
