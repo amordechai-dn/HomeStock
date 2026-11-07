@@ -83,5 +83,13 @@
     });
     return keys.sort().reverse();
   }
-  root.HomeModel={expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  function expiry(item,today){
+    if(item.noExpiry||!item.expiryDate)return null;
+    function utc(value){var p=value.split('-').map(Number);return Date.UTC(p[0],p[1]-1,p[2]);}
+    var now=today||new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-'+String(new Date().getDate()).padStart(2,'0');
+    var days=Math.round((utc(item.expiryDate)-utc(now))/86400000);
+    if(!Number.isFinite(days))return null;
+    return {days:days,label:days<0?'פג התוקף':days===0?'התוקף מסתיים היום':days===1?'התוקף מסתיים מחר':'תוקף בעוד '+days+' ימים',urgent:days<=7};
+  }
+  root.HomeModel={expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);

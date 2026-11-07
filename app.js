@@ -1543,6 +1543,10 @@
       h('p',{class:'today-label',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
       h('div',{class:'home-heading'},h('span',{class:'mobile-home-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),h('h1',{text:'בית'})),h('p',{class:'kitchen-subtitle',text:items.length?productCount(summary.total)+' בבית. '+(summary.attention?summary.attention+' צריכים השלמה.':'יש מהכול.'): 'מהמטבח ועד ארון הניקיון. יודעים מה יש ומה חסר.'})),
       items.length?actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);}):null));
+    var expiring=items.filter(function(item){var status=Home.expiry(item);return item.quantity>0&&status&&status.urgent;});
+    if(expiring.length)workspace.appendChild(h('div',{class:'expiry-notice',role:'status'},
+      h('strong',{text:'כדאי לבדוק את התוקף'}),
+      h('p',{text:expiring.map(function(item){return itemName(item)+' — '+Home.expiry(item).label;}).join(' · ')})));
     var rooms=h('div',{class:'space-tabs','aria-label':'בית — מטבח, חדר רחצה וכללי'});
     SPACES.forEach(function(space){
       var stat=summary.rooms[space.id],selected=inventorySpace===space.id&&!inventoryQuery;
@@ -1599,6 +1603,7 @@
       h('button',{type:'button',class:'item-open','aria-label':'עריכת '+itemName(item),'data-focus-key':'edit-'+item.id,onclick:function(){openForm(item);}},
         itemThumb(item),h('span',{class:'card-info'},h('span',{class:'card-name',dir:'auto',text:itemName(item)}),
           h('span',{class:'card-meta'},h('span',{class:'stock-label',text:label}),
+            item.noExpiry?h('span',{class:'expiry-label',text:'ללא תאריך תפוגה'}):item.expiryDate?h('span',{class:'expiry-label'+(Home.expiry(item)&&Home.expiry(item).urgent?' expiry-urgent':''),text:Home.expiry(item)?Home.expiry(item).label:''}):null,
             Number.isSafeInteger(item.unitPriceAgorot)?h('span',{class:'item-price',text:formatMoney(item.unitPriceAgorot)+' / '+unit}):null))),stepper);
   }
 
@@ -1659,6 +1664,7 @@
       location:editing?existing.location:prefill.location||defaultInventoryLocation(),
       note:editing?existing.note||'':'',
       desiredAmount:editing?existing.desiredAmount||0:0,
+      expiryDate:editing?existing.expiryDate||'':'',noExpiry:editing?!!existing.noExpiry:false,
       barcode:editing?existing.barcode:prefill.barcode,
       emoji:editing?existing.emoji:prefill.emoji,
       imageFull:editing?fullImageFor(existing):prefill.imageFull||prefill.image||null,
@@ -1811,6 +1817,13 @@
     where.appendChild(h('div',{class:'editor-location-details'},
       h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetStepper),
       h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערה למוצר'}),noteInput)));
+    var expiryInput=h('input',{class:'input',type:'date',value:state.expiryDate,'aria-label':'תאריך תפוגה',oninput:function(){state.expiryDate=this.value;}});
+    var noExpiry=h('input',{type:'checkbox',checked:state.noExpiry,onchange:function(){state.noExpiry=this.checked;expiryInput.disabled=this.checked;}});
+    noExpiry.checked=state.noExpiry;expiryInput.disabled=state.noExpiry;
+    where.appendChild(h('section',{class:'editor-expiry'},
+      h('h3',{class:'editor-section-title',text:'תאריך תפוגה'}),expiryInput,
+      h('label',{class:'expiry-none'},noExpiry,'אין תאריך תפוגה'),
+      h('p',{class:'settings-help',text:'אפשר להשאיר ריק אם התאריך לא ידוע. התראה תופיע באפליקציה בשבוע שלפני התפוגה.'})));
     sheet.appendChild(body);
 
     var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});
@@ -1864,6 +1877,7 @@
       var payload={name:name,nameEn:names.nameEn,nameHe:names.nameHe,quantity:quantity,
         unit:state.unit,unitPriceAgorot:unitPrice,categoryId:state.categoryId,
         location:state.location,note:noteInput.value.trim()||null,desiredAmount:desired,
+        expiryDate:state.noExpiry?null:state.expiryDate||null,noExpiry:state.noExpiry,
         barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
       if(payload.categoryId==='other'&&match&&match.category)payload.categoryId=match.category;
       var added=Math.max(0,quantity-originalQuantity);

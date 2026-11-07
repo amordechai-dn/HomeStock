@@ -34,3 +34,9 @@ assert.deepEqual(M.expenseMonths('2026-11',{'2026-08':{}}),['2026-11']);
 assert.deepEqual(M.expenseMonths('2027-02',{}),['2027-02','2027-01','2026-12','2026-11']);
 assert.deepEqual(M.expenseMonths('2026-12',{'2028-01':{}}),['2026-12','2026-11']);
 console.log('PASS: expense month timeline starts November 2026, includes empty months, crosses years and excludes future months');
+
+assert.equal(M.expiry({expiryDate:'2026-11-14'},'2026-11-07').urgent,true);
+assert.equal(M.expiry({expiryDate:'2026-11-15'},'2026-11-07').urgent,false);
+assert.equal(M.expiry({expiryDate:'2026-11-06'},'2026-11-07').label,'פג התוקף');
+assert.equal(M.expiry({expiryDate:'2026-11-07'},'2026-11-07').days,0);
+assert.equal(M.expiry({noExpiry:true,expiryDate:'2026-11-07'},'2026-11-07'),null);

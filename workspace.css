@@ -420,3 +420,5 @@ button,input,textarea,select { font-family:inherit; }
  .product-editor .editor-price-hint,.product-editor .editor-save-summary { font-size:15px; }
  .storage-tab,.status-filter,.kitchen-button,.shopping-buy { font-size:16px; }
 }
+
+.editor-expiry { margin-block-start:28px; }.expiry-none { display:flex;align-items:center;gap:12px;min-height:48px; }.expiry-none input { width:22px;height:22px; }.expiry-notice { padding:16px 0;border-block:1px solid #c9ad73;margin-block-end:24px;color:#73511f; }.expiry-notice p{margin:8px 0;line-height:1.8}.expiry-urgent{color:#9b451e;font-weight:600}.expiry-label{display:block}

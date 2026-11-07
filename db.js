@@ -210,6 +210,8 @@
       categoryId: input.categoryId || 'other',
       location: input.location || 'Fridge',
       note: input.note || null,
+      expiryDate:input.noExpiry?null:input.expiryDate||null,
+      noExpiry:!!input.noExpiry,
       // Specific item emoji (from the food DB); null → fall back to category.
       emoji: input.emoji || null,
       // Legacy inline image (data URL). Retained for backward compat but no
