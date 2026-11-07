@@ -626,7 +626,7 @@
       var addBtn = h(
         'button',
         { class: 'btn ghost', type: 'button', onclick: function () { fileInput.click(); } },
-        preview ? t('form.changePhoto') : t('form.addPhoto')
+        'בחירת תמונה'
       );
       var rm = preview
         ? h(
@@ -640,7 +640,7 @@
           )
         : null;
       row.appendChild(tile);
-      var cameraBtn=h('button',{class:'btn ghost',type:'button',text:'צילום מוצר',onclick:function(){captureProductPhoto(function(pair){state.imageFull=pair.full;state.imageThumb=pair.thumb;render();},function(){cameraInput.click();});}});
+      var cameraBtn=h('button',{class:'btn ghost',type:'button',text:'צילום',onclick:function(){captureProductPhoto(function(pair){state.imageFull=pair.full;state.imageThumb=pair.thumb;render();},function(){cameraInput.click();});}});
       row.appendChild(h('div', { class: 'photo-actions' }, cameraBtn,addBtn, rm));
     }
     function readPhoto(input) {
@@ -1799,9 +1799,9 @@
       onChange:function(value){state.categoryId=value;state.emoji=null;photo.render();}
     });
     var identity=h('section',{class:'product-identity','aria-label':'פרטי המוצר'},
-      h('div',{class:'editor-photo'},photo.row,photo.input),
       h('div',{class:'editor-identity-fields'},h('label',{class:'editor-caption'},'שם המוצר',nameInput),acBox,
-        h('div',{class:'editor-category'},h('span',{class:'editor-caption',text:'קטגוריה'}),categoryChoice.element)));
+        h('div',{class:'editor-category'},h('span',{class:'editor-caption',text:'קטגוריה'}),categoryChoice.element)),
+      h('div',{class:'editor-photo'},photo.row,photo.input));
     body.appendChild(identity);
 
     function closeSuggestions(){acBox.style.display='none';acBox.innerHTML='';nameInput.setAttribute('aria-expanded','false');nameInput.removeAttribute('aria-activedescendant');suggestions=[];activeIndex=-1;}
