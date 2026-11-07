@@ -61,7 +61,7 @@
  .settings-section > .btn { width:100%; }
 }
 
-.scanner-page .scan-video { object-fit:contain; }
+.scanner-page .scan-video { object-fit:cover;object-position:center; }
 .scanner-camera-tools { display:grid;gap:12px;min-width:0; }.scanner-camera-tools select { width:100%;min-width:0;font-size:16px;min-height:44px; }.scanner-camera-tools .settings-help { margin:0; }
 
 /* Photo actions belong to a stable photo column, with readable full labels. */
