@@ -520,3 +520,4 @@ button,input,textarea,select { font-family:inherit; }
 }
 
 .nav-app-version,.settings-version { direction:ltr;unicode-bidi:isolate; }
+@media(min-width:1024px){.kitchen-nav .nav-app-version{text-align:right;}}
