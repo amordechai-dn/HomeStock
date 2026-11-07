@@ -489,3 +489,22 @@ button,input,textarea,select { font-family:inherit; }
  .inventory-search-wrap { width:100%;max-width:420px; }
  .inventory-search { min-height:44px; }
 }
+
+/* Home header: distinct title, useful stock summary, quiet date. */
+.inventory-heading-line { display:grid;grid-template-columns:auto auto;align-items:center;column-gap:24px;row-gap:8px;width:100%; }
+.inventory-inline-header { align-items:center; }
+.inventory-inline-header > .inventory-heading-line { flex:1; }
+.inventory-inline-header .inventory-heading-line h1 { grid-column:1;grid-row:1;font-size:36px;line-height:1.25; }
+.inventory-heading-line > :not(h1) { border:0;padding:0;white-space:normal; }
+.inventory-heading-line .inventory-heading-date { grid-column:2;grid-row:1;justify-self:end;font-size:15px; }
+.inventory-heading-line .inventory-heading-count { grid-column:1;grid-row:2;font-size:17px;font-weight:400; }
+.inventory-heading-line .inventory-heading-status { grid-column:2;grid-row:2;justify-self:end;font-size:15px; }
+.inventory-inline-header .header-add { align-self:center; }
+@media(max-width:600px){
+ .inventory-heading-line { grid-template-columns:minmax(0,1fr);gap:6px; }
+ .inventory-heading-line .inventory-heading-date { grid-column:1;grid-row:1;justify-self:start;font-size:14px; }
+ .inventory-inline-header .inventory-heading-line h1 { grid-column:1;grid-row:2;font-size:30px; }
+ .inventory-heading-line .inventory-heading-count { grid-column:1;grid-row:3;font-size:16px; }
+ .inventory-heading-line .inventory-heading-status { grid-column:1;grid-row:4;justify-self:start;font-size:14px; }
+ .inventory-inline-header .header-add { align-self:center; }
+}
