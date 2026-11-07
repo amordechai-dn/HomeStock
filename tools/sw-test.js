@@ -57,12 +57,12 @@ async function lifecycle(w, name) {
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/dropdown.js');}));
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/design.css');}));
   assert(w.requests.some(function(r){return new URL(r.url).pathname.endsWith('/fonts/Rubik.ttf');}));
-  assert(w.requests.every(function (r) { return r.cache === 'reload' && new URL(r.url).searchParams.get('__release') === 'v4.3.41'; }));
+  assert(w.requests.every(function (r) { return r.cache === 'reload' && new URL(r.url).searchParams.get('__release') === 'v4.3.42'; }));
   await lifecycle(w, 'activate');
   assert.deepEqual(w.removed, [w.prefix + 'old']);
   var response;
   w.handlers.fetch({request:{method:'GET',url:'https://example.github.io/HomeStock/app.js?v=2.2.1'},respondWith:function(p){response=p;}});
-  assert.equal((await response).url, 'https://example.github.io/HomeStock/app.js?__release=v4.3.41');
+  assert.equal((await response).url, 'https://example.github.io/HomeStock/app.js?__release=v4.3.42');
   var intercepted = false;
   w.handlers.fetch({request:{method:'GET',url:'https://example.github.io/another-app/'},respondWith:function(){intercepted=true;}});
   assert.equal(intercepted,false);

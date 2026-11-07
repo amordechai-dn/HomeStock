@@ -521,3 +521,18 @@ button,input,textarea,select { font-family:inherit; }
 
 .nav-app-version,.settings-version { direction:ltr;unicode-bidi:isolate; }
 @media(min-width:1024px){.kitchen-nav .nav-app-version{text-align:right;}}
+
+.inventory-toolbar > .home-dropdown { width:180px;max-width:100%;justify-self:end; }
+@media(min-width:1024px){
+ .inventory-toolbar { grid-template-columns:minmax(220px,420px) minmax(0,1fr) 180px;gap:18px; }
+}
+@media(max-width:1023px){
+ .inventory-toolbar { grid-template-columns:minmax(0,1fr) auto; }
+ .inventory-toolbar > .inventory-search-wrap { grid-column:1/-1; }
+ .inventory-toolbar > .storage-tabs { min-width:0; }
+ .inventory-toolbar > .home-dropdown { width:155px; }
+}
+@media(max-width:480px){
+ .inventory-toolbar { grid-template-columns:minmax(0,1fr); }
+ .inventory-toolbar > .home-dropdown { justify-self:start; }
+}

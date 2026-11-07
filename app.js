@@ -1615,7 +1615,8 @@
       filters.appendChild(button);inventoryFilterButtons.push({id:filter.id,button:button,count:count});
     });
     var sort=window.HomeDropdown.create({label:'מיון מוצרים',value:inventorySort,options:[{value:'attention',label:'החסרים קודם'},{value:'name',label:'לפי שם'},{value:'recent',label:'עודכנו לאחרונה'}],onChange:function(value){inventorySort=value;renderInventoryShelf(shelf);}});
-    content.appendChild(h('div',{class:'inventory-section-head'},inventoryTitle,sort.element));
+    content.querySelector('.inventory-toolbar').appendChild(sort.element);
+    content.appendChild(h('div',{class:'inventory-section-head'},inventoryTitle));
     content.appendChild(filters);renderInventoryShelf(shelf);content.appendChild(shelf);workspace.appendChild(content);root.appendChild(workspace);
   }
 
