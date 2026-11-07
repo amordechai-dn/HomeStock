@@ -483,3 +483,9 @@ button,input,textarea,select { font-family:inherit; }
  .inventory-heading-line > :not(h1) { font-size:14px;padding-inline-start:12px; }
  .inventory-inline-header { align-items:flex-start;gap:10px; }
 }
+
+@media(min-width:1024px){
+ .inventory-toolbar { grid-template-columns:minmax(220px,420px) minmax(0,1fr); }
+ .inventory-search-wrap { width:100%;max-width:420px; }
+ .inventory-search { min-height:44px; }
+}
