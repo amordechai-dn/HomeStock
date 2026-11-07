@@ -1526,7 +1526,7 @@
           actionButton('הצגת כל המוצרים','shelf','kitchen-button secondary',function(){inventoryStatus='all';inventoryQuery='';inventoryLocation='all';renderMain();})));
       return;
     }
-    LOCATIONS.slice().sort(function(a,b){return filtered.findIndex(function(item){return item.location===a.id;})-filtered.findIndex(function(item){return item.location===b.id;});}).forEach(function(loc){
+    LOCATIONS.forEach(function(loc){
       var rows=filtered.filter(function(item){return item.location===loc.id;});if(!rows.length)return;
       var roomLabel=SPACES.find(function(space){return space.id===loc.space;}).label;
       var heading=inventoryQuery?roomLabel+' / '+t('locations.'+loc.id):t('locations.'+loc.id);
