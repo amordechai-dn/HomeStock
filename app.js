@@ -2579,7 +2579,7 @@
       h('div', { class: 'actions' }, manualBtn)
     );
     var cameraTools=h('div',{class:'scanner-camera-tools'},
-      h('button',{type:'button',class:'btn ghost',text:'מיקוד מחדש',onclick:function(){applyAdvancedCamera();}}),
+      h('button',{type:'button',class:'btn ghost',text:'מיקוד מחדש',onclick:function(){applyAdvancedCamera(true);}}),
       h('p',{class:'settings-help',text:'החזיקו את הברקוד במרחק של כ־15–25 ס״מ, באור טוב. אם התמונה מטושטשת, הרחיקו מעט את המוצר מהעדשה.'}));
     panel.insertBefore(cameraTools,frame.nextSibling);
     overlay.appendChild(panel);
@@ -2671,22 +2671,15 @@
     // Best-effort post-start camera tuning: continuous autofocus (where the
     // device/browser exposes it) and reading back the actual resolution for the
     // debug panel. Unsupported constraints are silently ignored — never fatal.
-    function applyAdvancedCamera() {
-      try {
-        var stream = video.srcObject;
-        var track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
-        if (!track) return;
-        var caps = track.getCapabilities ? track.getCapabilities() : {};
-        var adv = [];
-        if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1)
-          adv.push({ focusMode: 'continuous' });
-        if(caps.exposureMode&&caps.exposureMode.indexOf('continuous')!==-1)adv.push({exposureMode:'continuous'});
-        if (adv.length && track.applyConstraints)
-          track.applyConstraints({ advanced: adv }).catch(function () {});
-        var s = track.getSettings ? track.getSettings() : {};
-        dbg.w = s.width || 0;
-        dbg.h = s.height || 0;
-      } catch (e) {}
+    function applyAdvancedCamera(manual) {
+      var track=stream&&stream.getVideoTracks()[0];
+      if(!track)return;
+      var caps=track.getCapabilities?track.getCapabilities():{},modes=caps.focusMode||[];
+      var focus=modes.indexOf('continuous')>=0?'continuous':modes.indexOf('single-shot')>=0?'single-shot':null;
+      if(!focus){if(manual)status.textContent='הדפדפן אינו מאפשר שליטה במיקוד. הרחיקו מעט את הברקוד וודאו שיש אור טוב.';return;}
+      var advanced=[{focusMode:focus}];
+      if(caps.exposureMode&&caps.exposureMode.indexOf('continuous')>=0)advanced.push({exposureMode:'continuous'});
+      track.applyConstraints({advanced:advanced}).then(function(){if(manual&&!closed)status.textContent='המיקוד האוטומטי פעיל. החזיקו את המוצר יציב.';}).catch(function(){if(manual&&!closed)status.textContent='לא ניתן לשנות מיקוד דרך הדפדפן. נסו להרחיק מעט את המוצר.';});
     }
 
     // Map a ZXing BarcodeFormat enum value to a human label for the debug panel.
@@ -2711,7 +2704,13 @@
     // exposes labels, refine to a back/rear/environment deviceId so multi-cam
     // devices don't grab a wide/ultrawide lens that focuses poorly on barcodes.
     function pickConstraints() {
-      return Promise.resolve({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+      var base={audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}};
+      if(!navigator.mediaDevices.enumerateDevices)return Promise.resolve(base);
+      return navigator.mediaDevices.enumerateDevices().then(function(devices){
+        var back=devices.filter(function(device){return device.kind==='videoinput'&&/back|rear|environment|אחור/i.test(device.label)&&!/ultra|telephoto|triple|dual|0[.,]5/i.test(device.label);})[0];
+        if(back)base.video.deviceId={ideal:back.deviceId};
+        return base;
+      }).catch(function(){return base;});
     }
 
     function startDecode() {
@@ -2729,9 +2728,7 @@
           video.srcObject = s;
           video.setAttribute('playsinline', 'true');
           var p = video.play();
-          if (p && p.catch) p.catch(function () {}); // autoplay policies: non-fatal
-          applyAdvancedCamera();
-          startLoop();
+          return Promise.resolve(p).then(function(){if(closed)return;applyAdvancedCamera();startLoop();});
         })
         .catch(function (err) {
           if (closed) return;
@@ -2762,9 +2759,13 @@
             // decode otherwise valid live frames in the browser regression.
             // Keep the canvas sized to the current stream and use the same
             // core decode path verified by the image and video fixtures.
-            var width=Math.min(video.videoWidth,1600),height=Math.max(1,Math.round(video.videoHeight*width/video.videoWidth));
+            var width=Math.min(video.videoWidth,1280),height=Math.max(1,Math.round(video.videoHeight*width/video.videoWidth));
             if(captureCanvas.width!==width||captureCanvas.height!==height){captureCanvas.width=width;captureCanvas.height=height;}
-            captureContext.drawImage(video,0,0,width,height);
+            var crop=dbg.attempts%2===0;
+            var sourceHeight=crop?Math.round(video.videoHeight*.55):video.videoHeight;
+            height=Math.max(1,Math.round(sourceHeight*width/video.videoWidth));
+            if(captureCanvas.height!==height)captureCanvas.height=height;
+            captureContext.drawImage(video,0,(video.videoHeight-sourceHeight)/2,video.videoWidth,sourceHeight,0,0,width,height);
             var luminance=new ZXing.HTMLCanvasElementLuminanceSource(captureCanvas,false);
             var bitmap=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
             var result = reader.decode(bitmap,hints);
