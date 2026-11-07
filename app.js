@@ -2460,6 +2460,10 @@
 
   // Builds and runs the camera scanner UI. Assumes ZXing is loaded.
   function startScanner() {
+    var nativeDetector=null,nativePending=false;
+    if(window.BarcodeDetector){
+      try{nativeDetector=new window.BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});}catch(error){}
+    }
     var continuous = false;
     var session = []; // grouped entries: {barcode,name,he,image,emoji,categoryId,unit,count,itemId,source}
     var byKey = {};
@@ -2754,7 +2758,15 @@
           dbg.w = video.videoWidth;
           dbg.h = video.videoHeight;
           dbg.attempts++; // FRAMES PROCESSED
-          try {
+          if(nativeDetector&&!nativePending){
+            nativePending=true;
+            nativeDetector.detect(video).then(function(results){
+              if(!closed&&!busy&&dbg.running&&results.length)onCode(results[0].rawValue);
+            }).catch(function(){nativeDetector=null;}).then(function(){nativePending=false;});
+          }
+          // Keep the main thread free for autofocus/preview on supported phones.
+          // The bundled decoder still samples every fourth frame as a fallback.
+          if(!nativeDetector||dbg.attempts%4===0)try {
             // Capture pixels explicitly. The legacy browser wrapper did not
             // decode otherwise valid live frames in the browser regression.
             // Keep the canvas sized to the current stream and use the same
