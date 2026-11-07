@@ -42,7 +42,7 @@
  .inventory-section-head { margin-block-end:12px; }
  .shopping-brief { padding:18px;margin-block-end:20px;gap:10px; }
  .shopping-brief strong { font-size:28px; }
- .shopping-row { grid-template-columns:minmax(0,1fr) 44px;gap:12px;padding:14px; }
+ .shopping-row { grid-template-columns:minmax(0,1fr) 100px;gap:12px;padding:14px; }
  .shopping-row > .shopping-item-open { grid-column:1;grid-row:1; }
  .shopping-row > .shopping-remove { grid-column:2;grid-row:1; }
  .shopping-row > .shopping-buy { grid-column:1;grid-row:2;justify-self:start;min-width:100px; }
