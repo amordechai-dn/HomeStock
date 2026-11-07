@@ -77,3 +77,10 @@
  .product-editor .editor-photo .photo-preview { width:96px;height:96px; }
  .product-editor .editor-photo .photo-actions .btn { padding-inline:6px; }
 }
+
+.photo-crop-overlay { z-index:100; }
+.photo-crop-dialog { width:min(100%,480px);max-height:90dvh;overflow:auto; }
+.photo-crop-preview { display:block;width:100%;max-height:42dvh;aspect-ratio:1;object-fit:contain;background:#e2f0e9;border-radius:12px; }
+.crop-slider { display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;gap:14px;min-height:48px; }
+.crop-slider input { width:100%;min-width:0;accent-color:var(--primary); }
+.photo-crop-dialog .actions { margin-block-start:20px; }

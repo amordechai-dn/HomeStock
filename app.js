@@ -574,6 +574,37 @@
 
   // On-device photo control. `state` is mutated in place (state.imageFull /
   // state.imageThumb); the placeholder falls back to state.emoji or category.
+  function cropProductPhoto(pair,onConfirm){
+    var image=new Image(),ready=false,zoom=1,offsetX=0,offsetY=0;
+    var canvas=h('canvas',{width:640,height:640,class:'photo-crop-preview','aria-label':'תצוגת התמונה שתופיע במוצר'});
+    var error=h('p',{role:'status',class:'settings-help',text:'התמונה שבתוך הריבוע היא זו שתופיע במוצר.'});
+    function draw(){
+      if(!ready)return;
+      var ctx=canvas.getContext('2d'),scale=Math.max(640/image.width,640/image.height)*zoom;
+      var width=image.width*scale,height=image.height*scale;
+      ctx.clearRect(0,0,640,640);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+      ctx.drawImage(image,-(width-640)*(offsetX+100)/200,-(height-640)*(offsetY+100)/200,width,height);
+    }
+    function slider(label,min,max,value,change){
+      return h('label',{class:'crop-slider'},h('span',{text:label}),h('input',{type:'range',min:min,max:max,value:value,step:'1','aria-label':label,oninput:function(){change(Number(this.value));draw();}}));
+    }
+    function close(){overlay.remove();}
+    var save=h('button',{type:'button',class:'btn save',disabled:true,text:'שימוש בחיתוך',onclick:function(){
+      if(!ready)return;
+      try{var cropped=variantsFromImage(canvas);if(!cropped)throw new Error('crop');onConfirm(cropped);close();}
+      catch(e){error.textContent='לא ניתן לשמור את החיתוך. נסו שוב.';}
+    }});
+    var overlay=h('div',{class:'overlay center photo-crop-overlay'},h('div',{class:'dialog photo-crop-dialog',role:'dialog','aria-modal':'true','aria-label':'חיתוך תמונת מוצר'},
+      h('h2',{text:'מה יופיע בתמונת המוצר?'}),canvas,error,
+      slider('הגדלה',100,300,100,function(value){zoom=value/100;}),
+      slider('מיקום אופקי',-100,100,0,function(value){offsetX=value;}),
+      slider('מיקום אנכי',-100,100,0,function(value){offsetY=value;}),
+      h('div',{class:'actions'},save,h('button',{type:'button',class:'btn cancel',text:'ביטול',onclick:close}))));
+    overlay.addEventListener('keydown',function(event){if(event.key==='Escape'){event.stopPropagation();close();}});
+    image.onload=function(){ready=true;draw();save.disabled=false;};image.onerror=function(){error.textContent='לא ניתן לפתוח את התמונה.';};
+    document.body.appendChild(overlay);image.src=pair.full;
+  }
+
   function photoControl(state) {
     var fileInput = h('input', { class: 'photo-file', type: 'file', accept: 'image/*' });
     var cameraInput=h('input',{class:'photo-file',type:'file',accept:'image/*',capture:'environment','aria-label':'צילום תמונת מוצר'});
@@ -617,7 +648,7 @@
       var f = input.files && input.files[0];
       if (!f) return;
       processImage(f, function (pair) {
-        if (pair) { state.imageFull = pair.full; state.imageThumb = pair.thumb; render(); }
+        if (pair) { cropProductPhoto(pair,function(cropped){state.imageFull=cropped.full;state.imageThumb=cropped.thumb;render();}); }
         else showToast(t('form.imageError'));
         input.value = '';
       });
