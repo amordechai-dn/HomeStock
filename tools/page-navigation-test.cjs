@@ -6,7 +6,7 @@ const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test/HomeStock
 w.scrollTo=()=>{};w.matchMedia=()=>({matches:false,addEventListener(){}});
 for(const file of ['config.js','data/foods.js','i18n.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','app.js'])w.eval(fs.readFileSync(root+'/'+file,'utf8'));
 w.App.start();await new Promise(r=>setTimeout(r,100));
-function button(text){const b=[...w.document.querySelectorAll('button')].find(b=>b.textContent.trim()===text);assert(b,'button '+text);return b;}
+function button(text){const b=[...w.document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')===text||b.textContent.trim()===text));assert(b,'button '+text);return b;}
 const stableNav=w.document.querySelector('.kitchen-nav');
 for(const [name,route] of [['הוצאות','expenses'],['הגדרות','settings'],['רשימת קניות','shopping'],['המלאי שלי','inventory']]){
 button(name).click();assert.equal(w.document.querySelector('.kitchen-nav'),stableNav,'navigation DOM stays mounted');assert.equal(w.location.hash,'#/'+route);const page=w.document.querySelector('#main-content');assert(page);page.click();assert.equal(w.location.hash,'#/'+route,'background stays on '+route);
