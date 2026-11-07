@@ -97,6 +97,7 @@
       var img = h('img', {
         class: 'thumb-img',
         src: src,
+        srcset:fullImageFor(item)&&fullImageFor(item)!==src?src+' 1x, '+fullImageFor(item)+' 2x':null,
         alt: '',
         loading: 'lazy',
       });
@@ -299,8 +300,8 @@
   // a small THUMB variant for lists/cards. Encoding prefers WebP when the
   // browser supports it (much smaller than JPEG at equal quality) and falls
   // back to JPEG otherwise. Nothing leaves the device.
-  var IMG_FULL_MAX = 512; // long-edge px for detail/edit resolution
-  var IMG_THUMB_MAX = 96; // long-edge px for list/card resolution
+  var IMG_FULL_MAX = 1280; // long-edge px for detail/edit resolution
+  var IMG_THUMB_MAX = 320; // long-edge px for list/card resolution
 
   // Feature-detect WebP canvas export once and cache the result.
   var _webpOk = null;
@@ -332,7 +333,7 @@
     var canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = hgt;
-    canvas.getContext('2d').drawImage(img, 0, 0, w, hgt);
+    var context=canvas.getContext('2d');context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(img, 0, 0, w, hgt);
     return canvas;
   }
 
@@ -340,8 +341,8 @@
   function variantsFromImage(img) {
     try {
       return {
-        full: encodeCanvas(scaleToCanvas(img, IMG_FULL_MAX), 0.72),
-        thumb: encodeCanvas(scaleToCanvas(img, IMG_THUMB_MAX), 0.7),
+        full: encodeCanvas(scaleToCanvas(img, IMG_FULL_MAX), 0.9),
+        thumb: encodeCanvas(scaleToCanvas(img, IMG_THUMB_MAX), 0.88),
       };
     } catch (e) {
       return null;
@@ -580,7 +581,7 @@
     var row = h('div', { class: 'photo-row' });
     function render() {
       row.innerHTML = '';
-      var preview = state.imageThumb || state.imageFull;
+      var preview = state.imageFull || state.imageThumb;
       var tile = preview
         ? h(
             'div',

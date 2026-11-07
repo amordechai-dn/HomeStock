@@ -63,3 +63,17 @@
 
 .scanner-page .scan-video { object-fit:contain; }
 .scanner-camera-tools { display:grid;gap:12px;min-width:0; }.scanner-camera-tools select { width:100%;min-width:0;font-size:16px;min-height:44px; }.scanner-camera-tools .settings-help { margin:0; }
+
+/* Photo actions belong to a stable photo column, with readable full labels. */
+.product-editor .product-identity { grid-template-columns:140px minmax(0,1fr);gap:24px; }
+.product-editor .editor-photo .photo-row { display:flex;flex-direction:column;gap:12px;align-items:stretch; }
+.product-editor .editor-photo .photo-preview { width:112px;height:112px;margin-inline:auto;border-radius:12px; }
+.product-editor .editor-photo .photo-actions { display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%; }
+.product-editor .editor-photo .photo-actions .btn { width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:white;font-size:14px;line-height:1.4;white-space:normal; }
+.product-editor .editor-photo .photo-actions .danger { border-color:transparent;background:transparent; }
+.photo-preview .thumb-img,.badge.has-img .thumb-img { object-fit:contain; }
+@media(max-width:480px){
+ .product-editor .product-identity { grid-template-columns:112px minmax(0,1fr);gap:16px; }
+ .product-editor .editor-photo .photo-preview { width:96px;height:96px; }
+ .product-editor .editor-photo .photo-actions .btn { padding-inline:6px; }
+}
