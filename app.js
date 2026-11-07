@@ -2461,6 +2461,7 @@
     var TIP_MS = 6000; // show guidance if nothing found after ~6s (keep scanning)
 
     var overlay = h('div', { class: 'scanner-content' });
+    var selectedCamera='';
     var video = h('video', { class: 'scan-video' });
     video.muted=true;video.autoplay=true;video.playsInline=true;
     video.setAttribute('playsinline', 'true');
@@ -2532,6 +2533,23 @@
       sessionBox,
       h('div', { class: 'actions' }, manualBtn)
     );
+    var cameraSelect=h('select',{'aria-label':'בחירת מצלמה',class:'input',onchange:function(){selectedCamera=this.value;stop();startDecode();}});
+    var cameraTools=h('div',{class:'scanner-camera-tools'},cameraSelect,
+      h('button',{type:'button',class:'btn ghost',text:'מיקוד מחדש',onclick:function(){applyAdvancedCamera();}}),
+      h('p',{class:'settings-help',text:'החזיקו את הברקוד במרחק של כ־15–25 ס״מ, באור טוב. אם התמונה מטושטשת, נסו מצלמה אחרת.'}));
+    panel.insertBefore(cameraTools,frame.nextSibling);
+    function listCameras(){
+      if(!navigator.mediaDevices.enumerateDevices)return;
+      navigator.mediaDevices.enumerateDevices().then(function(devices){
+        if(closed)return;
+        var current=stream&&stream.getVideoTracks()[0],settings=current&&current.getSettings?current.getSettings():{};
+        cameraSelect.replaceChildren(h('option',{value:'',text:'מצלמה אוטומטית'}));
+        devices.filter(function(device){return device.kind==='videoinput';}).forEach(function(device,index){
+          cameraSelect.appendChild(h('option',{value:device.deviceId,text:device.label||'מצלמה '+(index+1)}));
+        });
+        cameraSelect.value=selectedCamera||settings.deviceId||'';
+      }).catch(function(){});
+    }
     overlay.appendChild(panel);
     var page=document.querySelector('.scanner-page');
     if(!page)return;
@@ -2630,6 +2648,7 @@
         var adv = [];
         if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1)
           adv.push({ focusMode: 'continuous' });
+        if(caps.exposureMode&&caps.exposureMode.indexOf('continuous')!==-1)adv.push({exposureMode:'continuous'});
         if (adv.length && track.applyConstraints)
           track.applyConstraints({ advanced: adv }).catch(function () {});
         var s = track.getSettings ? track.getSettings() : {};
@@ -2660,7 +2679,8 @@
     // exposes labels, refine to a back/rear/environment deviceId so multi-cam
     // devices don't grab a wide/ultrawide lens that focuses poorly on barcodes.
     function pickConstraints() {
-      var base = { width: { ideal: 1280 }, height: { ideal: 720 } };
+      var base = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+      if(selectedCamera)return Promise.resolve({audio:false,video:Object.assign({deviceId:{exact:selectedCamera}},base)});
       var envConstraints = { audio: false, video: Object.assign({ facingMode: { ideal: 'environment' } }, base) };
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices)
         return Promise.resolve(envConstraints);
@@ -2669,7 +2689,7 @@
         var rear = null;
         for (var i = 0; i < cams.length; i++) {
           var lbl = (cams[i].label || '').toLowerCase();
-          if (/back|rear|environment|arrière|arriere|traseir|trás|tras|rück/.test(lbl)) { rear = cams[i]; break; }
+          if (/back|rear|environment|arrière|arriere|traseir|trás|tras|rück/.test(lbl)&&!/ultra|0[.,]5|wide.angle|dual|triple/.test(lbl)) { rear = cams[i]; break; }
         }
         if (rear && rear.deviceId)
           return { audio: false, video: Object.assign({ deviceId: { exact: rear.deviceId } }, base) };
@@ -2694,6 +2714,7 @@
           var p = video.play();
           if (p && p.catch) p.catch(function () {}); // autoplay policies: non-fatal
           applyAdvancedCamera();
+          listCameras();
           startLoop();
         })
         .catch(function (err) {
@@ -2725,7 +2746,7 @@
             // decode otherwise valid live frames in the browser regression.
             // Keep the canvas sized to the current stream and use the same
             // core decode path verified by the image and video fixtures.
-            var width=Math.min(video.videoWidth,960),height=Math.max(1,Math.round(video.videoHeight*width/video.videoWidth));
+            var width=Math.min(video.videoWidth,1600),height=Math.max(1,Math.round(video.videoHeight*width/video.videoWidth));
             if(captureCanvas.width!==width||captureCanvas.height!==height){captureCanvas.width=width;captureCanvas.height=height;}
             captureContext.drawImage(video,0,0,width,height);
             var luminance=new ZXing.HTMLCanvasElementLuminanceSource(captureCanvas,false);

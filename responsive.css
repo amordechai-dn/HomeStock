@@ -60,3 +60,6 @@
  .settings-section { padding-block:24px; }
  .settings-section > .btn { width:100%; }
 }
+
+.scanner-page .scan-video { object-fit:contain; }
+.scanner-camera-tools { display:grid;gap:12px;min-width:0; }.scanner-camera-tools select { width:100%;min-width:0;font-size:16px;min-height:44px; }.scanner-camera-tools .settings-help { margin:0; }
