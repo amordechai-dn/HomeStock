@@ -1460,7 +1460,6 @@
     nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'הום סטוק — המלאי שלי'},
       h('span',{class:'brand-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),
       h('span',{class:'brand-word',dir:'rtl',text:'הום סטוק'})));
-    nav.appendChild(h('p',{class:'nav-caption',text:'כל הבית. במקום אחד.'}));
     nav.appendChild(h('a',{class:'skip-link',href:'#main-content',text:'דילוג לתוכן'}));
     var links = h('div', {class:'nav-links'});
     links.appendChild(actionButton('המלאי שלי','shelf','nav-link' + (currentView === 'inventory' ? ' active':''),function(){

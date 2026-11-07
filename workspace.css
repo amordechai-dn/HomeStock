@@ -465,3 +465,9 @@ button,input,textarea,select { font-family:inherit; }
 
 .nav-app-version { display:block;margin-block-start:auto;padding-block-start:20px;color:var(--muted);font-size:14px;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap; }
 @media(max-width:1023px){.nav-app-version{margin:0;padding:3px 0 0;font-size:14px;line-height:1.3;}.kitchen-nav{gap:2px;}}
+
+@media(min-width:1024px){
+ .kitchen-nav .nav-links { flex:0 0 auto;margin-block-start:32px; }
+ .kitchen-nav .nav-settings { margin-block-start:0; }
+ .kitchen-nav .nav-app-version { margin-block-start:auto;text-align:start; }
+}
