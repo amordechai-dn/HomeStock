@@ -426,3 +426,5 @@ button,input,textarea,select { font-family:inherit; }
 .voice-add { margin-block:0 20px;min-height:46px; }
 
 .product-editor .editor-photo .photo-actions .btn { font-size:14px;min-height:40px;padding-block:8px; }
+
+.editor-voice{margin-block-end:24px}.voice-filled{outline:2px solid #428e72;outline-offset:3px}.editor-voice .settings-help{margin-block:10px 0}

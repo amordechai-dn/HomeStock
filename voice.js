@@ -2,7 +2,7 @@
 (function(root){
 'use strict';
 function parse(text){
- var s=String(text||'').trim(),result={quantity:1},numbers={'אחד':1,'אחת':1,'שני':2,'שתי':2,'שניים':2,'שתיים':2,'שלוש':3,'שלושה':3,'ארבע':4,'ארבעה':4,'חמש':5,'חמישה':5,'שש':6,'שישה':6,'שבע':7,'שבעה':7,'שמונה':8,'תשע':9,'עשר':10};
+ var s=String(text||'').trim(),result={},numbers={'אחד':1,'אחת':1,'שני':2,'שתי':2,'שניים':2,'שתיים':2,'שלוש':3,'שלושה':3,'ארבע':4,'ארבעה':4,'חמש':5,'חמישה':5,'שש':6,'שישה':6,'שבע':7,'שבעה':7,'שמונה':8,'תשע':9,'עשר':10};
  s=s.replace(/^(?:תוסיף|תוסיפי|הוסף|הוסיפי|להוסיף)\s+/,'');
  var price=s.match(/(?:במחיר|מחיר)\s+(\d+(?:[.,]\d{1,2})?|[א-ת]+)\s*(?:שקלים|שקל|ש״ח)?(?:\s*ליחידה)?/);
  if(price){var amount=Number(price[1].replace(',','.'));if(!Number.isFinite(amount))amount=numbers[price[1]];if(Number.isFinite(amount))result.unitPriceAgorot=Math.round(amount*100);s=s.replace(price[0],'');}

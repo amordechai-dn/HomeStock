@@ -1552,7 +1552,6 @@
     if(expiring.length)workspace.appendChild(h('div',{class:'expiry-notice',role:'status'},
       h('strong',{text:'כדאי לבדוק את התוקף'}),
       h('p',{text:expiring.map(function(item){return itemName(item)+' — '+Home.expiry(item).label;}).join(' · ')})));
-    workspace.appendChild(h('button',{type:'button',class:'btn ghost voice-add',text:'הוספה בקול',onclick:openVoiceProduct}));
     var rooms=h('div',{class:'space-tabs','aria-label':'בית — מטבח, חדר רחצה וכללי'});
     SPACES.forEach(function(space){
       var stat=summary.rooms[space.id],selected=inventorySpace===space.id&&!inventoryQuery;
@@ -1653,27 +1652,6 @@
   // A product passport: identity first, stock and place next, optional details
   // last. Only the body scrolls; the consequence of Save stays in view.
   var editorCounter=0;
-  function openVoiceProduct(){
-    var recognition=null,closed=false;
-    var input=h('textarea',{class:'input',rows:'3','aria-label':'תיאור המוצר',placeholder:'למשל: תוסיף שני חלב למקרר במחיר 7 שקלים ליחידה'});
-    var status=h('p',{role:'status',class:'settings-help',text:'הדיבור עשוי להישלח לשירות הזיהוי של הדפדפן. אפשר גם להקליד כאן. בדקו את כל הפרטים לפני השמירה.'});
-    function close(){closed=true;if(recognition)recognition.abort();overlay.remove();}
-    var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
-    var listen=h('button',{type:'button',class:'btn ghost',text:'התחלת הקלטה',disabled:!Speech,onclick:function(){
-      if(recognition)recognition.abort();recognition=new Speech();recognition.lang='he-IL';recognition.interimResults=false;recognition.continuous=false;
-      recognition.onresult=function(event){if(!closed)input.value=event.results[0][0].transcript;};
-      recognition.onerror=function(event){if(!closed)status.textContent=event.error==='not-allowed'?'הגישה למיקרופון נחסמה. אפשר להקליד את התיאור.':'לא הצלחנו לזהות דיבור. אפשר לנסות שוב או להקליד.';};
-      recognition.onend=function(){if(!closed){listen.disabled=false;listen.textContent='הקלטה מחדש';}};
-      try{recognition.start();listen.disabled=true;status.textContent='מקשיב…';}catch(error){status.textContent='לא ניתן להפעיל זיהוי דיבור. אפשר להקליד.';}
-    }});
-    var overlay=h('div',{class:'overlay center'},h('div',{class:'dialog',role:'dialog','aria-modal':'true','aria-label':'הוספה בקול'},
-      h('h2',{text:'הוספה בקול'}),status,!Speech?h('p',{text:'זיהוי דיבור אינו נתמך בדפדפן הזה. אפשר להקליד תיאור.'}):null,input,
-      h('div',{class:'actions'},listen,h('button',{type:'button',class:'btn save',text:'בדיקת פרטי המוצר',onclick:function(){
-        if(!input.value.trim()){input.focus();return;}
-        var draft=window.HomeVoice.parse(input.value);close();openForm(null,{prefill:draft});
-      }}),h('button',{type:'button',class:'btn cancel',text:'ביטול',onclick:close}))));
-    overlay.addEventListener('keydown',function(event){if(event.key==='Escape')close();});document.body.appendChild(overlay);
-  }
   function openForm(existing, opts) {
     opts=opts||{};
     var prefill=opts.prefill||{};
@@ -1697,6 +1675,7 @@
       imageFull:editing?fullImageFor(existing):prefill.imageFull||prefill.image||null,
       imageThumb:editing?thumbImageFor(existing):prefill.imageThumb||prefill.image||null
     };
+    var voiceRecognition=null;
     var saving=false, closed=false, suggestions=[], activeIndex=-1, searchTimer;
     var titleId='product-editor-title-'+(++editorCounter);
     var overlay=h('div',{class:'overlay editor-overlay'});
@@ -1718,6 +1697,7 @@
     function close(force) {
       if(closed || (saving && force!==true))return;
       closed=true;
+      if(voiceRecognition)voiceRecognition.abort();
       clearTimeout(searchTimer);
       window.removeEventListener('resize',fitEditorViewport);
       if(window.visualViewport){window.visualViewport.removeEventListener('resize',fitEditorViewport);window.visualViewport.removeEventListener('scroll',fitEditorViewport);}
@@ -1851,6 +1831,27 @@
       h('label',{class:'expiry-none'},noExpiry,'אין תאריך תפוגה'),
       h('p',{class:'settings-help',text:'אפשר להשאיר ריק אם התאריך לא ידוע. התראה תופיע באפליקציה בשבוע שלפני התפוגה.'})));
     stock.appendChild(h('div',{class:'editor-location-details'},h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetStepper)));
+    var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+    var voiceStatus=h('p',{class:'settings-help',role:'status',text:Speech?'אפשר לומר שם, כמות, מקום ומחיר. הדיבור עשוי להישלח לשירות הזיהוי של הדפדפן.':'זיהוי דיבור אינו נתמך בדפדפן הזה. אפשר למלא את השדות ידנית.'});
+    function markVoice(element){element.classList.add('voice-filled');element.addEventListener('input',function(){element.classList.remove('voice-filled');},{once:true});}
+    var voiceButton=h('button',{type:'button',class:'btn ghost',disabled:!Speech,text:'מילוי בקול',onclick:function(){
+      if(voiceRecognition){voiceRecognition.stop();return;}
+      var recognition=new Speech();voiceRecognition=recognition;recognition.lang='he-IL';recognition.continuous=false;recognition.interimResults=false;
+      recognition.onresult=function(event){
+        if(closed||saving)return;
+        var text=event.results[0][0].transcript,draft=window.HomeVoice.parse(text),filled=[];
+        if(draft.name){nameInput.value=draft.name;state.name=draft.name;state.nameEn=null;state.nameHe=null;markVoice(nameInput);filled.push('שם');}
+        if(draft.quantity!=null){state.quantity=draft.quantity;quantityInput.value=formatQty(draft.quantity);quantityInput.removeAttribute('aria-invalid');markVoice(quantityInput);filled.push('כמות');}
+        if(draft.unitPriceAgorot!=null){price.input.value=String(draft.unitPriceAgorot/100);markVoice(price.input);filled.push('מחיר ליחידה');}
+        if(draft.location){state.location=draft.location;var picker=where.querySelector('.location-picker');picker.replaceWith(locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));filled.push('מיקום');}
+        if(draft.expiryDate){state.expiryDate=draft.expiryDate;state.noExpiry=false;noExpiry.checked=false;expiryInput.disabled=false;expiryInput.value=draft.expiryDate;markVoice(expiryInput);filled.push('תאריך תפוגה');}
+        updateSummary();voiceStatus.textContent='נשמע: ״'+text+'״. מולאו: '+filled.join(', ')+'. בדקו ותקנו את השדות לפני השמירה.';
+      };
+      recognition.onerror=function(event){if(!closed)voiceStatus.textContent=event.error==='not-allowed'?'הגישה למיקרופון נחסמה. אפשר למלא ידנית.':'לא זוהה דיבור. נסו שוב או מלאו ידנית.';};
+      recognition.onend=function(){if(voiceRecognition===recognition)voiceRecognition=null;if(!closed)voiceButton.textContent='מילוי בקול';};
+      try{recognition.start();voiceButton.textContent='סיום ההאזנה';voiceStatus.textContent='מקשיב…';}catch(error){voiceRecognition=null;voiceStatus.textContent='לא ניתן להפעיל את המיקרופון. אפשר למלא ידנית.';}
+    }});
+    body.insertBefore(h('div',{class:'editor-voice'},voiceButton,voiceStatus),body.firstChild);
     sheet.appendChild(body);
 
     var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});
