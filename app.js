@@ -1839,6 +1839,9 @@
       if(closed||saving||!text.trim())return;
         var draft=window.HomeVoice.parse(text),filled=[];
         if(draft.name){nameInput.value=draft.name;state.name=draft.name;state.nameEn=null;state.nameHe=null;markVoice(nameInput);filled.push('שם');}
+        if(draft.unit){state.unit=draft.unit;unitChoice.value=draft.unit;filled.push('יחידת מידה');}
+        var voiceMatch=foodMatch(draft.name);
+        if(voiceMatch){state.categoryId=voiceMatch.category||state.categoryId;state.emoji=voiceMatch.emoji||state.emoji;categoryChoice.value=state.categoryId;photo.render();filled.push('קטגוריה');}
         if(draft.quantity!=null){state.quantity=draft.quantity;quantityInput.value=formatQty(draft.quantity);quantityInput.removeAttribute('aria-invalid');markVoice(quantityInput);filled.push('כמות');}
         if(draft.unitPriceAgorot!=null){price.input.value=String(draft.unitPriceAgorot/100);markVoice(price.input);filled.push('מחיר ליחידה');}
         if(draft.location){state.location=draft.location;var picker=where.querySelector('.location-picker');picker.replaceWith(locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));filled.push('מיקום');}
