@@ -1343,6 +1343,7 @@
   }
   if(window.addEventListener)window.addEventListener('popstate',function(event){
     if(!window.CurrentUser||!window.CurrentUser.id())return;
+    ++mobileNavigationId;if(mobileTransition){mobileTransition.cancel();mobileTransition=null;}
     restoringNavigation=true;
     try{
       // Close editor overlays through their cleanup handlers before restoring a page.
@@ -1423,8 +1424,31 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">' + (paths[name] || paths.shelf) + '</svg>' });
   }
 
-  var pageTransition=null;
+  var pageTransition=null,mobileTransition=null,mobileNavigationId=0;
   function transitionPage(action){
+    var reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(window.matchMedia('(max-width:1023px)').matches&&!reduced){
+      var id=++mobileNavigationId;
+      if(mobileTransition)mobileTransition.cancel();
+      var previous=document.getElementById('main-content');
+      if(!previous||!previous.animate){action();return;}
+      var leave=previous.animate([{opacity:1},{opacity:.82}],{duration:65,easing:'ease-out',fill:'forwards'});
+      mobileTransition=leave;
+      leave.finished.catch(function(){}).then(function(){
+        if(id!==mobileNavigationId)return;
+        try{
+          action();
+          var next=document.getElementById('main-content');
+          leave.cancel();
+          if(next&&next.animate){
+            var enter=next.animate([{opacity:.82},{opacity:1}],{duration:145,easing:'ease-out'});
+            mobileTransition=enter;
+            enter.finished.catch(function(){}).then(function(){if(id===mobileNavigationId)mobileTransition=null;});
+          }else mobileTransition=null;
+        }catch(error){leave.cancel();mobileTransition=null;throw error;}
+      });
+      return;
+    }
     if(!document.startViewTransition||window.matchMedia('(prefers-reduced-motion: reduce)').matches){action();return;}
     if(pageTransition)pageTransition.skipTransition();
     var transition=document.startViewTransition(function(){action();});
@@ -4390,7 +4414,7 @@
       var previous=lastView;lastView=currentView;
       if(animation){animation.cancel();animation=null;}
       if(previous!==null)window.scrollTo({top:history.state&&history.state.scrollY||0,behavior:'instant'});
-      if(pageTransition||previous===null||!page.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+      if(pageTransition||mobileTransition||previous===null||!page.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
       animation=page.animate([
         {opacity:.65},
         {opacity:1}

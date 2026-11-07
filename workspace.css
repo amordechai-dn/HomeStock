@@ -512,3 +512,9 @@ button,input,textarea,select { font-family:inherit; }
 @media(max-width:1023px){
  .kitchen-nav .nav-app-version { display:none; }
 }
+
+/* Phones animate live content, avoiding full-page snapshot size interpolation. */
+@media(max-width:1023px){
+ #main-content { view-transition-name:none; }
+ .kitchen-nav { isolation:isolate; }
+}
