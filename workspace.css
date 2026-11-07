@@ -546,3 +546,25 @@ button,input,textarea,select { font-family:inherit; }
  .kitchen-nav .nav-link .ui-icon { width:22px;height:22px;flex-shrink:0; }
  .kitchen-nav { padding-inline:8px;padding-block-start:5px; }
 }
+
+/* Shared interaction feedback. Hover is reserved for real pointing devices,
+   so touching a phone never leaves a persistent hover glow behind. */
+:root { --control-glow:0 0 0 3px #31836930,0 0 18px #31836930; }
+:where(button,a[href],summary,[role="button"],[role="option"],input:not([type="hidden"]),textarea,select) {
+ transition:box-shadow 140ms ease,background-color 140ms ease,border-color 140ms ease;
+}
+@media(hover:hover) and (pointer:fine){
+ :is(button,a[href],summary,[role="button"],[role="option"],input:not([type="hidden"]),textarea,select):not(:disabled):not([aria-disabled="true"]):hover {
+  box-shadow:var(--control-glow)!important;
+ }
+}
+:is(button,a[href],summary,[role="button"],[role="option"],input:not([type="hidden"]),textarea,select):not(:disabled):not([aria-disabled="true"]):active {
+ box-shadow:0 0 0 3px #31836950,0 0 22px #31836945!important;
+}
+:is(button,a[href],summary,[role="button"],[role="option"],input:not([type="hidden"]),textarea,select):not(:disabled):not([aria-disabled="true"]):focus-visible {
+ box-shadow:var(--control-glow)!important;
+ outline:2px solid var(--primary);outline-offset:3px;
+}
+@media(prefers-reduced-motion:reduce){
+ :where(button,a[href],summary,[role="button"],[role="option"],input,textarea,select){transition:none;}
+}
