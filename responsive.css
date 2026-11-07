@@ -113,3 +113,9 @@
  .settings-devices-section > .btn { grid-column:1;grid-row:3;justify-self:start; }
  .settings-devices-section > .settings-help { grid-row:4; }
 }
+
+.product-camera-overlay { z-index:100; }
+.product-camera-dialog { width:min(100%,480px);max-height:92dvh;overflow:auto; }
+.product-camera-square { width:min(100%,52dvh);aspect-ratio:1;margin-inline:auto;background:#111;overflow:hidden;border-radius:12px; }
+.product-camera-video { display:block;width:100%;height:100%;object-fit:cover;object-position:center; }
+.product-camera-dialog .actions { margin-block-start:16px; }
