@@ -99,6 +99,11 @@ async function rejects(name, fn) {
 }
 
 (async function run() {
+['פסק זמן שוקולד','פסק-זמן','Pesek Zman','Chocolate wafer','חטיף במבה'].forEach(function(name){if(AppI.categoryFromProductName(name)!=='snacks')throw new Error('snack classification: '+name);});
+if(AppI.categoryFromProductName('חלב שוקולד')!=='dairy')throw new Error('chocolate milk classification');
+console.log('PASS scanned product names: Pesek Zman, branded snacks, wafers and chocolate milk exception');
+
+
   console.log('PASSWORDLESS PROFILES + PER-USER STORAGE HARNESS');
 
   // 1) Migration: password profiles -> open profiles (once, idempotent, safe)
@@ -1102,3 +1107,4 @@ async function rejects(name, fn) {
   console.error('HARNESS ERROR', e);
   process.exit(1);
 });
+

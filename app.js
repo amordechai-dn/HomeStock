@@ -251,6 +251,15 @@
     return 'other';
   }
 
+  function categoryFromProductName(name){
+    var text=String(name||'').toLowerCase().replace(/[־–-]/g,' ').replace(/\s+/g,' ').trim();
+    // Specific product phrases precede ingredient words (chocolate != chocolate milk).
+    if(/חלב שוקולד|(?:^|\s)שוקו(?:\s|$)|chocolate milk/.test(text))return 'dairy';
+    if(/גליד[הת]|ice cream/.test(text))return 'frozen';
+    if(/פסק זמן|פסקזמן|pesek\s*zman|time out|שוקולד|חטיף|במבה|ביסלי|ופל|וופל|ביסקוויט|סוכריות|סוכריה|chocolate|wafer|biscuit|candy|crisps|snack/.test(text))return 'snacks';
+    var match=foodMatch(text);return match?match.category:'other';
+  }
+
   // ---- tiny DOM helper ----
   function h(tag, attrs) {
     var el = document.createElement(tag);
@@ -2253,7 +2262,7 @@
     var match=foodMatch(he||name),category=deriveCategory(product.categories_tags);
     if(type==='beauty')category='care';
     else if(type==='product')category=match?match.category:'household';
-    else if(match&&category==='other')category=match.category;
+    else if(category==='other')category=categoryFromProductName([he,name,product.generic_name].filter(Boolean).join(' '));
     var image=product.image_front_small_url||product.image_small_url||product.image_front_url;
     return (image?fetchImageLocal(image):Promise.resolve(null)).then(function(localImage){return {
       barcode:code,name:name,he:he||match&&match.he||'',productType:type,
@@ -2281,7 +2290,13 @@
       db:window.PantryDB,items:function(){return items;},online:function(){return navigator.onLine!==false;},
       fetch:function(url,options){return fetch(url,options);},map:mapPublicProduct
     });
-    return sharedBarcodeLookup(code);
+    return sharedBarcodeLookup(code).then(function(result){
+      if(result.source!=='inventory'&&result.product&&result.product.categoryId==='other'){
+        var product=result.product;var inferred=categoryFromProductName((product.he||'')+' '+(product.name||''));
+        if(inferred!=='other')result.product=Object.assign({},product,{categoryId:inferred});
+      }
+      return result;
+    });
   }
 
   // Shared UI router: turn a lookupBarcode() result into the correct dialog.
@@ -4446,6 +4461,7 @@
     // Pure, DOM-free helpers exposed for the automated logic harness.
     _internals: {
       locationSpace: locationSpace,
+      categoryFromProductName:categoryFromProductName,
       parseStockQuantity: parseStockQuantity,
       changeQty: changeQty,
       parseUnitPrice: parseUnitPrice,
