@@ -568,3 +568,14 @@ button,input,textarea,select { font-family:inherit; }
 @media(prefers-reduced-motion:reduce){
  :where(button,a[href],summary,[role="button"],[role="option"],input,textarea,select){transition:none;}
 }
+
+/* Desktop home heading: title and stock read as one group, date is secondary. */
+@media(min-width:1024px){
+ .inventory-inline-header { gap:28px;align-items:center;margin-block-end:28px; }
+ .inventory-heading-line { grid-template-columns:auto minmax(180px,1fr) auto;column-gap:22px;row-gap:4px;align-items:center; }
+ .inventory-inline-header .inventory-heading-line h1 { grid-column:1;grid-row:1/3;font-size:34px;font-weight:650;line-height:1.2;padding-inline-end:22px;border-inline-end:1px solid var(--border); }
+ .inventory-heading-line .inventory-heading-count { grid-column:2;grid-row:1;justify-self:start;font-size:18px;font-weight:500;line-height:1.5; }
+ .inventory-heading-line .inventory-heading-status { grid-column:2;grid-row:2;justify-self:start;font-size:15px;line-height:1.5; }
+ .inventory-heading-line .inventory-heading-date { grid-column:3;grid-row:1/3;justify-self:end;font-size:15px;white-space:nowrap; }
+ .inventory-inline-header .header-add { flex-shrink:0; }
+}
