@@ -536,3 +536,13 @@ button,input,textarea,select { font-family:inherit; }
  .inventory-toolbar { grid-template-columns:minmax(0,1fr); }
  .inventory-toolbar > .home-dropdown { justify-self:start; }
 }
+
+.nav-label-short { display:none; }
+@media(max-width:1023px){
+ .kitchen-nav .nav-label-full { display:none; }
+ .kitchen-nav .nav-label-short { display:block;white-space:nowrap;font-size:14px;line-height:1.2; }
+ .kitchen-nav .nav-links { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px; }
+ .kitchen-nav .nav-link { width:100%;min-width:0;min-height:56px;padding:6px 2px;gap:5px; }
+ .kitchen-nav .nav-link .ui-icon { width:22px;height:22px;flex-shrink:0; }
+ .kitchen-nav { padding-inline:8px;padding-block-start:5px; }
+}

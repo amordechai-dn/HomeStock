@@ -1462,7 +1462,8 @@
         if(event.currentTarget.getAttribute('aria-current')==='page')return;
         transitionPage(function(){action();});
       }else action(event);
-    } }, uiIcon(icon), h('span', {text:label}));
+    } }, uiIcon(icon), h('span', {class:cls.split(' ').indexOf('nav-link')>=0?'nav-label-full':'',text:label}),
+      cls.split(' ').indexOf('nav-link')>=0?h('span',{class:'nav-label-short','aria-hidden':'true',text:({'המלאי שלי':'מלאי','רשימת קניות':'קניות','סריקת מוצר':'סריקה'})[label]||label}):null);
   }
 
   function prepareWorkspace(){
