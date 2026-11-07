@@ -566,6 +566,8 @@
   // state.imageThumb); the placeholder falls back to state.emoji or category.
   function photoControl(state) {
     var fileInput = h('input', { class: 'photo-file', type: 'file', accept: 'image/*' });
+    var cameraInput=h('input',{class:'photo-file',type:'file',accept:'image/*',capture:'environment','aria-label':'צילום תמונת מוצר'});
+    var inputs=h('div',{hidden:true},fileInput,cameraInput);
     var row = h('div', { class: 'photo-row' });
     function render() {
       row.innerHTML = '';
@@ -598,19 +600,22 @@
           )
         : null;
       row.appendChild(tile);
-      row.appendChild(h('div', { class: 'photo-actions' }, addBtn, rm));
+      var cameraBtn=h('button',{class:'btn ghost',type:'button',text:'צילום מוצר',onclick:function(){cameraInput.click();}});
+      row.appendChild(h('div', { class: 'photo-actions' }, cameraBtn,addBtn, rm));
     }
-    fileInput.addEventListener('change', function () {
-      var f = fileInput.files && fileInput.files[0];
+    function readPhoto(input) {
+      var f = input.files && input.files[0];
       if (!f) return;
       processImage(f, function (pair) {
         if (pair) { state.imageFull = pair.full; state.imageThumb = pair.thumb; render(); }
         else showToast(t('form.imageError'));
-        fileInput.value = '';
+        input.value = '';
       });
-    });
+    }
+    fileInput.addEventListener('change',function(){readPhoto(fileInput);});
+    cameraInput.addEventListener('change',function(){readPhoto(cameraInput);});
     render();
-    return { row: row, input: fileInput, render: render };
+    return { row: row, input: inputs, render: render };
   }
 
   // A min-1 quantity stepper bound to get/set accessors.
