@@ -428,3 +428,37 @@ button,input,textarea,select { font-family:inherit; }
 .product-editor .editor-photo .photo-actions .btn { font-size:14px;min-height:40px;padding-block:8px; }
 
 .editor-voice{margin-block-end:24px}.voice-filled{outline:2px solid #428e72;outline-offset:3px}.editor-voice .settings-help{margin-block:10px 0}
+
+/* Fit each editor control to the information it holds, instead of stretching
+   short values across the full sheet. Keep touch targets at least 44px. */
+.product-editor .editor-stock-controls {
+  grid-template-columns:minmax(150px,190px) minmax(90px,120px);
+  justify-content:start;gap:12px;max-width:100%;
+}
+.product-editor .editor-quantity { width:190px;max-width:100%;box-sizing:border-box; }
+.product-editor .editor-quantity-input { flex:1;width:64px;max-width:84px; }
+.product-editor .editor-quantity .step-btn { flex:0 0 46px;min-width:46px;height:48px; }
+.product-editor .editor-target { width:190px; }
+.product-editor .price-field { max-width:190px; }
+.product-editor .price-input { width:100%;box-sizing:border-box; }
+.product-editor .editor-expiry > input { width:200px;max-width:100%;box-sizing:border-box; }
+.product-editor .editor-expiry .settings-help { max-width:48ch;margin-block:6px 0; }
+.product-editor .editor-stock { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px;align-items:start; }
+.product-editor .editor-stock > .editor-section-title,
+.product-editor .editor-stock > .editor-stock-controls,
+.product-editor .editor-stock > .price-field,
+.product-editor .editor-stock > .editor-price-hint { grid-column:1/-1; }
+.product-editor .editor-stock > .editor-expiry { grid-column:1;margin-block-start:20px; }
+.product-editor .editor-stock > .editor-location-details { grid-column:2;margin-block-start:20px; }
+.product-editor .editor-section-title { margin-block-end:10px; }
+.product-editor .editor-main-grid { gap:24px; }
+.product-editor .editor-place .location-picker { max-width:500px; }
+.product-editor .editor-location-details .note { max-width:520px;min-height:76px; }
+.product-editor .editor-category .home-dropdown { width:220px;max-width:100%; }
+@media(max-width:480px){
+ .product-editor .editor-stock { grid-template-columns:minmax(0,1fr); }
+ .product-editor .editor-stock > .editor-expiry,
+ .product-editor .editor-stock > .editor-location-details { grid-column:1; }
+ .product-editor .editor-stock-controls { grid-template-columns:minmax(150px,180px) minmax(80px,110px);gap:10px; }
+ .product-editor .editor-quantity { width:180px; }
+}
