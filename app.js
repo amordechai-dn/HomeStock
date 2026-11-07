@@ -1471,6 +1471,7 @@
     links.appendChild(actionButton('הוצאות','calendar','nav-link nav-monthly'+(currentView==='expenses'?' active':''),openMonthly));
     links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings'+(currentView==='settings'?' active':''),openSettings));
     nav.appendChild(links);
+    nav.appendChild(h('span',{class:'nav-app-version','data-app-version':'',text:'גרסה '+String(window.APP_VERSION||'').replace(/^v/,'')}));
     var current=links.querySelector('.active');if(current)current.setAttribute('aria-current','page');
     return nav;
   }
