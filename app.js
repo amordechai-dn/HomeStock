@@ -1731,7 +1731,7 @@
       name:editing?itemName(existing):prefill.name||'',
       nameEn:editing?existing.nameEn:prefill.nameEn,
       nameHe:editing?existing.nameHe:prefill.nameHe,
-      quantity:editing?existing.quantity:prefill.quantity!=null?prefill.quantity:1,
+      quantity:editing?existing.quantity+(opts.addQuantity||0):prefill.quantity!=null?prefill.quantity:1,
       unit:editing?existing.unit:prefill.unit||'pcs',
       unitPriceAgorot:editing?existing.unitPriceAgorot:prefill.unitPriceAgorot,
       categoryId:editing?existing.categoryId:prefill.categoryId||'other',
@@ -1760,7 +1760,7 @@
     var myReopen=function(){
       var snapshot=Object.assign({},state,{name:nameInput.value,note:noteInput.value,priceDraft:price.input.value,targetDraft:targetInput.value});
       close(true);
-      openForm(existing,{prefill:prefill,stateOverride:snapshot});
+      openForm(existing,Object.assign({},opts,{prefill:prefill,stateOverride:snapshot}));
     };
     reopenTop=myReopen;
     function close(force) {
@@ -1775,6 +1775,7 @@
       overlay.remove();
       if(reopenTop===myReopen)reopenTop=prevReopen;
       if(previousFocus && previousFocus.isConnected)previousFocus.focus({preventScroll:true});
+      if(force!==true&&opts.onCancel)opts.onCancel();
     }
     overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
     overlay.addEventListener('keydown',function(event){
@@ -1997,7 +1998,10 @@
         if(editing)Object.assign(existing,saved);
         if(added){recordDelta(added);recordExpense(saved,added);}
         if(previousHash&&previousHash!==saved.imageHash)return releaseImage(previousHash).catch(function(){});
-      }).then(function(){close(true);return refresh();}).then(function(){
+      }).then(function(){
+        if(!payload.barcode)return;
+        return window.PantryDB.putBarcode({barcode:payload.barcode,name:payload.nameEn||payload.name,he:payload.nameHe||'',categoryId:payload.categoryId,unit:payload.unit,location:payload.location,emoji:payload.emoji,source:'user'}).catch(function(){});
+      }).then(function(){close(true);return opts.onSaved?opts.onSaved():refresh();}).then(function(){
         var next=cardRefs[savedId]?cardRefs[savedId].querySelector('.item-open'):document.querySelector('.nav-link.active');
         if(next&&next.isConnected)next.focus({preventScroll:true});
       }).catch(function(error){
@@ -3009,195 +3013,22 @@
 
   // Known product already in inventory: choose how many units to add, then
   // increment the existing item (no duplicate). onCancel/onSaved handle flow.
-  function openAddUnits(item, onCancel, onSaved) {
-    var qty = 1,saving=false;
-    var overlay = h('div', { class: 'overlay center' });
-    function close(saved) {
-      if(saving&&!saved)return;
-      overlay.remove();
-      if (saved) { if (onSaved) onSaved(); }
-      else if (onCancel) onCancel();
-    }
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(false); });
-
-    var price = priceField(item.unitPriceAgorot,function(){return qty;});
-    var saveButton=h('button',{class:'btn save',type:'button',onclick:function(){
-      if(saving)return;var unitPrice;try{unitPrice=price.read();}catch(e){return;}
-      saving=true;saveButton.disabled=true;
-      window.PantryDB.getItem(item.id).then(function(live){
-        if(!live)throw new Error('missing');
-        return window.PantryDB.put(Object.assign({},live,{unitPriceAgorot:unitPrice,quantity:live.quantity+qty}));
-      }).then(function(saved){Object.assign(item,saved);recordDelta(qty);recordExpense(saved,qty);close(true);})
-        .catch(function(){saving=false;saveButton.disabled=false;showToast('הכמות לא השתנתה. לא ניתן לשמור כרגע; נסו שוב.');});
-    }},t('scan.add'));
-    var dialog = h(
-      'div',
-      { class: 'dialog' },
-      h('div', { class: 'sheet-header' },
-        h('h2', { class: 'dialog-title', text: t('scan.addUnitsTitle') }),
-        h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: function () { close(false); } }, '✕')
-      ),
-      h('div', { class: 'scan-hero' },
-        itemThumb(item),
-        h('div', { class: 'scan-hero-info' },
-          h('div', { class: 'scan-hero-name', dir: 'auto', text: itemName(item) }),
-          h('div', { class: 'scan-hero-sub', text: t('scan.inStock', { qty: formatQty(item.quantity), unit: t('units.' + item.unit) }) })
-        )
-      ),
-      h('label', { class: 'field-label', text: t('scan.howMany') }),
-      stepperBox(function () { return qty; }, function (v) { qty = v; }),
-      price.element,
-      h('div', { class: 'actions' },
-        h('button', { class: 'btn cancel', type: 'button', onclick: function () { close(false); } }, t('form.cancel')),
-        saveButton
-      )
-    );
-    dialog.addEventListener('click',price.update);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
+  function openAddUnits(item,onCancel,onSaved){
+    openForm(item,{addQuantity:1,onCancel:onCancel,onSaved:onSaved});
   }
 
-  // Review (OFF import / cached) or create-new (unknown) product dialog. Saves
-  // an inventory item and caches the barcode->product mapping for next time.
-  function openBarcodeProduct(opts, onCancel, onSaved) {
-    var product = opts.product || {};
-    var barcode = String(opts.barcode || product.barcode || '');
-    var st = {
-      en: product.name || '',
-      he: product.he || '',
-      categoryId: product.categoryId || 'other',
-      unit: product.unit || 'pcs',
-      qty: 1,
+  // Barcode recognition only prefills the same editor used everywhere else.
+  function openBarcodeProduct(opts,onCancel,onSaved){
+    var product=opts.product||{},barcode=String(opts.barcode||product.barcode||'');
+    var existing=itemByBarcode(barcode);
+    if(existing){openAddUnits(existing,onCancel,onSaved);return;}
+    openForm(null,{onCancel:onCancel,onSaved:onSaved,prefill:{
+      barcode:barcode,name:product.he||product.name||'',nameHe:product.he||null,nameEn:product.name||null,
+      categoryId:product.categoryId||'other',unit:product.unit||'pcs',quantity:1,
+      unitPriceAgorot:product.unitPriceAgorot,
       location:product.location||(product.productType==='beauty'?'Shower':product.productType==='product'?'House':defaultInventoryLocation()),
-      unitPriceAgorot: product.unitPriceAgorot,
-      emoji: product.emoji || null,
-      // Full image from OFF/cache; thumb (if any) is set when a photo is picked.
-      imageFull: product.image || null,
-      imageThumb: null,
-    };
-
-    var overlay = h('div', { class: 'overlay' });
-    var sheet = h('div', { class: 'sheet' });
-    function close(saved) {
-      if(saving&&!saved)return;
-      overlay.remove();
-      if (saved) { if (onSaved) onSaved(); }
-      else if (onCancel) onCancel();
-    }
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(false); });
-
-    sheet.appendChild(h('div', { class: 'grabber' }));
-    sheet.appendChild(
-      h('div', { class: 'sheet-header' },
-        h('h2', { class: 'sheet-title', text: opts.isNew ? t('scan.newTitle') : t('scan.reviewTitle') }),
-        h('button', { class: 'sheet-close', 'aria-label': t('a11y.close'), onclick: function () { close(false); } }, '✕')
-      )
-    );
-    var body = h('div', { class: 'sheet-body' });
-
-    if (opts.hint) body.appendChild(h('div', { class: 'scan-hint', text: opts.hint }));
-    if(product.source==='off')body.appendChild(h('a',{class:'scan-data-credit',href:window.HomeBarcode.sourceUrl(product.productType)+'/product/'+encodeURIComponent(barcode),target:'_blank',rel:'noopener noreferrer',text:'פרטי המוצר במאגר הפתוח'}));
-
-    // Photo
-    body.appendChild(h('label', { class: 'field-label', text: t('form.photo') }));
-    var photo = photoControl(st);
-    body.appendChild(photo.row);
-    body.appendChild(photo.input);
-
-    // Barcode (read-only)
-    body.appendChild(h('label', { class: 'field-label', text: t('scan.barcode') }));
-    var bcInput = h('input', { class: 'input', type: 'text', value: barcode, readonly: 'readonly' });
-    body.appendChild(bcInput);
-
-    // Keep imported names as metadata, with one visible product-name field.
-    var enInput = h('input', { class: 'input', type: 'text', dir: 'auto', value: st.en, placeholder: t('form.namePlaceholder'), autocomplete: 'off' });
-    body.appendChild(h('label', { class: 'field-label', text: t('form.name') }));
-    var heInput = h('input', { class: 'input', type: 'text', value: st.he || st.en, dir: 'auto', autocomplete: 'off' });
-    body.appendChild(heInput);
-
-    if (product.brand)
-      body.appendChild(h('div', { class: 'scan-meta', text: t('scan.brand') + ': ' + product.brand + (product.size ? ' · ' + product.size : '') }));
-
-    // Category + unit + quantity
-    body.appendChild(h('label', { class: 'field-label', text: t('form.category') }));
-    body.appendChild(categoryChips(function () { return st.categoryId; }, function (v) { st.categoryId = v; photo.render(); }));
-    body.appendChild(h('label', { class: 'field-label', text: t('form.unit') }));
-    body.appendChild(unitChipsBox(function () { return st.unit; }, function (v) { st.unit = v; }));
-    body.appendChild(h('label', { class: 'field-label', text: t('form.quantity') }));
-    body.appendChild(stepperBox(function () { return st.qty; }, function (v) { st.qty = v; }));
-
-    var price = priceField(st.unitPriceAgorot,function(){return st.qty;});
-    body.appendChild(price.element);
-    body.appendChild(h('label',{class:'field-label',text:'מיקום בבית'}));
-    body.appendChild(locationPicker(function(){return st.location;},function(value){st.location=value;}));
-    body.addEventListener('click',price.update);
-    sheet.appendChild(body);
-
-    var saving=false;
-    function save() {
-      if(saving)return;
-      var unitPrice;try{unitPrice=price.read();}catch(e){return;}
-      var en = enInput.value.trim();
-      var he = heInput.value.trim();
-      if (!he) {
-        heInput.classList.add('error');heInput.focus();
-        showToast(t('scan.nameRequired'));
-        return;
-      }
-      var primary = window.I18N.getLang() === 'he' ? he || en : en || he;
-      var emoji = st.emoji;
-      if (!emoji) {
-        var m = foodMatch(en || he);
-        if (m) emoji = m.emoji;
-      }
-      // Dedup the image into the shared store first (prefer an explicit thumb
-      // from a user upload; otherwise derive one from the full image).
-      var imgP = st.imageThumb
-        ? storeImagePair({ full: st.imageFull, thumb: st.imageThumb })
-        : persistFullImage(st.imageFull);
-      saving=true;saveButton.disabled=true;
-      imgP.then(function (imageHash) {
-        var existing = itemByBarcode(barcode);
-        var p;
-        if (existing) {
-          var updated=Object.assign({},existing,{quantity:existing.quantity+st.qty,unitPriceAgorot:unitPrice});
-          var prevHash = existing.imageHash || null;
-          if (imageHash) { updated.imageHash = imageHash; updated.image = null; }
-          p = window.PantryDB.put(updated).then(function () {
-            Object.assign(existing,updated);
-            recordDelta(st.qty);
-            recordExpense(updated,st.qty);
-            if (imageHash && prevHash && prevHash !== imageHash) return releaseImage(prevHash).catch(function(){});
-          });
-        } else {
-          p = window.PantryDB.create({
-            name: primary, nameEn: en || null, nameHe: he || null,
-            unitPriceAgorot: unitPrice,
-            quantity: st.qty, unit: st.unit, categoryId: st.categoryId,
-            location: st.location, barcode: barcode, emoji: emoji || null, imageHash: imageHash || null,
-          }).then(function (item) { recordDelta(item.quantity);recordExpense(item,item.quantity); });
-        }
-        return p.then(function () {
-          return window.PantryDB.putBarcode({
-            barcode: barcode, name: en, he: he, categoryId: st.categoryId,
-            unit: st.unit,location:st.location, image: st.imageFull || null, emoji: emoji || null,
-            brand: product.brand || '', size: product.size || '',
-            source: opts.isNew ? 'user' : product.source || 'off',
-          }).catch(function(){return null;}).then(function(){close(true);});
-        });
-      }).catch(function(){saving=false;saveButton.disabled=false;showToast('לא ניתן להשלים את השמירה. בדקו את החיבור ואת הכמות במלאי לפני ניסיון נוסף.');});
-    }
-
-    var saveButton=h('button',{class:'btn save',type:'button',onclick:save},t('scan.save'));
-    sheet.appendChild(
-      h('div', { class: 'actions' },
-        h('button', { class: 'btn cancel', type: 'button', onclick: function () { close(false); } }, t('form.cancel')),
-        saveButton
-      )
-    );
-
-    overlay.appendChild(sheet);
-    document.body.appendChild(overlay);
+      emoji:product.emoji||null,imageFull:product.image||null
+    }});
   }
 
   // ---- Shared helpers for the passwordless profile UI ----
