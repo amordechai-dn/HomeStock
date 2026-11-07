@@ -508,3 +508,7 @@ button,input,textarea,select { font-family:inherit; }
  .inventory-heading-line .inventory-heading-status { grid-column:1;grid-row:4;justify-self:start;font-size:14px; }
  .inventory-inline-header .header-add { align-self:center; }
 }
+
+@media(max-width:1023px){
+ .kitchen-nav .nav-app-version { display:none; }
+}
