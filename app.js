@@ -1026,7 +1026,7 @@
   // then removes the shopping entry. Reversible via undo.
   var purchasesInFlight=Object.create(null);
   function purchaseShoppingItem(shop) {
-    if(shop.purchased)return Promise.resolve();
+    if(shop.purchased||shoppingDeletes[shop.id])return Promise.resolve();
     if(purchasesInFlight[shop.id])return purchasesInFlight[shop.id];
     var pending=completeShoppingPurchase(shop);
     purchasesInFlight[shop.id]=pending;
@@ -1089,17 +1089,21 @@
   }
 
   // Remove a shopping entry (does NOT touch inventory). Reversible via undo.
+  var shoppingDeletes=Object.create(null);
   function removeShoppingItem(shop) {
-    return window.PantryDB.removeShopping(shop.id).then(function () {
+    if(purchasesInFlight[shop.id]){showToast('הקנייה נשמרת כרגע. המתינו לסיום.');return Promise.resolve();}
+    if(shoppingDeletes[shop.id])return shoppingDeletes[shop.id];
+    var operation= window.PantryDB.removeShopping(shop.id).then(function () {
       shoppingItems = shoppingItems.filter(function (x) { return x.id !== shop.id; });
       refreshShopping();
       showToast(t('shopping.removed'), function () {
         window.PantryDB.putShopping(shop).then(function (saved) {
           upsertLocalShopping(saved);
           refreshShopping();
-        });
+        }).catch(function(){showToast('לא ניתן לשחזר את הפריט כרגע.');});
       });
-    });
+    }).catch(function(){showToast('הפריט לא נמחק. נסו שוב.');}).then(function(){delete shoppingDeletes[shop.id];});
+    shoppingDeletes[shop.id]=operation;return operation;
   }
 
   // THE single shared Shopping List renderer (both sidebar + page modes). Backed
@@ -2023,49 +2027,29 @@
   }
 
   // ---- Delete confirm ----
-  function confirmDelete(item, afterClose) {
-    var overlay = h('div', { class: 'overlay center' });
-    function close() {
-      overlay.remove();
-    }
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) close();
+  function confirmDelete(item,afterClose){
+    var busy=false,previousFocus=document.activeElement;
+    var error=h('p',{class:'editor-error',role:'alert'});
+    function close(){if(busy)return;overlay.remove();if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});}
+    var cancel=h('button',{class:'btn cancel',type:'button',text:t('deleteConfirm.cancel'),onclick:close});
+    var remove=h('button',{class:'btn danger',type:'button',text:t('deleteConfirm.confirm'),onclick:function(){
+      if(busy)return;busy=true;remove.disabled=true;cancel.disabled=true;error.textContent='';
+      window.PantryDB.remove(item.id).then(function(){
+        items=items.filter(function(row){return row.id!==item.id;});
+        busy=false;close();if(afterClose)afterClose();
+        // A deleted scanned item must not leave an empty scanner review page.
+        if(currentView==='scanner')currentView='inventory';
+        return refresh();
+      }).catch(function(){busy=false;remove.disabled=false;cancel.disabled=false;error.textContent='המחיקה לא הושלמה. נסו שוב.';});
+    }});
+    var overlay=h('div',{class:'overlay center delete-confirm-overlay'},h('div',{class:'dialog',role:'dialog','aria-modal':'true','aria-label':t('deleteConfirm.title')},
+      h('h2',{text:t('deleteConfirm.title')}),h('p',{text:t('deleteConfirm.message',{name:itemName(item)})}),error,h('div',{class:'actions'},cancel,remove)));
+    overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
+    overlay.addEventListener('keydown',function(event){
+      if(event.key==='Escape'){event.stopPropagation();close();}
+      if(event.key==='Tab'){event.preventDefault();(document.activeElement===cancel?remove:cancel).focus();}
     });
-    var dialog = h(
-      'div',
-      { class: 'dialog' },
-      h('h2', { class: 'dialog-title', text: t('deleteConfirm.title') }),
-      h('p', {
-        class: 'dialog-msg',
-        text: t('deleteConfirm.message', { name: itemName(item) }),
-      }),
-      h(
-        'div',
-        { class: 'actions' },
-        h(
-          'button',
-          { class: 'btn cancel', type: 'button', onclick: close },
-          t('deleteConfirm.cancel')
-        ),
-        h(
-          'button',
-          {
-            class: 'btn danger',
-            type: 'button',
-            onclick: function () {
-              window.PantryDB.remove(item.id).then(function () {
-                close();
-                if (afterClose) afterClose();
-                refresh();
-              });
-            },
-          },
-          t('deleteConfirm.confirm')
-        )
-      )
-    );
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
+    document.body.appendChild(overlay);cancel.focus();
   }
 
   // ---- Monthly restock view ----

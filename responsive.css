@@ -166,3 +166,5 @@
  .product-camera-dialog { width:100%;padding:14px;max-height:96dvh; }
  .product-camera-square { width:min(100%,68dvh); }
 }
+
+.delete-confirm-overlay { z-index:120; }
