@@ -5,14 +5,14 @@
 
   // Fallback shown before the SW reports its authoritative VERSION.
   // Keep in sync with sw.js on deploy; the SW value overrides this at runtime.
-  var FALLBACK_VERSION = 'v4.3.40';
+  var FALLBACK_VERSION = 'v4.3.41';
   window.APP_VERSION = FALLBACK_VERSION;
 
   function setVersion(v) {
     window.APP_VERSION = v;
     var el = document.getElementById('version');
-    if (el) el.textContent = 'גרסה ' + String(v).replace(/^v/, '');
-    if(document.querySelectorAll)document.querySelectorAll('[data-app-version]').forEach(function(node){node.textContent='גרסה '+String(v).replace(/^v/,'');});
+    if (el) el.textContent = 'v.' + String(v).replace(/^v/, '');
+    if(document.querySelectorAll)document.querySelectorAll('[data-app-version]').forEach(function(node){node.textContent='v.'+String(v).replace(/^v/,'');});
   }
 
   if (!('serviceWorker' in navigator)) return;

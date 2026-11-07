@@ -518,3 +518,5 @@ button,input,textarea,select { font-family:inherit; }
  #main-content { view-transition-name:none; }
  .kitchen-nav { isolation:isolate; }
 }
+
+.nav-app-version,.settings-version { direction:ltr;unicode-bidi:isolate; }

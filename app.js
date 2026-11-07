@@ -1494,7 +1494,7 @@
     links.appendChild(actionButton('הוצאות','calendar','nav-link nav-monthly'+(currentView==='expenses'?' active':''),openMonthly));
     links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings'+(currentView==='settings'?' active':''),openSettings));
     nav.appendChild(links);
-    nav.appendChild(h('span',{class:'nav-app-version','data-app-version':'',text:'גרסה '+String(window.APP_VERSION||'').replace(/^v/,'')}));
+    nav.appendChild(h('span',{class:'nav-app-version','data-app-version':'',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     var current=links.querySelector('.active');if(current)current.setAttribute('aria-current','page');
     return nav;
   }
@@ -4349,7 +4349,7 @@
       h('h2',{text:'ניהול הנתונים'}),exportButton,
       h('p',{class:'settings-help',text:'הקובץ כולל מלאי, קניות, הוצאות ופרופיל. תמונות המוצרים ופרטי החיבור אינם כלולים.'}),
       h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory})));
-    content.appendChild(h('p',{class:'settings-version',id:'version',text:'גרסה '+String(window.APP_VERSION||'').replace(/^v/,'')}));
+    content.appendChild(h('p',{class:'settings-version',id:'version',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     page.appendChild(content);prepareWorkspace();root.appendChild(page);
   }
 
