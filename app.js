@@ -2122,8 +2122,16 @@
             h('div',{},h('strong',{text:entry.name,dir:'auto'}),h('span',{text:new Date(entry.at).toLocaleDateString('he-IL')+' · '+formatQty(entry.quantity)+' '+t('units.'+entry.unit)+' × '+formatMoney(entry.unitPriceAgorot)})),
             h('strong',{class:'expense-row-amount',dir:'auto',text:formatMoney(entry.amountAgorot)}),
             h('button',{class:'expense-remove',type:'button','aria-label':'מחיקת רישום הוצאה של '+entry.name,onclick:function(){
-              if(!window.confirm('למחוק את רישום ההוצאה? הכמות במלאי לא תשתנה.'))return;
               undoExpense(entry.id);log=window.PantryDB.getMonthlyLog();renderContent(key);
+              showToast('רישום ההוצאה נמחק. המלאי לא השתנה.',function(){
+                var latest=window.PantryDB.getMonthlyLog();
+                if(!latest[key])latest[key]={restocked:0,consumed:0,shortfall:[],expenses:[]};
+                if(!latest[key].expenses)latest[key].expenses=[];
+                if(!latest[key].expenses.some(function(item){return item.id===entry.id;}))latest[key].expenses.push(entry);
+                window.PantryDB.setMonthlyLog(latest);
+                log=window.PantryDB.getMonthlyLog();
+                if(content.isConnected)renderContent(select.value);
+              });
             }},'×')));
         });
         content.appendChild(purchaseList);
