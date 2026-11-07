@@ -1547,6 +1547,7 @@
     if(expiring.length)workspace.appendChild(h('div',{class:'expiry-notice',role:'status'},
       h('strong',{text:'כדאי לבדוק את התוקף'}),
       h('p',{text:expiring.map(function(item){return itemName(item)+' — '+Home.expiry(item).label;}).join(' · ')})));
+    workspace.appendChild(h('button',{type:'button',class:'btn ghost voice-add',text:'הוספה בקול',onclick:openVoiceProduct}));
     var rooms=h('div',{class:'space-tabs','aria-label':'בית — מטבח, חדר רחצה וכללי'});
     SPACES.forEach(function(space){
       var stat=summary.rooms[space.id],selected=inventorySpace===space.id&&!inventoryQuery;
@@ -1647,6 +1648,27 @@
   // A product passport: identity first, stock and place next, optional details
   // last. Only the body scrolls; the consequence of Save stays in view.
   var editorCounter=0;
+  function openVoiceProduct(){
+    var recognition=null,closed=false;
+    var input=h('textarea',{class:'input',rows:'3','aria-label':'תיאור המוצר',placeholder:'למשל: תוסיף שני חלב למקרר במחיר 7 שקלים ליחידה'});
+    var status=h('p',{role:'status',class:'settings-help',text:'הדיבור עשוי להישלח לשירות הזיהוי של הדפדפן. אפשר גם להקליד כאן. בדקו את כל הפרטים לפני השמירה.'});
+    function close(){closed=true;if(recognition)recognition.abort();overlay.remove();}
+    var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+    var listen=h('button',{type:'button',class:'btn ghost',text:'התחלת הקלטה',disabled:!Speech,onclick:function(){
+      if(recognition)recognition.abort();recognition=new Speech();recognition.lang='he-IL';recognition.interimResults=false;recognition.continuous=false;
+      recognition.onresult=function(event){if(!closed)input.value=event.results[0][0].transcript;};
+      recognition.onerror=function(event){if(!closed)status.textContent=event.error==='not-allowed'?'הגישה למיקרופון נחסמה. אפשר להקליד את התיאור.':'לא הצלחנו לזהות דיבור. אפשר לנסות שוב או להקליד.';};
+      recognition.onend=function(){if(!closed){listen.disabled=false;listen.textContent='הקלטה מחדש';}};
+      try{recognition.start();listen.disabled=true;status.textContent='מקשיב…';}catch(error){status.textContent='לא ניתן להפעיל זיהוי דיבור. אפשר להקליד.';}
+    }});
+    var overlay=h('div',{class:'overlay center'},h('div',{class:'dialog',role:'dialog','aria-modal':'true','aria-label':'הוספה בקול'},
+      h('h2',{text:'הוספה בקול'}),status,!Speech?h('p',{text:'זיהוי דיבור אינו נתמך בדפדפן הזה. אפשר להקליד תיאור.'}):null,input,
+      h('div',{class:'actions'},listen,h('button',{type:'button',class:'btn save',text:'בדיקת פרטי המוצר',onclick:function(){
+        if(!input.value.trim()){input.focus();return;}
+        var draft=window.HomeVoice.parse(input.value);close();openForm(null,{prefill:draft});
+      }}),h('button',{type:'button',class:'btn cancel',text:'ביטול',onclick:close}))));
+    overlay.addEventListener('keydown',function(event){if(event.key==='Escape')close();});document.body.appendChild(overlay);
+  }
   function openForm(existing, opts) {
     opts=opts||{};
     var prefill=opts.prefill||{};
@@ -1657,14 +1679,14 @@
       name:editing?itemName(existing):prefill.name||'',
       nameEn:editing?existing.nameEn:prefill.nameEn,
       nameHe:editing?existing.nameHe:prefill.nameHe,
-      quantity:editing?existing.quantity:1,
+      quantity:editing?existing.quantity:prefill.quantity!=null?prefill.quantity:1,
       unit:editing?existing.unit:prefill.unit||'pcs',
       unitPriceAgorot:editing?existing.unitPriceAgorot:prefill.unitPriceAgorot,
       categoryId:editing?existing.categoryId:prefill.categoryId||'other',
       location:editing?existing.location:prefill.location||defaultInventoryLocation(),
       note:editing?existing.note||'':'',
       desiredAmount:editing?existing.desiredAmount||0:0,
-      expiryDate:editing?existing.expiryDate||'':'',noExpiry:editing?!!existing.noExpiry:false,
+      expiryDate:editing?existing.expiryDate||'':prefill.expiryDate||'',noExpiry:editing?!!existing.noExpiry:false,
       barcode:editing?existing.barcode:prefill.barcode,
       emoji:editing?existing.emoji:prefill.emoji,
       imageFull:editing?fullImageFor(existing):prefill.imageFull||prefill.image||null,
