@@ -1842,15 +1842,15 @@
     // textarea values are properties, not HTML value attributes.
     noteInput.value=state.note;
     where.appendChild(h('div',{class:'editor-location-details'},
-      h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetStepper),
       h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערה למוצר'}),noteInput)));
     var expiryInput=h('input',{class:'input',type:'date',value:state.expiryDate,'aria-label':'תאריך תפוגה',oninput:function(){state.expiryDate=this.value;}});
     var noExpiry=h('input',{type:'checkbox',checked:state.noExpiry,onchange:function(){state.noExpiry=this.checked;expiryInput.disabled=this.checked;}});
     noExpiry.checked=state.noExpiry;expiryInput.disabled=state.noExpiry;
-    where.appendChild(h('section',{class:'editor-expiry'},
+    stock.appendChild(h('section',{class:'editor-expiry'},
       h('h3',{class:'editor-section-title',text:'תאריך תפוגה'}),expiryInput,
       h('label',{class:'expiry-none'},noExpiry,'אין תאריך תפוגה'),
       h('p',{class:'settings-help',text:'אפשר להשאיר ריק אם התאריך לא ידוע. התראה תופיע באפליקציה בשבוע שלפני התפוגה.'})));
+    stock.appendChild(h('div',{class:'editor-location-details'},h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetStepper)));
     sheet.appendChild(body);
 
     var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});
