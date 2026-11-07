@@ -178,7 +178,7 @@
       },
       monthly: {
         button: 'הוצאות חודשיות',
-        title: 'הוצאות ומעקב חודשי',
+        title: 'הוצאות חודשיות',
         month: 'חודש',
         restocked: 'נרכש',
         consumed: 'נצרך',

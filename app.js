@@ -2082,7 +2082,6 @@
       content.innerHTML = '';
       var e = log[key] || { restocked: 0, consumed: 0, shortfall: [] };
       // For the current month, show a live shortfall.
-      var shortfall = key === current ? computeShortfall() : e.shortfall || [];
 
       var purchases = (e.expenses || []).slice().sort(function(a,b){return String(b.at||'').localeCompare(String(a.at||''));});
       content.appendChild(h('section',{class:'expense-summary','aria-label':'הוצאות החודש'},
@@ -2121,61 +2120,6 @@
         content.appendChild(purchaseList);
       }
 
-      content.appendChild(
-        h(
-          'div',
-          { class: 'stat-row' },
-          h(
-            'div',
-            { class: 'stat' },
-            h('div', { class: 'stat-num', text: formatQty(e.restocked || 0) }),
-            h('div', { class: 'stat-label', text: t('monthly.restocked') })
-          ),
-          h(
-            'div',
-            { class: 'stat' },
-            h('div', { class: 'stat-num', text: formatQty(e.consumed || 0) }),
-            h('div', { class: 'stat-label', text: t('monthly.consumed') })
-          )
-        )
-      );
-
-      content.appendChild(
-        h('div', { class: 'monthly-needs-title', text: t('monthly.needs') })
-      );
-      if (!shortfall.length) {
-        content.appendChild(h('div', { class: 'monthly-empty', text: t('monthly.none') }));
-      } else {
-        var ul = h('div', { class: 'monthly-list' });
-        shortfall.forEach(function (s) {
-          // Use the live item's thumb when available, else the snapshot emoji.
-          var live = itemById(s.id);
-          var thumb = live
-            ? itemThumb(live, 'sm')
-            : h('div', { class: 'badge sm', text: s.emoji || '🍽️' });
-          ul.appendChild(
-            h(
-              'div',
-              { class: 'monthly-item' },
-              h(
-                'div',
-                { class: 'monthly-item-main' },
-                thumb,
-                h('span', { class: 'monthly-item-name', dir: 'auto', text: localName(s) })
-              ),
-              h('span', {
-                class: 'monthly-item-miss',
-                text: t('restock.missing', {
-                  missing: formatQty(s.missing),
-                  have: formatQty(s.have),
-                  target: formatQty(s.target),
-                }),
-              })
-            )
-          );
-        });
-        content.appendChild(ul);
-      }
     }
 
     var select = window.HomeDropdown.create({
