@@ -1897,9 +1897,21 @@
     noteInput.value=state.note;
     where.appendChild(h('div',{class:'editor-location-details'},
       h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערה למוצר'}),noteInput)));
-    var expiryInput=h('input',{class:'input',type:'date',value:state.expiryDate,'aria-label':'תאריך תפוגה',oninput:function(){state.expiryDate=this.value;}});
+    var expiryInput=h('input',{class:'input',type:'date',value:state.expiryDate,'aria-label':'תאריך תפוגה',oninput:function(){state.expiryDate=this.value;updateExpiryChoice();}});
+    var expirySummary=h('span',{class:'expiry-selection',role:'status'});
+    var expiryChoices=h('div',{class:'expiry-quick-choices','aria-label':'בחירת תוקף מהירה'});
+    function updateExpiryChoice(){
+      expirySummary.textContent=state.expiryDate?new Date(state.expiryDate+'T12:00:00').toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'}):'';
+      expiryChoices.querySelectorAll('button').forEach(function(button){button.setAttribute('aria-pressed',String(!!state.expiryDate&&state.expiryDate===Home.expiryPreset(button.dataset.offset)));});
+    }
+    [['1','מחר'],['7','בעוד שבוע'],['14','שבועיים'],['month','חודש']].forEach(function(option){
+      expiryChoices.appendChild(h('button',{type:'button',class:'expiry-quick','data-offset':option[0],text:option[1],onclick:function(){state.expiryDate=Home.expiryPreset(option[0]);expiryInput.value=state.expiryDate;updateExpiryChoice();}}));
+    });
+    var clearExpiry=h('button',{type:'button',class:'expiry-clear','aria-label':'ניקוי תאריך תפוגה',text:'ניקוי',onclick:function(){state.expiryDate='';expiryInput.value='';updateExpiryChoice();}});
     stock.appendChild(h('section',{class:'editor-expiry'},
-      h('h3',{class:'editor-section-title',text:'תאריך תפוגה'}),expiryInput));
+      h('h3',{class:'editor-section-title',text:'תאריך תפוגה'}),expiryChoices,
+      h('div',{class:'expiry-exact'},expiryInput,clearExpiry),expirySummary));
+    updateExpiryChoice();
     stock.appendChild(h('div',{class:'editor-location-details'},h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'כמות רצויה בבית'}),targetStepper)));
     var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
     var voiceStatus=h('p',{class:'settings-help',role:'status',text:Speech?'אפשר לומר שם, כמות, מקום ומחיר. הדיבור עשוי להישלח לשירות הזיהוי של הדפדפן.':'זיהוי דיבור אינו נתמך בדפדפן הזה. אפשר למלא את השדות ידנית.'});
@@ -1914,7 +1926,7 @@
         if(draft.quantity!=null){state.quantity=draft.quantity;quantityInput.value=formatQty(draft.quantity);quantityInput.removeAttribute('aria-invalid');markVoice(quantityInput);filled.push('כמות');}
         if(draft.unitPriceAgorot!=null){price.input.value=String(draft.unitPriceAgorot/100);markVoice(price.input);filled.push('מחיר ליחידה');}
         if(draft.location){state.location=draft.location;var picker=where.querySelector('.location-picker');picker.replaceWith(locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));filled.push('מיקום');}
-        if(draft.expiryDate){state.expiryDate=draft.expiryDate;expiryInput.value=draft.expiryDate;markVoice(expiryInput);filled.push('תאריך תפוגה');}
+        if(draft.expiryDate){state.expiryDate=draft.expiryDate;expiryInput.value=draft.expiryDate;markVoice(expiryInput);updateExpiryChoice();filled.push('תאריך תפוגה');}
         updateSummary();voiceStatus.textContent='נשמע: ״'+text+'״. מולאו: '+filled.join(', ')+'. בדקו ותקנו את השדות לפני השמירה.';
     }
     var dictationInput=h('textarea',{class:'input',rows:'3','aria-label':'תיאור מוצר בהכתבה',placeholder:'הכתיבו כאן בעזרת המחשב, או הדביקו תמלול'});

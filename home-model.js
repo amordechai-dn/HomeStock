@@ -91,5 +91,13 @@
     if(!Number.isFinite(days))return null;
     return {days:days,label:days<0?'פג התוקף':days===0?'התוקף מסתיים היום':days===1?'התוקף מסתיים מחר':'תוקף בעוד '+days+' ימים',urgent:days<=7};
   }
-  root.HomeModel={expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  function expiryPreset(value,base){
+    var date=base?new Date(base+'T12:00:00'):new Date();
+    if(value==='month'){
+      var day=date.getDate();date.setDate(1);date.setMonth(date.getMonth()+1);
+      var last=new Date(date.getFullYear(),date.getMonth()+1,0).getDate();date.setDate(Math.min(day,last));
+    }else date.setDate(date.getDate()+Number(value));
+    return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+  }
+  root.HomeModel={expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);

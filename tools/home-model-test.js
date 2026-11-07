@@ -40,3 +40,9 @@ assert.equal(M.expiry({expiryDate:'2026-11-15'},'2026-11-07').urgent,false);
 assert.equal(M.expiry({expiryDate:'2026-11-06'},'2026-11-07').label,'פג התוקף');
 assert.equal(M.expiry({expiryDate:'2026-11-07'},'2026-11-07').days,0);
 assert.equal(M.expiry({noExpiry:true,expiryDate:'2026-11-07'},'2026-11-07'),null);
+
+assert.equal(M.expiryPreset('1','2026-12-31'),'2027-01-01');
+assert.equal(M.expiryPreset('7','2026-11-07'),'2026-11-14');
+assert.equal(M.expiryPreset('month','2027-01-31'),'2027-02-28');
+assert.equal(M.expiryPreset('month','2028-01-31'),'2028-02-29');
+console.log('PASS quick expiry dates across month/year boundaries and leap years');

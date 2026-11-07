@@ -168,3 +168,11 @@
 }
 
 .delete-confirm-overlay { z-index:120; }
+
+.expiry-quick-choices { display:flex;flex-wrap:wrap;gap:6px;margin-block-end:10px; }
+.expiry-quick { border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);padding:8px 10px;min-height:44px;font:inherit;font-size:14px; }
+.expiry-quick[aria-pressed=true] { background:var(--primary-soft);border-color:var(--primary);color:var(--primary); }
+.expiry-exact { display:flex;align-items:center;gap:8px;min-width:0; }
+.expiry-exact .input { width:190px;max-width:100%;min-width:0; }
+.expiry-clear { border:0;background:none;color:var(--muted);font:inherit;font-size:14px;min-height:44px;padding:8px; }
+.expiry-selection { display:block;font-size:14px;color:var(--muted);margin-block-start:8px;min-height:0; }
