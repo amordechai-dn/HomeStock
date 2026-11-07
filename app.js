@@ -4363,7 +4363,7 @@
     var content=h('div',{class:'page-content settings-page settings-redesign'},
       h('h1',{class:'page-title',text:'הגדרות'}),
       h('p',{class:'settings-intro',text:'הבית שלכם, בדיוק כמו שנוח לכם.'}));
-    var profile=h('section',{class:'settings-section','aria-label':'הפרופיל שלי'},
+    var profile=h('section',{class:'settings-section settings-profile-section','aria-label':'הפרופיל שלי'},
       h('h2',{text:'הפרופיל שלי'}));
     var editor=h('div',{class:'settings-profile-editor'});
     var edit=h('button',{type:'button',class:'btn ghost','aria-label':'עריכת פרופיל',text:'עריכה',onclick:function(){
@@ -4373,7 +4373,7 @@
     profile.appendChild(h('div',{class:'settings-profile-line'},avatarEl('lg'),
       h('strong',{dir:'auto',text:cu?cu.displayName():''}),edit));profile.appendChild(editor);
     var state=githubSync?githubSync.status():{};
-    var devices=h('section',{class:'settings-section','aria-label':'המכשירים שלי'},
+    var devices=h('section',{class:'settings-section settings-devices-section','aria-label':'המכשירים שלי'},
       h('h2',{text:'המכשירים שלי'}),
       h('p',{class:'settings-sync-label',role:'status',text:githubStatusText()}),
       h('p',{class:'settings-help',text:state.lastSync?'סנכרון אחרון: '+new Date(state.lastSync).toLocaleString('he-IL'):'לאחר חיבור בכל מכשיר, הנתונים מתעדכנים אוטומטית.'}),
@@ -4387,9 +4387,9 @@
       }).catch(function(){showToast('לא ניתן לייצא כרגע. נסו שוב.');}).then(function(){exportButton.disabled=false;});
     }});
     content.appendChild(profile);content.appendChild(devices);
-    content.appendChild(h('section',{class:'settings-section','aria-label':'ניהול הנתונים'},
+    content.appendChild(h('section',{class:'settings-section settings-data-section','aria-label':'ניהול הנתונים'},
       h('h2',{text:'ניהול הנתונים'}),exportButton,
-      h('p',{class:'settings-help',text:'הקובץ כולל מלאי, קניות, הוצאות ופרופיל. תמונות המוצרים ופרטי החיבור אינם כלולים.'}),
+      h('details',{class:'settings-export-info'},h('summary',{text:'מה כלול בקובץ?'}),h('p',{class:'settings-help',text:'מלאי, קניות, הוצאות ופרופיל. תמונות המוצרים ופרטי החיבור אינם כלולים.'})),
       h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory})));
     content.appendChild(h('p',{class:'settings-version',id:'version',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     page.appendChild(content);prepareWorkspace();root.appendChild(page);
