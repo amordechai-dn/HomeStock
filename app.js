@@ -1835,24 +1835,32 @@
     var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
     var voiceStatus=h('p',{class:'settings-help',role:'status',text:Speech?'אפשר לומר שם, כמות, מקום ומחיר. הדיבור עשוי להישלח לשירות הזיהוי של הדפדפן.':'זיהוי דיבור אינו נתמך בדפדפן הזה. אפשר למלא את השדות ידנית.'});
     function markVoice(element){element.classList.add('voice-filled');element.addEventListener('input',function(){element.classList.remove('voice-filled');},{once:true});}
-    var voiceButton=h('button',{type:'button',class:'btn ghost',disabled:!Speech,text:'מילוי בקול',onclick:function(){
-      if(voiceRecognition){voiceRecognition.stop();return;}
-      var recognition=new Speech();voiceRecognition=recognition;recognition.lang='he-IL';recognition.continuous=false;recognition.interimResults=false;
-      recognition.onresult=function(event){
-        if(closed||saving)return;
-        var text=event.results[0][0].transcript,draft=window.HomeVoice.parse(text),filled=[];
+    function applyVoiceTranscript(text){
+      if(closed||saving||!text.trim())return;
+        var draft=window.HomeVoice.parse(text),filled=[];
         if(draft.name){nameInput.value=draft.name;state.name=draft.name;state.nameEn=null;state.nameHe=null;markVoice(nameInput);filled.push('שם');}
         if(draft.quantity!=null){state.quantity=draft.quantity;quantityInput.value=formatQty(draft.quantity);quantityInput.removeAttribute('aria-invalid');markVoice(quantityInput);filled.push('כמות');}
         if(draft.unitPriceAgorot!=null){price.input.value=String(draft.unitPriceAgorot/100);markVoice(price.input);filled.push('מחיר ליחידה');}
         if(draft.location){state.location=draft.location;var picker=where.querySelector('.location-picker');picker.replaceWith(locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));filled.push('מיקום');}
         if(draft.expiryDate){state.expiryDate=draft.expiryDate;state.noExpiry=false;noExpiry.checked=false;expiryInput.disabled=false;expiryInput.value=draft.expiryDate;markVoice(expiryInput);filled.push('תאריך תפוגה');}
         updateSummary();voiceStatus.textContent='נשמע: ״'+text+'״. מולאו: '+filled.join(', ')+'. בדקו ותקנו את השדות לפני השמירה.';
-      };
+    }
+    var dictationInput=h('textarea',{class:'input',rows:'3','aria-label':'תיאור מוצר בהכתבה',placeholder:'הכתיבו כאן בעזרת המחשב, או הדביקו תמלול'});
+    var dictationFallback=h('div',{class:'voice-dictation-fallback',hidden:true},
+      h('p',{class:'settings-help',text:'הדפדפן אינו מספק זיהוי דיבור ישיר. ב־Mac אפשר להתמקד בשדה ולבחור בתפריט ״עריכה״ את ״התחלת הכתבה״. לאחר ההכתבה לחצו על מילוי השדות.'}),dictationInput,
+      h('button',{type:'button',class:'btn ghost',text:'מילוי השדות מהתיאור',onclick:function(){applyVoiceTranscript(dictationInput.value);}}));
+    var voiceButton=h('button',{type:'button',class:'btn ghost',text:'מילוי בקול',onclick:function(){
+      if(!Speech){dictationFallback.hidden=false;dictationInput.focus();voiceStatus.textContent='אפשר להשתמש בהכתבה המובנית של המחשב בשדה שנפתח.';return;}
+      if(voiceRecognition){voiceRecognition.stop();return;}
+      var recognition;
+      try{recognition=new Speech();}catch(error){dictationFallback.hidden=false;dictationInput.focus();return;}
+      voiceRecognition=recognition;recognition.lang='he-IL';recognition.continuous=false;recognition.interimResults=false;
+      recognition.onresult=function(event){applyVoiceTranscript(event.results[0][0].transcript);};
       recognition.onerror=function(event){if(!closed)voiceStatus.textContent=event.error==='not-allowed'?'הגישה למיקרופון נחסמה. אפשר למלא ידנית.':'לא זוהה דיבור. נסו שוב או מלאו ידנית.';};
       recognition.onend=function(){if(voiceRecognition===recognition)voiceRecognition=null;if(!closed)voiceButton.textContent='מילוי בקול';};
-      try{recognition.start();voiceButton.textContent='סיום ההאזנה';voiceStatus.textContent='מקשיב…';}catch(error){voiceRecognition=null;voiceStatus.textContent='לא ניתן להפעיל את המיקרופון. אפשר למלא ידנית.';}
+      try{recognition.start();voiceButton.textContent='סיום ההאזנה';voiceStatus.textContent='מקשיב…';}catch(error){voiceRecognition=null;voiceStatus.textContent='לא ניתן להפעיל את המיקרופון. אפשר להכתיב בשדה התיאור.';dictationFallback.hidden=false;}
     }});
-    body.insertBefore(h('div',{class:'editor-voice'},voiceButton,voiceStatus),body.firstChild);
+    body.insertBefore(h('div',{class:'editor-voice'},voiceButton,voiceStatus,dictationFallback),body.firstChild);
     sheet.appendChild(body);
 
     var consequence=h('div',{class:'editor-save-summary','aria-live':'polite'});
