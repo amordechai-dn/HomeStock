@@ -203,7 +203,14 @@
       return apiObject;
     }
     function wake(){if(!root.document||root.document.visibilityState!=='hidden')queue(sync);}
-    var apiObject={start:start,sync:function(){return queue(sync);},
+    var apiObject={
+      registerPush:function(subscription){return queue(async function(){
+        var credential=await store.get('credential');if(!credential)throw new Error('not-connected');
+        var path='push/'+device+'.json',existing;
+        try{existing=await api('/contents/'+path,credential.token);}catch(error){if(error.status!==404)throw error;}
+        await putDoc({subscription:subscription,updatedAt:new Date().toISOString()},existing&&existing.sha,credential.token,path);
+      });},
+      start:start,sync:function(){return queue(sync);},
       connect:function(token){return queue(async function(){
         token=String(token||'').trim();if(!/^github_pat_[A-Za-z0-9_]+$/.test(token))throw new Error('token-format');
         var repository=await api('',token);if(repository.private!==true)throw new Error('public');

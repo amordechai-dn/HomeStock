@@ -5,7 +5,7 @@
 
   // Fallback shown before the SW reports its authoritative VERSION.
   // Keep in sync with sw.js on deploy; the SW value overrides this at runtime.
-  var FALLBACK_VERSION = 'v4.3.63';
+  var FALLBACK_VERSION = 'v4.4.0';
   window.APP_VERSION = FALLBACK_VERSION;
 
   function setVersion(v) {
@@ -18,11 +18,14 @@
   if (!('serviceWorker' in navigator)) return;
 
   // Reload once when the new SW takes over.
-  var refreshing = false;
+  var refreshing = false,reloadPending=false;
   navigator.serviceWorker.addEventListener('controllerchange', function () {
-    if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
+    if(refreshing||reloadPending)return;reloadPending=true;
+    function reloadWhenIdle(){
+      if(document.querySelector&&document.querySelector('.overlay,.profile-inline,.scanner-page video')){setTimeout(reloadWhenIdle,1000);return;}
+      refreshing=true;window.location.reload();
+    }
+    reloadWhenIdle();
   });
 
   // Receive broadcasts (e.g. version) from the SW.

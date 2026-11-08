@@ -212,6 +212,7 @@
       note: input.note || null,
       expiryDate:input.noExpiry?null:input.expiryDate||null,
       noExpiry:!!input.noExpiry,
+      batches:input.batches,
       // Specific item emoji (from the food DB); null → fall back to category.
       emoji: input.emoji || null,
       // Legacy inline image (data URL). Retained for backward compat but no
@@ -224,7 +225,6 @@
       desiredAmount:
         typeof input.desiredAmount === 'number' ? input.desiredAmount : 0,
       // Reserved for future features:
-      expiryDate: input.expiryDate || null,
       lowStockThreshold:
         typeof input.lowStockThreshold === 'number'
           ? input.lowStockThreshold
@@ -240,6 +240,7 @@
 
   function put(item) {
     if (!scoped()) return scopeError();
+    if(window.HomePackages)Object.assign(item,window.HomePackages.normalize(item));
     item.updatedAt = new Date().toISOString();
     if (!useIDB) {
       var arr = lsRead();

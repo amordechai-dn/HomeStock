@@ -4,7 +4,7 @@ const root=process.cwd();
 (async()=>{
 const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test/HomeStock/',runScripts:'outside-only',pretendToBeVisual:true});const w=dom.window;
 w.scrollTo=()=>{};w.matchMedia=()=>({matches:false,addEventListener(){}});
-for(const file of ['config.js','data/foods.js','i18n.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','app.js'])w.eval(fs.readFileSync(root+'/'+file,'utf8'));
+for(const file of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','app.js'])w.eval(fs.readFileSync(root+'/'+file,'utf8'));
 w.App.start();await new Promise(r=>setTimeout(r,100));
 function button(text){const b=[...w.document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')===text||b.textContent.trim()===text));assert(b,'button '+text);return b;}
 const stableNav=w.document.querySelector('.kitchen-nav');

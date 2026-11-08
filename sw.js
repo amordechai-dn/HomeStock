@@ -1,6 +1,6 @@
 /* Service worker: precache + cache-first, offline-capable, self-updating.
    Bump VERSION on every deploy to trigger an update for installed PWAs. */
-var VERSION = 'v4.3.63';
+var VERSION = 'v4.4.0';
 var CACHE_PREFIX = 'homestock:' + self.registration.scope + ':';
 var CACHE = CACHE_PREFIX + VERSION;
 
@@ -26,6 +26,7 @@ var ASSETS = [
   './config.js',
   './i18n.js',
   './db.js',
+  './packages.js',
   './auth.js',
   './app.js',
   './sync/github-sync.js',
@@ -109,4 +110,21 @@ self.addEventListener('message', function (event) {
   if (data.type === 'GET_VERSION' && event.ports && event.ports[0]) {
     event.ports[0].postMessage({ version: VERSION });
   }
+});
+
+self.addEventListener('push',function(event){
+  var data={};try{data=event.data?event.data.json():{};}catch(error){}
+  event.waitUntil(self.registration.showNotification('הום סטוק — תוקף היום',{
+    body:typeof data.body==='string'?data.body.slice(0,300):'בדקו את תאריכי התפוגה במלאי.',
+    tag:'homestock-expiry-'+(data.date||''),icon:new URL('./icons/icon-192.png',self.registration.scope).href,
+    data:{url:new URL('./#/inventory',self.registration.scope).href}
+  }));
+});
+self.addEventListener('notificationclick',function(event){
+  event.notification.close();
+  event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(clients){
+    var url=new URL('./#/inventory',self.registration.scope).href;
+    for(var i=0;i<clients.length;i++)if(clients[i].url.indexOf(self.registration.scope)===0){clients[i].navigate(url);return clients[i].focus();}
+    return self.clients.openWindow(url);
+  }));
 });

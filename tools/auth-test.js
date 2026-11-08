@@ -74,6 +74,7 @@ _store['pantry.lang'] = 'he';
 
 // ---- Load app modules (order matches index.html) ----
 require('../i18n.js');
+require('../packages.js');
 require('../db.js');
 require('../auth.js');
 require('../data/foods.js'); // sets self.FOODS (=> window.FOODS)
@@ -1036,11 +1037,11 @@ console.log('PASS scanned product names: Pesek Zman, branded snacks, wafers and 
   await AppI.changeQty(priced,-1);
   ok('consumption does not refund historical expenses',recordedTotal()===initialTotal+1580);
   await AppI.changeQty(priced,1);
-  ok('restock records current price',recordedTotal()===initialTotal+2570);
+  ok('stock adjustment does not create an unconfirmed expense',recordedTotal()===initialTotal+1580);
   await DB.remove(priced.id);
-  ok('deleting inventory keeps purchase history',recordedTotal()===initialTotal+2570);
+  ok('deleting inventory keeps purchase history',recordedTotal()===initialTotal+1580);
   AppI.undoExpense(purchaseId);
-  ok('undo removes the exact purchase only',recordedTotal()===initialTotal+990);
+  ok('undo removes the exact purchase only',recordedTotal()===initialTotal);
 
   AppI.setItems(await DB.getAll());
   var totalBeforeShopping=recordedTotal();

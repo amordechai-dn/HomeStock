@@ -1,0 +1,3 @@
+'use strict';const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+let reloads=0,editing=true,pending=[],handler;const ctx={window:{location:{reload(){reloads++}},addEventListener(){}},navigator:{serviceWorker:{addEventListener(n,f){if(n==='controllerchange')handler=f}}},document:{readyState:'loading',querySelector:()=>editing?{}:null,getElementById:()=>null},setTimeout(f){pending.push(f)},console};
+vm.runInNewContext(fs.readFileSync('pwa.js','utf8'),ctx);handler();handler();assert.equal(reloads,0);assert.equal(pending.length,1);editing=false;pending.shift()();assert.equal(reloads,1);console.log('PASS update waits for open editor and reloads once after closing');

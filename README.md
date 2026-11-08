@@ -10,7 +10,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.3.63`
+**Current version:** `v4.4.0`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -27,7 +27,7 @@ offline and **auto-updates** whenever a new version is deployed.
 - One action tops up missing shopping quantities; repeating it does not duplicate the same need.
 - **+/- quantity steppers** and an **"Out"** badge at zero.
 - **Category emoji** icons (item-specific emoji falls back to its category).
-- **Desired amounts (par levels)** per item and **monthly restock tracking**.
+- **Desired package amounts** per item and separate dated package batches.
 
 ### Product editor
 - Product identity first, with catalog suggestions and a compact category selector.
@@ -42,7 +42,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 ### Prices and expenses
 - Optional unit prices in ILS, stored as integer agorot; blank is unknown, zero is free.
-- Priced additions/restocks record immutable purchase snapshots (quantity × unit price).
+- Explicit new purchases record immutable purchase snapshots (package count × package price). Existing-stock entry and quantity corrections do not create expenses.
 - Consuming/deleting stock or changing its price does not rewrite past spending.
 - Monthly expense totals and purchase history appear in **הוצאות חודשיות**; mistaken entries can be removed without changing stock.
 - Shopping-list entries count as spending only when marked purchased; undo reverses that purchase entry.
@@ -286,3 +286,18 @@ use the original workspace colors. `icons/logo-mark.svg` and
 `icons/logo-mark-light.svg` are transparent vector variants; `icons/icon.svg` and
 all PNG sizes use a forest/sage tile. Maskable icons keep the mark inside their
 safe zone. Regenerate every format with `node tools/generate-icons.js`.
+
+
+## Household workflow — v4.4.0
+
+- Phone-first list default, optional remembered card layout; finished stock offers adding to shopping.
+- Legacy items are normalized lazily into one batch using their recorded quantity/date. No fabricated dates or automatic conversion of legacy kilograms/liters into packages. Updates persist batches; existing financial history stays intact.
+- New products default to packages. A new-purchase checkbox is required for editor spending. Barcode entry uses a short review with all additional fields still available.
+- Shopping purchase opens quantity/price/expiry review; archive failures roll back inventory and financial records.
+- Earliest-expiring batches are consumed first. Individual batch dates can be edited inside the product editor.
+- Updates wait until active editors/camera flows finish before reloading.
+- Opt-in background expiry-day push is delivered by the private HomeStock-data repository's `Expiry notifications` workflow. It checks twice daily; GitHub scheduling may be delayed. VAPID private key is held only in private repository Actions secrets. Public key is in config.js.
+- Each phone must connect sync and enable notifications in Settings. Registration stores only that device's web-push subscription in the private repository. User can disable notifications in Settings. No phone subscription or delivery is assumed to exist until enabled and tested on-device.
+- Seven-day warnings remain inside the app. Physical camera/microphone/notification delivery and layout need device verification.
+
+Additional tests: `node tools/packages-test.js`, `node tools/pwa-idle-test.js`, and with jsdom available `node tools/household-v4-test.cjs`. The full isolated 90-product QA matrix is still available in `tools/full-qa.cjs`.
