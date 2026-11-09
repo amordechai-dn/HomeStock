@@ -5,7 +5,7 @@ const dom=new JSDOM('<div id="root"></div>',{url:'https://qa.invalid/HomeStock/'
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};w.matchMedia=()=>({matches:false,addEventListener(){}});w.addEventListener('error',e=>errors.push(e.error));
 for(const file of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','voice.js','app.js']){
 let code=fs.readFileSync(file,'utf8');if(file==='app.js')code=code.replace('window.App = {','window.App = {qaBarcode:openBarcodeProduct,');w.eval(code);}
-const wait=()=>new Promise(r=>setTimeout(r,15));w.App.start();await wait();
+const wait=()=>new Promise(r=>setTimeout(r,15));w.localStorage.setItem('homestock.profileChosen','1');w.App.start();await wait();
 function btn(name,scope=w.document){const b=[...scope.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===name||b.textContent.trim()===name);assert(b,'missing '+name);return b;}
 function field(name,value){const f=w.document.querySelector('input[aria-label="'+name+'"],textarea[aria-label="'+name+'"]');assert(f,'field '+name);f.value=value;f.dispatchEvent(new w.Event('input',{bubbles:true}));return f;}
 function pick(label,index){btn(label).click();const opts=w.document.querySelectorAll('[role=option]');assert(opts[index]);opts[index].click();}

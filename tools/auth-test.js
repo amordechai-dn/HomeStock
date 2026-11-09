@@ -123,7 +123,7 @@ console.log('PASS scanned product names: Pesek Zman, branded snacks, wafers and 
   // 2) Preserved + seeded profiles
   console.log('\n[profiles preserved + seeded]');
   var names = Auth.listUsers().map(function (u) { return u.id; }).sort();
-  ok('existing profiles preserved without seeding demos', names.join(',') === 'aviraz,test');
+  ok('existing profiles preserved without seeding demos', names.join(',') === 'aviraz,sigal,test');
   ok('opens directly into aviraz', CurrentUser.id() === 'aviraz');
   ok('single profile pinned', _store['homestock.singleUser'] === 'aviraz');
   ok('aviraz has stable id "aviraz"', Auth.getUser('aviraz').id === 'aviraz');
@@ -131,12 +131,13 @@ console.log('PASS scanned product names: Pesek Zman, branded snacks, wafers and 
   ok('guest demo is not seeded', !Auth.getUser('guest'));
   Auth.selectUser('test');
   await Auth.init();
-  ok('restarts keep the pinned household identity', CurrentUser.id() === 'aviraz');
+  ok('restarts preserve the selected household', CurrentUser.id() === 'test');
+  Auth.selectUser('aviraz');
   _store['pantry.lang.aviraz'] = 'en';
   I18N.setUser('aviraz');
   ok('old English preference becomes Hebrew RTL', I18N.getLang() === 'he' && document.documentElement.dir === 'rtl');
   ok('sanitized profile exposes no cred', !('cred' in Auth.getUser('aviraz')));
-  ok('re-init does not duplicate profiles', (await Auth.init(), Auth.listUsers().length === 2));
+  ok('re-init does not duplicate profiles', (await Auth.init(), Auth.listUsers().length === 3));
 
   // 3) Selecting a profile loads the correct (migrated) data
   console.log('\n[select profile -> data]');

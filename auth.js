@@ -231,14 +231,15 @@
   function seed() {
     var pinned = null;
     try { pinned = localStorage.getItem('homestock.singleUser'); } catch (e) {}
-    var rec = (pinned && UserRepository.getById(pinned)) ||
-      UserRepository.getById(ActiveUserManager.get()) ||
+    var rec = UserRepository.getById(ActiveUserManager.get()) ||
+      (pinned && UserRepository.getById(pinned)) ||
       UserRepository.getById('aviraz') || UserRepository.all()[0];
     if (!rec) rec = UserRepository.create({
       id: 'aviraz', username: 'aviraz', displayName: 'הבית שלי', lang: 'he'
     });
+    if(!UserRepository.getById('sigal'))UserRepository.create({id:'sigal',username:'sigal',displayName:'סיגל',lang:'he'});
     rec = UserRepository.update(rec.id, { lang: 'he' });
-    try { localStorage.setItem('homestock.singleUser', rec.id); } catch (e) {}
+    try { if(rec.id!=='sigal')localStorage.setItem('homestock.singleUser', rec.id); } catch (e) {}
     ActiveUserManager.set(rec.id);
     UserContext._set(sanitize(rec));
   }
@@ -252,6 +253,8 @@
         seed();
       });
     },
+
+    rememberSelection:function(id){if(!UserRepository.getById(id))return false;ActiveUserManager.set(id);try{localStorage.setItem('homestock.profileChosen','1');}catch(e){}return true;},
 
     listUsers: function () {
       return UserRepository.all().map(sanitize);

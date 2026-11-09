@@ -64,7 +64,7 @@ async function browser(server,id){
   assert.equal(a.engine.status().phase,'local','validation errors must not appear as storage errors');
   await a.engine.connect('github_pat_TEST');
   assert.equal(a.engine.status().phase,'synced');
-  assert.equal(a.kv.get('credential').token,'github_pat_TEST');
+  assert.equal(a.kv.get('credential:data:user-device-a').token,'github_pat_TEST');
   const b=await browser(cloud,'device-b');await b.start();
   assert.equal((await b.db.getBarcode('7290000688077')).he,'חלב','saved barcode catalog transfers to another device');
   assert(!('image' in cloud.files.get('household.json').doc.records['barcodes/7290000688077'].value),'catalog does not duplicate inline photos');
@@ -118,7 +118,7 @@ async function browser(server,id){
   a.engine.stop();let reloaded=a.context.GitHubSync.create({db:a.db,store:a.store,fetch:cloud.fetch,owner:'owner',repo:'data',userId:'user-device-a',auto:false});
   await reloaded.start();await reloaded.sync();assert.equal(a.db.getMonthlyLog()['2026-11'].expenses.length,2);
   await reloaded.disconnect();assert.equal(reloaded.status().connected,false);assert((await a.db.getAll()).length>0);
-  assert.equal(a.kv.get('credential'),undefined);reloaded.stop();
+  assert.equal(a.kv.get('credential:data:user-device-a'),undefined);reloaded.stop();
   // No data writes when repository visibility changes to public.
   cloud.private=false;let before=cloud.commits;await b.engine.sync();assert.equal(b.engine.status().phase,'public');assert.equal(cloud.commits,before);
   b.engine.stop();
@@ -131,5 +131,8 @@ async function browser(server,id){
   const left={version:1,records:{'items/x':{rev:[7,'a'],value:{id:'x',name:'א',quantity:1}}}},right={version:1,records:{'items/x':{rev:[7,'b'],value:null}}};
   assert.deepEqual(copy(I.merge(left,right)),copy(I.merge(right,left)),'merge is commutative');
   assert.deepEqual(copy(I.merge(right,right)),right,'merge is idempotent');
+  const sigalEngine=a.context.GitHubSync.create({db:a.db,store:a.store,fetch:cloud.fetch,owner:'owner',repo:'data-sigal',userId:'sigal',auto:false});
+  a.kv.set('credential',{token:'github_pat_LEGACY_AVIRAZ'});
+  await sigalEngine.start();assert.equal(sigalEngine.status().connected,false,'Sigal never inherits the legacy household token');sigalEngine.stop();
   console.log('PASS: two-device bootstrap, Hebrew/prices, offline edits, expense union, counters, deletion tombstones, SHA conflicts, in-flight local edits, photos, restart, disconnect, private-only writes and hostile data validation');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -192,3 +192,5 @@
 .product-review-extras .package-row .input { width:100%; }
 
 .notification-actions{display:flex;flex-wrap:wrap;gap:10px}.notification-actions .btn{min-height:44px}.save-status:empty{display:none}
+
+.profile-picker{max-width:480px;margin:12dvh auto;padding:24px;text-align:center}.profile-pick{display:block;width:100%;min-height:76px;margin-block:16px;border:1px solid var(--border);background:white;color:var(--primary);border-radius:12px;font:inherit;font-size:22px;font-weight:600}

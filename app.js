@@ -1693,7 +1693,7 @@
     content.querySelector('.inventory-toolbar').appendChild(sort.element);
     content.appendChild(h('div',{class:'inventory-section-head'},inventoryTitle));
     var views=h('div',{class:'inventory-view-choice','aria-label':'תצוגת מלאי'});
-    [['list','רשימה'],['cards','כרטיסים']].forEach(function(option){views.appendChild(h('button',{type:'button',class:'btn ghost','aria-pressed':String(option[0]===inventoryPresentation),text:option[1],onclick:function(){inventoryPresentation=option[0];try{localStorage.setItem('homestock.inventoryView',option[0]);}catch(e){}renderMain();}}));});
+    [['list','רשימה'],['cards','כרטיסים']].forEach(function(option){views.appendChild(h('button',{type:'button',class:'btn ghost','aria-pressed':String(option[0]===inventoryPresentation),text:option[1],onclick:function(){inventoryPresentation=option[0];try{localStorage.setItem('homestock.inventoryView:'+window.CurrentUser.id(),option[0]);}catch(e){}renderMain();}}));});
     content.appendChild(views);
     content.appendChild(filters);renderInventoryShelf(shelf);content.appendChild(shelf);workspace.appendChild(content);root.appendChild(workspace);
   }
@@ -4151,7 +4151,7 @@
     if(!window.GitHubSync)return Promise.resolve();
     var config=window.HOMESTOCK_CONFIG||{};
     githubSync=window.GitHubSync.create({db:window.PantryDB,userId:window.CurrentUser.id(),
-      owner:config.GITHUB_OWNER,repo:config.GITHUB_DATA_REPO,
+      owner:config.GITHUB_OWNER,repo:window.CurrentUser.id()==='sigal'?config.SIGAL_DATA_REPO:config.GITHUB_DATA_REPO,
       getProfile:function(){return {displayName:window.CurrentUser.displayName(),avatar:window.CurrentUser.avatar()};},
       setProfile:function(value){window.Auth.updateProfile({displayName:value.displayName,avatar:value.avatar});},
       onRemote:function(){return load().then(function(){recomputeShortfall();if(!document.querySelector('.overlay,.profile-inline'))renderCurrentView();});}});
@@ -4187,7 +4187,7 @@
       h('p',{text:'מחברים פעם אחת בכל מכשיר. אחר כך המלאי, רשימת הקניות וההוצאות מתעדכנים אוטומטית כשהאפליקציה פתוחה ומחוברת לאינטרנט.'}),
       h('ol',{class:'shared-steps'},
         h('li',{},h('a',{href:url,target:'_blank',rel:'noopener noreferrer',text:'יצירת מפתח חיבור ב־GitHub'})),
-        h('li',{text:'בחרו Only select repositories ואז HomeStock-data בלבד. ההרשאה הנדרשת היא Contents: Read and write.'}),
+        h('li',{text:'בחרו Only select repositories ואז את מאגר הנתונים של המשתמש הזה בלבד. ההרשאה הנדרשת היא Contents: Read and write.'}),
         h('li',{text:'צרו את המפתח והדביקו אותו כאן. אין לשלוח אותו בצ׳אט.'})),
       h('label',{class:'field-label'},'מפתח חיבור אישי',token),
       h('p',{class:'shared-hint',text:'המפתח נשמר בדפדפן של המכשיר הזה ונשלח רק ל־GitHub. אפשר לבטל אותו בכל רגע בהגדרות GitHub.'}),error,connect);
@@ -4218,7 +4218,7 @@
     if(!window.Notification||!('serviceWorker' in navigator)||!window.PushManager){showToast('הדפדפן הזה אינו תומך בהתראות רקע.');return;}
     try{
       var permission=await Notification.requestPermission();if(permission!=='granted'){showToast('לא ניתנה הרשאה להתראות.');return;}
-      var reg=await navigator.serviceWorker.ready,key=window.HOMESTOCK_CONFIG.PUSH_PUBLIC_KEY;
+      var reg=await navigator.serviceWorker.ready,key=window.CurrentUser.id()==='sigal'?window.HOMESTOCK_CONFIG.PUSH_PUBLIC_KEY_SIGAL:window.HOMESTOCK_CONFIG.PUSH_PUBLIC_KEY;
       var bytes=Uint8Array.from(atob(key.replace(/-/g,'+').replace(/_/g,'/')),function(c){return c.charCodeAt(0);});
       var subscription=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes});
       await githubSync.registerPush(subscription.toJSON());showToast('התראות תפוגה הופעלו למכשיר הזה.');
@@ -4231,6 +4231,20 @@
       if(githubSync&&githubSync.status().connected)await githubSync.registerPush(null);
       showToast('התראות למכשיר הזה בוטלו.');
     }catch(error){showToast('לא ניתן לבטל את הרישום כרגע. אפשר לחסום התראות בהרשאות הדפדפן.');}
+  }
+
+  function openProfilePicker(){
+    var page=h('main',{class:'profile-picker'},h('h1',{text:'מי משתמש באפליקציה?'}),h('p',{text:'לכל משתמש מלאי, קניות והוצאות משלו.'}));
+    var all=window.Auth.listUsers(),primary;
+    try{primary=window.Auth.getUser(localStorage.getItem('homestock.singleUser'));}catch(error){}
+    primary=primary&&primary.id!=='sigal'?primary:window.Auth.getUser('aviraz')||all.find(function(user){return user.id!=='sigal';});
+    [[primary&&primary.id,'אבירז'],['sigal','סיגל']].forEach(function(choice){if(!choice[0])return;
+      page.appendChild(h('button',{type:'button',class:'profile-pick',text:choice[1],onclick:function(){
+        if(githubSync)githubSync.stop();
+        window.Auth.rememberSelection(choice[0]);window.location.reload();
+      }}));
+    });
+    if(!root)root=document.getElementById('root');root.replaceChildren(page);
   }
 
   function openSettings() {
@@ -4263,6 +4277,7 @@
         var link=h('a',{href:url,download:'HomeStock-'+ym()+'.json'});document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
       }).catch(function(){showToast('לא ניתן לייצא כרגע. נסו שוב.');}).then(function(){exportButton.disabled=false;});
     }});
+    profile.appendChild(h('button',{type:'button',class:'btn ghost',text:'החלפת משתמש',onclick:openProfilePicker}));
     content.appendChild(profile);content.appendChild(devices);
     content.appendChild(h('section',{class:'settings-section settings-notifications-section','aria-label':'התראות תפוגה'},
       h('h2',{text:'התראות תפוגה'}),
@@ -4281,6 +4296,7 @@
   // ---- Auth / boot ----
   function enterApp() {
     var uid = window.CurrentUser.id();
+    try{inventoryPresentation=localStorage.getItem('homestock.inventoryView:'+uid)||(uid==='sigal'?'list':localStorage.getItem('homestock.inventoryView'))||'list';}catch(error){inventoryPresentation='list';}
     window.PantryDB.setUser(uid); // scope all data access to this user id
     window.I18N.setUser(uid); // load this user's language preference
     window.Auth.touchSession();
@@ -4361,9 +4377,13 @@
     if (pendingLinkToken) cleanLinkUrl();
     window.Auth.init()
       .then(function () {
-        return window.PantryDB.migrateLegacyInto(window.CurrentUser.id());
+        return window.CurrentUser.id()==='sigal'?Promise.resolve(false):window.PantryDB.migrateLegacyInto(window.CurrentUser.id());
       })
-      .then(function () { return enterApp(); })
+      .then(function () {
+        var chosen=false;try{chosen=localStorage.getItem('homestock.profileChosen')==='1';}catch(error){}
+        if(!chosen){openProfilePicker();return;}
+        return enterApp();
+      })
       .catch(function (err) {
         console.error('HomeStock startup failed', err);
         document.getElementById('root').replaceChildren(h('p', { role: 'alert', text: 'לא ניתן לטעון את המלאי. נסו לרענן את הדף.' }));

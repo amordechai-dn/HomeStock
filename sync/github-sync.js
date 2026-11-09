@@ -88,6 +88,7 @@
     var db=options.db,store=options.store||storage(),request=options.fetch||fetch;
     var owner=options.owner,repo=options.repo,uid=options.userId,key='state:'+uid;
     if(!/^[\w-]+$/.test(owner)||!/^[\w.-]+$/.test(repo))throw new Error('invalid-repo');
+    var credentialKey='credential:'+repo+':'+uid;
     var base='https://api.github.com/repos/'+owner+'/'+repo;
     var chain=Promise.resolve(),timer,poll,stopped=false,running=false,connected=false,device,meta;
     var status={phase:'local',lastSync:null},listeners=[];
@@ -151,7 +152,7 @@
       if(stopped||running)return;
       running=true;
       try {
-        var credential=await store.get('credential');
+        var credential=await store.get(credentialKey);
         connected=!!credential;
         if(!credential){emit('local');return;}
         if(root.navigator&&root.navigator.onLine===false){emit('offline');return;}
@@ -182,7 +183,7 @@
             if(!equal(meta.doc,remote.doc))await putDoc(meta.doc,remote.sha,credential.token);
           }catch(e){if(e.status===409||e.status===422)continue;throw e;}
           status.lastSync=new Date().toISOString();status.retryAt=0;
-          await store.set('lastSync',status.lastSync);
+          await store.set('lastSync:'+repo+':'+uid,status.lastSync);
           emit('synced');
           if(result.changed&&options.onRemote)await options.onRemote();
           return;
@@ -196,8 +197,9 @@
     function schedule(){clearTimeout(timer);timer=setTimeout(function(){queue(sync);},1800);}
     function mutation(){queue(async function(){await readMeta();await captureNow();if(connected)emit('pending');}).then(schedule).catch(function(){emit('storage');});}
     async function start(){
+      if(uid!=='sigal'&&!await store.get(credentialKey)){var legacy=await store.get('credential');if(legacy)await store.set(credentialKey,legacy);}
       device=await store.get('device');if(!device){device=crypto.randomUUID();await store.set('device',device);}
-      await queue(async function(){await readMeta();await captureNow();connected=!!await store.get('credential');status.lastSync=await store.get('lastSync')||null;});
+      await queue(async function(){await readMeta();await captureNow();connected=!!await store.get(credentialKey);status.lastSync=await store.get('lastSync:'+repo+':'+uid)||null;});
       db.onMutation(mutation);
       if(options.auto!==false){poll=setInterval(function(){if(!root.document||root.document.visibilityState!=='hidden')queue(sync);},20000);root.addEventListener('online',wake);root.addEventListener('focus',wake);if(root.document)root.document.addEventListener('visibilitychange',wake);wake();}
       return apiObject;
@@ -205,7 +207,7 @@
     function wake(){if(!root.document||root.document.visibilityState!=='hidden')queue(sync);}
     var apiObject={
       registerPush:function(subscription){return queue(async function(){
-        var credential=await store.get('credential');if(!credential)throw new Error('not-connected');
+        var credential=await store.get(credentialKey);if(!credential)throw new Error('not-connected');
         var path='push/'+device+'.json',existing;
         try{existing=await api('/contents/'+path,credential.token);}catch(error){if(error.status!==404)throw error;}
         await putDoc({subscription:subscription,updatedAt:new Date().toISOString()},existing&&existing.sha,credential.token,path);
@@ -218,9 +220,9 @@
         var path='/contents/devices/'+device+'.json',existing;
         try{existing=await api(path,token);}catch(e){if(e.status!==404)throw e;}
         await putDoc({version:1,connectedAt:new Date().toISOString()},existing&&existing.sha,token,'devices/'+device+'.json');
-        await store.set('credential',{token:token});connected=true;status.retryAt=0;emit('pending');
+        await store.set(credentialKey,{token:token});connected=true;status.retryAt=0;emit('pending');
       }).then(function(){return queue(sync);});},
-      disconnect:function(){return queue(async function(){await store.set('credential',undefined);connected=false;emit('local');});},
+      disconnect:function(){return queue(async function(){await store.set(credentialKey,undefined);connected=false;emit('local');});},
       status:function(){return Object.assign({connected:connected},status);},
       subscribe:function(fn){listeners.push(fn);return function(){listeners=listeners.filter(function(x){return x!==fn;});};},
       stop:function(){stopped=true;clearTimeout(timer);clearInterval(poll);db.onMutation(null);if(root.removeEventListener){root.removeEventListener('online',wake);root.removeEventListener('focus',wake);if(root.document)root.document.removeEventListener('visibilitychange',wake);}}
