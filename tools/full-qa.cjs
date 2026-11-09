@@ -2,10 +2,23 @@
 const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
 (async()=>{
 const dom=new JSDOM('<div id="root"></div>',{url:'https://qa.invalid/HomeStock/',runScripts:'outside-only',pretendToBeVisual:true});const w=dom.window;const errors=[];
+if(process.env.QA_STORAGE==='indexeddb'){const fake=require('fake-indexeddb');w.indexedDB=new fake.IDBFactory();w.IDBKeyRange=fake.IDBKeyRange;}
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};w.matchMedia=()=>({matches:false,addEventListener(){}});w.addEventListener('error',e=>errors.push(e.error));
 for(const file of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','voice.js','app.js']){
 let code=fs.readFileSync(file,'utf8');if(file==='app.js')code=code.replace('window.App = {','window.App = {qaBarcode:openBarcodeProduct,');w.eval(code);}
-const wait=()=>new Promise(r=>setTimeout(r,15));w.localStorage.setItem('homestock.profileChosen','1');w.App.start();await wait();
+const wait=()=>new Promise(r=>setTimeout(r,15));
+const target=process.env.QA_PROFILE||'aviraz',other=target==='sigal'?'aviraz':'sigal';
+assert(['aviraz','sigal'].includes(target));await w.Auth.init();
+w.PantryDB.setUser(other);
+await w.PantryDB.create({name:'Protected other household stock',quantity:11,unit:'pack',expiryDate:'2028-01-01'});
+await w.PantryDB.putShopping({id:'protected-shopping',name:'Protected shopping',quantity:2});
+w.PantryDB.setMonthlyLog({'2026-11':{expenses:[{id:'protected-expense',amountAgorot:1234}]}});
+await w.PantryDB.putBarcode({barcode:'protected-barcode',he:'פריט שמור'});
+await w.PantryDB.putImage({hash:'protected-image',full:'data:image/png;base64,AA==',thumb:'data:image/png;base64,AA=='});
+async function snapshot(){return JSON.stringify({items:await w.PantryDB.getAll(),shopping:await w.PantryDB.getAllShopping(),monthly:w.PantryDB.getMonthlyLog(),barcodes:await w.PantryDB.getAllBarcodes(),images:await w.PantryDB.getAllImages()});}
+const protectedBefore=await snapshot();
+w.Auth.rememberSelection(target);w.App.start();await wait();assert.equal(w.CurrentUser.id(),target);
+console.log('QA profile: '+target+'; storage: '+(process.env.QA_STORAGE||'localStorage')+'; protecting untouched '+other+' household');
 function btn(name,scope=w.document){const b=[...scope.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===name||b.textContent.trim()===name);assert(b,'missing '+name);return b;}
 function field(name,value){const f=w.document.querySelector('input[aria-label="'+name+'"],textarea[aria-label="'+name+'"]');assert(f,'field '+name);f.value=value;f.dispatchEvent(new w.Event('input',{bubbles:true}));return f;}
 function pick(label,index){btn(label).click();const opts=w.document.querySelectorAll('[role=option]');assert(opts[index]);opts[index].click();}
@@ -37,5 +50,5 @@ const I=w.App._internals;await I.addToShoppingList({name:'QA shopping',quantity:
 console.log('PASS shopping purchase/archive/undo/delete and route preservation');
 w.App.qaBarcode({barcode:'7290000688077',product:{he:'QA barcode',categoryId:'snacks',unit:'pcs'}},()=>{},()=>{w.App.renderMain();});assert(w.document.querySelector('.editor-target'));assert(w.document.querySelector('[aria-label="תאריך תפוגה"]'));assert(w.document.querySelector('.editor-voice'));w.document.querySelector('.editor-save').click();await wait();assert((await w.PantryDB.getAll()).some(r=>r.barcode==='7290000688077'));
 console.log('PASS barcode-prefilled shared editor saves product with full controls');
-assert.deepEqual(errors,[]);w.close();console.log('ALL ISOLATED QA CHECKS PASSED');
+assert.deepEqual(errors,[]);w.PantryDB.setUser(other);assert.equal(await snapshot(),protectedBefore,'all data in the other household remains byte-for-byte unchanged');console.log('PASS protected household inventory/shopping/expenses/barcodes/photos unchanged');w.close();console.log('ALL ISOLATED QA CHECKS PASSED');
 })().catch(e=>{console.error(e);process.exit(1)});
