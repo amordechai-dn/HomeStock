@@ -4,7 +4,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
 const dom=new JSDOM('<div id="root"></div>',{url:'https://qa.invalid/HomeStock/',runScripts:'outside-only',pretendToBeVisual:true});const w=dom.window;const errors=[];
 if(process.env.QA_STORAGE==='indexeddb'){const fake=require('fake-indexeddb');w.indexedDB=new fake.IDBFactory();w.IDBKeyRange=fake.IDBKeyRange;}
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};w.matchMedia=()=>({matches:false,addEventListener(){}});w.addEventListener('error',e=>errors.push(e.error));
-for(const file of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','voice.js','app.js']){
+for(const file of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','app.js']){
 let code=fs.readFileSync(file,'utf8');if(file==='app.js')code=code.replace('window.App = {','window.App = {qaBarcode:openBarcodeProduct,');w.eval(code);}
 const wait=()=>new Promise(r=>setTimeout(r,15));
 const target=process.env.QA_PROFILE||'aviraz',other=target==='sigal'?'aviraz':'sigal';
@@ -48,7 +48,7 @@ btn('הוצאות').click();assert.equal(w.document.querySelectorAll('.monthly-c
 console.log('PASS expense delete and undo preserve current route');
 const I=w.App._internals;await I.addToShoppingList({name:'QA shopping',quantity:3,unit:'pcs',unitPriceAgorot:200});btn('רשימת קניות').click();w.document.querySelector('.shopping-buy').click();await wait();w.document.querySelector('.purchase-review .btn.save').click();await wait();assert.equal(w.document.querySelectorAll('.shopping-items .shopping-row').length,0);assert(w.document.querySelector('.shopping-bought'));w.document.querySelector('.toast button').click();await wait();assert.equal(w.document.querySelectorAll('.shopping-items .shopping-row').length,1);w.document.querySelector('.shopping-remove').click();await wait();assert.equal(w.location.hash,'#/shopping');assert(!w.document.querySelector('.shopping-items .shopping-row'));
 console.log('PASS shopping purchase/archive/undo/delete and route preservation');
-w.App.qaBarcode({barcode:'7290000688077',product:{he:'QA barcode',categoryId:'snacks',unit:'pcs'}},()=>{},()=>{w.App.renderMain();});assert(w.document.querySelector('.editor-target'));assert(w.document.querySelector('[aria-label="תאריך תפוגה"]'));assert(w.document.querySelector('.editor-voice'));w.document.querySelector('.editor-save').click();await wait();assert((await w.PantryDB.getAll()).some(r=>r.barcode==='7290000688077'));
+w.App.qaBarcode({barcode:'7290000688077',product:{he:'QA barcode',categoryId:'snacks',unit:'pcs'}},()=>{},()=>{w.App.renderMain();});assert(w.document.querySelector('.editor-target'));assert(w.document.querySelector('[aria-label="תאריך תפוגה"]'));assert(!w.document.querySelector('.editor-voice'));w.document.querySelector('.editor-save').click();await wait();assert((await w.PantryDB.getAll()).some(r=>r.barcode==='7290000688077'));
 console.log('PASS barcode-prefilled shared editor saves product with full controls');
 assert.deepEqual(errors,[]);w.PantryDB.setUser(other);assert.equal(await snapshot(),protectedBefore,'all data in the other household remains byte-for-byte unchanged');console.log('PASS protected household inventory/shopping/expenses/barcodes/photos unchanged');w.close();console.log('ALL ISOLATED QA CHECKS PASSED');
 })().catch(e=>{console.error(e);process.exit(1)});

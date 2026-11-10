@@ -196,3 +196,15 @@
 .profile-picker{max-width:480px;margin:12dvh auto;padding:24px;text-align:center}.profile-pick{display:block;width:100%;min-height:76px;margin-block:16px;border:1px solid var(--border);background:white;color:var(--primary);border-radius:12px;font:inherit;font-size:22px;font-weight:600}
 
 .product-entry-dialog{width:min(100%,440px)}.product-entry-option{display:flex;align-items:center;gap:16px;width:100%;padding:18px;margin-block:12px;border:1px solid var(--border);border-radius:10px;background:white;color:var(--text);text-align:start;font:inherit}.product-entry-option>span:last-child{display:grid;gap:6px}.product-entry-option strong{font-size:18px}.product-entry-option span span{font-size:14px;color:var(--muted);line-height:1.6}.product-entry-dialog>.btn{margin-block-start:8px;min-height:44px;width:100%}.product-entry-overlay{z-index:70}
+
+/* One linear product form, matching visual order to keyboard order. */
+.product-editor .product-editor-body { display:flex;flex-direction:column;gap:24px; }
+.product-editor .product-editor-body > * { flex-shrink:0;margin-block:0; }
+.product-editor .editor-stock { display:block; }
+.product-editor .editor-stock > .editor-section-title { margin-block-end:10px; }
+.product-editor .editor-expiry { margin-block-start:0; }
+.product-editor .editor-price-section .price-field { margin:0; }
+.product-editor .editor-price-section .purchase-choice { margin-block-start:10px; }
+.product-editor .editor-category { justify-content:flex-start; }
+.product-editor .editor-location-details { display:block; }
+.product-editor .editor-location-details .editor-section-title { margin-block-end:10px; }

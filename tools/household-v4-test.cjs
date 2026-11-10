@@ -1,7 +1,7 @@
 'use strict';const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
 (async()=>{const dom=new JSDOM('<div id="root"></div>',{url:'https://qa.invalid/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
 w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){};w.matchMedia=()=>({matches:false,addEventListener(){}});
-for(const f of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','voice.js','app.js']){let s=fs.readFileSync(f,'utf8');if(f==='app.js')s=s.replace('window.App = {','window.App = {qaEditor:openForm,');w.eval(s);}
+for(const f of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','app.js']){let s=fs.readFileSync(f,'utf8');if(f==='app.js')s=s.replace('window.App = {','window.App = {qaEditor:openForm,');w.eval(s);}
 const wait=()=>new Promise(r=>setTimeout(r,20));w.localStorage.setItem('homestock.profileChosen','1');w.App.start();await wait();const db=w.PantryDB;
 const total=()=>Object.values(db.getMonthlyLog()).reduce((n,m)=>n+(m.expenses||[]).reduce((n,e)=>n+e.amountAgorot,0),0);
 function set(label,value){const f=w.document.querySelector('input[aria-label="'+label+'"]');assert(f,label);f.value=value;f.dispatchEvent(new w.Event('input',{bubbles:true}));}
