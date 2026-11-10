@@ -1194,7 +1194,7 @@
 
     // Add-item control — opens the dedicated Shopping List add form (writes to
     // the shopping model only, never inventory).
-    container.appendChild(
+    if(mode!=='page')container.appendChild(
       h(
         'button',
         {
@@ -1239,8 +1239,7 @@
     if (suggestions.length) {
       container.appendChild(
         h('div', { class: 'shopping-suggest-head' },
-          h('span', { class: 'shopping-suggest-title', text: t('shopping.suggestions') }),
-          h('span', { class: 'shopping-suggest-sub', text: t('shopping.suggestionsSub') })
+          h('h2', { class: 'shopping-suggest-title', text: 'חסרים בבית' })
         )
       );
       var sugWrap = h('div', { class: 'shopping-suggestions' });
@@ -1252,57 +1251,21 @@
   // One row of the Shopping List (a shopping-model item). name + needed qty +
   // stepper, a purchased checkbox (=> purchase flow), and remove.
   function renderShoppingRow(shop) {
-    var unit = t('units.' + (shop.unit || 'pcs'));
-    var checkbox=h('button',{type:'button',class:'shopping-buy','aria-label':'נקנה: '+itemName(shop),onclick:function(){
-      checkbox.disabled=true;
-      checkbox.disabled=false;reviewShoppingPurchase(shop);
-    }},'נקנה ✓');
-    var minus = h('button', {
-      class: 'step-btn',
-      'aria-label': t('a11y.decrease'),
-      onclick: function (e) { e.stopPropagation(); changeShoppingQty(shop, -1); },
-    }, '−');
-    var plus = h('button', {
-      class: 'step-btn primary',
-      'aria-label': t('a11y.increase'),
-      onclick: function (e) { e.stopPropagation(); changeShoppingQty(shop, 1); },
-    }, '+');
-    var remove = h('button', {
-      class: 'shopping-remove',
-      'aria-label': t('shopping.remove'),
-      title: t('shopping.remove'),
-      onclick: function (e) { e.stopPropagation(); removeShoppingItem(shop); },
-    }, '✕');
-    var row=h(
-      'div',
-      { class: 'card shopping-row' },
-      checkbox,
-      h(
-        'button',
-        { class: 'card-info shopping-item-open',type:'button','aria-label':'עריכת '+itemName(shop),onclick:function(){openShoppingForm(shop);} },
+    var unit=t('units.'+(shop.unit||'pack')),quantity=shop.quantity||1;
+    var checkbox=h('button',{type:'button',class:'shopping-buy','aria-label':'נקנה: '+itemName(shop),onclick:function(){reviewShoppingPurchase(shop);}},uiIcon('check'),h('span',{text:'נקנה'}));
+    var minus=h('button',{type:'button',class:'step-btn',disabled:quantity<=1,'aria-label':'הפחתת כמות '+itemName(shop),onclick:function(){changeShoppingQty(shop,-1);}},'−');
+    var plus=h('button',{type:'button',class:'step-btn primary','aria-label':'הגדלת כמות '+itemName(shop),onclick:function(){changeShoppingQty(shop,1);}},'+');
+    var known=Number.isSafeInteger(shop.unitPriceAgorot);
+    return h('article',{class:'shopping-row','data-shopping-id':shop.id,'aria-label':itemName(shop)},
+      h('button',{class:'shopping-item-open',type:'button','aria-label':'עריכת '+itemName(shop),onclick:function(){openShoppingForm(shop);}},
         itemThumb(shop.imageHash===undefined?(findInventoryByKey(shopKey(shop))||shop):shop),
-        h('span', { class: 'card-name', dir: 'auto', text: itemName(shop) }),
-        h('span', {
-          class: 'card-meta',
-          text: t('shopping.needQty', { qty: formatQty(shop.quantity || 1), unit: unit })+(Number.isSafeInteger(shop.unitPriceAgorot)?' · '+formatMoney(purchaseAmount(shop.quantity||1,shop.unitPriceAgorot)) : ' · ללא מחיר'),
-        })
-      ),
-      remove,
-      h('div', { class: 'shopping-step' }, minus, plus)
-    );
-    var touchStart=null,suppressClick=false;
-    row.addEventListener('click',function(event){if(suppressClick){event.preventDefault();event.stopPropagation();suppressClick=false;}},true);
-    row.addEventListener('pointerdown',function(event){
-      if(event.pointerType!=='touch'||event.target.closest('.shopping-buy,.shopping-remove,.shopping-step,input'))return;
-      touchStart={x:event.clientX,y:event.clientY};
-    });
-    row.addEventListener('pointerup',function(event){
-      if(!touchStart)return;
-      var dx=event.clientX-touchStart.x,dy=event.clientY-touchStart.y;touchStart=null;
-      if(Math.abs(dx)>90&&Math.abs(dy)<30&&!checkbox.disabled){checkbox.click();suppressClick=true;setTimeout(function(){suppressClick=false;},400);}
-    });
-    row.addEventListener('pointercancel',function(){touchStart=null;});
-    return row;
+        h('span',{class:'shopping-identity'},h('strong',{class:'card-name',dir:'auto',text:itemName(shop)}),
+          h('span',{class:'card-meta',text:t('categories.'+(shop.categoryId||'other'))})),uiIcon('edit')),
+      h('div',{class:'shopping-quantity'},h('div',{class:'shopping-step',role:'group','aria-label':'כמות '+itemName(shop)},minus,h('span',{class:'shopping-qty-value',text:formatQty(quantity)}),plus),h('span',{class:'shopping-unit',text:unit})),
+      h('div',{class:'shopping-line-price'},h('strong',{dir:'auto',text:known?formatMoney(purchaseAmount(quantity,shop.unitPriceAgorot)):'—'}),
+        h('span',{text:known?formatMoney(shop.unitPriceAgorot)+' ל'+unit:'ללא מחיר'})),
+      checkbox,
+      h('button',{type:'button',class:'shopping-remove','aria-label':'הסרת '+itemName(shop)+' מהרשימה',title:'הסרה מהרשימה',onclick:function(){removeShoppingItem(shop);}},uiIcon('trash')));
   }
 
   // A suggestion row (inventory running low). The ＋ writes to the shopping
@@ -1434,11 +1397,11 @@
     pageAddress('shopping');currentView='shopping';prepareWorkspace();
     var page=h('main',{class:'kitchen-workspace shopping-workspace',id:'main-content',tabindex:'-1'});
     page.appendChild(h('header',{class:'kitchen-header'},h('div',{},
-      h('h1',{text:'הקנייה הבאה'}))));
+      h('h1',{text:'קניות'})),actionButton('הוספת מוצר לקניות','plus','kitchen-button primary shopping-add',function(){openShoppingForm(null);})));
     var estimate=Home.shoppingEstimate(shoppingItems);
     var trip=h('section',{class:'shopping-brief','aria-label':'תכנון הקנייה'},
       h('div',{},h('span',{class:'brief-label',text:'סכום משוער'}),h('strong',{dir:'auto',text:formatMoney(estimate.totalAgorot)})),
-      estimate.unknown?h('p',{text:estimate.unknown+' מוצרים ללא מחיר'}):null,
+      estimate.unknown?h('p',{text:productCount(estimate.unknown)+' ללא מחיר'}):null,
       h('span',{class:'trip-count',text:productCount(estimate.count)+' לקנייה'}));
     page.appendChild(trip);
     var list=h('div',{class:'shopping-page'});renderShoppingList(list,'page');page.appendChild(list);root.appendChild(page);
@@ -1459,6 +1422,7 @@
   function uiIcon(name) {
     var paths = {
       bath: '<path d="M3 12h18v3a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-3Zm3 8v2m12-2v2M5 12V5a3 3 0 0 1 6 0"/><path d="M9 6h4"/>',
+      edit: '<path d="m15 5 4 4M4 20l4-1L20 7a3 3 0 0 0-4-4L4 15v5Z"/>',
       house: '<path d="m3 11 9-8 9 8M5 10v11h14V10M10 21v-7h4v7"/>',
       trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/>',
       shelf: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16M9 7v2m0 6v2"/>',
