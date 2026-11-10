@@ -3826,6 +3826,15 @@
     var config=window.HOMESTOCK_CONFIG||{};
     var state=githubSync?githubSync.status():{connected:false};
     var status=h('p',{class:'shared-status',role:'status',text:githubStatusText()});
+    var lastSync=h('dd',{}),connection=h('dd',{});
+    function updateConnectionInfo(){
+      var live=githubSync?githubSync.status():{};
+      status.textContent=githubStatusText();
+      lastSync.textContent=live.lastSync?new Date(live.lastSync).toLocaleString('he-IL',{timeZone:'Asia/Jerusalem'}):'עדיין לא בוצע';
+      connection.textContent=live.connected?'מחובר לסנכרון אוטומטי':'נתונים מקומיים בלבד';
+    }
+    updateConnectionInfo();
+    var info=h('dl',{class:'shared-connection-info'},h('dt',{text:'המכשיר הזה'}),connection,h('dt',{text:'עדכון אחרון'}),lastSync);
     var token=h('input',{class:'input',type:'password',dir:'ltr',autocomplete:'off',spellcheck:'false',
       'aria-label':'מפתח חיבור אישי',placeholder:'github_pat_…'});
     var error=h('p',{class:'editor-error',role:'alert'});
@@ -3857,10 +3866,10 @@
       if(busy)return;busy=true;disconnect.disabled=true;
       githubSync.disconnect().then(function(){busy=false;close();showToast('המכשיר נותק. הנתונים המקומיים נשמרו.');}).catch(function(){busy=false;disconnect.disabled=false;error.textContent='לא ניתן לנתק כרגע. נסו שוב.';});
     }},'ניתוק המכשיר הזה'):null;
-    overlay.appendChild(h('section',{class:'dialog shared-dialog',role:'dialog','aria-modal':'true','aria-label':'אותם הנתונים בכל המכשירים'},
-      h('div',{class:'sheet-header'},h('h2',{class:'dialog-title',text:'הבית שלכם, בכל מכשיר'}),closeButton),
-      status, state.connected && state.phase==='synced' ? null : form,disconnect));
-    if(githubSync)unsub=githubSync.subscribe(function(){status.textContent=githubStatusText();});
+    overlay.appendChild(h('section',{class:'dialog shared-dialog',role:'dialog','aria-modal':'true','aria-label':'ניהול סנכרון'},
+      h('div',{class:'sheet-header'},h('h2',{class:'dialog-title',text:'סנכרון'}),closeButton),
+      status,info,state.connected && state.phase==='synced' ? null : form,disconnect));
+    if(githubSync)unsub=githubSync.subscribe(updateConnectionInfo);
     overlay.addEventListener('click',function(e){if(e.target===overlay)close();});
     overlay.addEventListener('keydown',function(e){
       if(e.key==='Escape'){e.preventDefault();close();}
@@ -3917,13 +3926,10 @@
     var profile=h('section',{class:'settings-section settings-profile-section','aria-label':'הפרופיל שלי'},
       h('h2',{class:'sr-only',text:'המשתמש שלי'}));
     profile.appendChild(h('div',{class:'settings-profile-line'},avatarEl('lg'),
-      h('strong',{dir:'auto',text:cu?cu.displayName():''})));
-    var state=githubSync?githubSync.status():{};
+      h('strong',{dir:'auto',text:cu?cu.displayName():''}),h('button',{type:'button',class:'btn ghost settings-switch-user',text:'החלפת משתמש',onclick:openProfilePicker})));
     var devices=h('section',{class:'settings-section settings-devices-section','aria-label':'המכשירים שלי'},
       h('h2',{text:'סנכרון'}),
-      h('p',{class:'settings-sync-label',role:'status',text:githubStatusText()}),
-      h('p',{class:'settings-help',text:state.lastSync?'עודכן: '+new Date(state.lastSync).toLocaleString('he-IL'):'נשמר במכשיר הזה'}),
-      h('button',{type:'button',class:'btn ghost',text:state.connected?'ניהול':'חיבור לסנכרון',onclick:openGitHubConnection}));
+      h('button',{type:'button',class:'btn ghost',text:'ניהול',onclick:openGitHubConnection}));
     var exportButton=h('button',{type:'button',class:'btn ghost',text:'הורדת גיבוי',onclick:function(){
       exportButton.disabled=true;
       Promise.all([window.PantryDB.getAll(),window.PantryDB.getAllShopping(),window.PantryDB.getAllBarcodes()]).then(function(data){
@@ -3932,7 +3938,6 @@
         var link=h('a',{href:url,download:'HomeStock-'+ym()+'.json'});document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
       }).catch(function(){showToast('לא ניתן לייצא כרגע. נסו שוב.');}).then(function(){exportButton.disabled=false;});
     }});
-    profile.appendChild(h('button',{type:'button',class:'btn ghost',text:'החלפת משתמש',onclick:openProfilePicker}));
     content.appendChild(profile);content.appendChild(devices);
     var notificationsOn=false;
     var notificationToggle=h('button',{type:'button',class:'btn ghost',text:'הפעלת התראות',onclick:async function(){
@@ -3948,8 +3953,9 @@
     content.appendChild(h('section',{class:'settings-section settings-notifications-section','aria-label':'התראות תפוגה'},
       h('h2',{text:'התראות תפוגה'}),notificationToggle));
     content.appendChild(h('section',{class:'settings-section settings-data-section','aria-label':'ניהול הנתונים'},
-      h('h2',{text:'גיבוי'}),exportButton,
-      h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory})));
+      h('h2',{text:'גיבוי'}),exportButton));
+    content.appendChild(h('section',{class:'settings-section settings-inventory-section','aria-label':'ניהול המלאי'},h('h2',{text:'מלאי'}),
+      h('button',{type:'button',class:'btn settings-delete-link',onclick:openClearInventory},uiIcon('trash'),h('span',{text:'מחיקת המלאי'}))));
     content.appendChild(h('p',{class:'settings-version',id:'version',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     page.appendChild(content);prepareWorkspace();root.appendChild(page);
   }
