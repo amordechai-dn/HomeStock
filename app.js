@@ -2286,8 +2286,9 @@
     else if(category==='other')category=categoryFromProductName([he,name,product.generic_name].filter(Boolean).join(' '));
     var image=product.image_front_url||product.image_front_small_url||product.image_small_url;
     try{var source=new URL(image);if(source.protocol!=='https:'||!/(^|\.)open(food|beauty|products|petfood)facts\.(org|net)$/.test(source.hostname))image=null;}catch(error){image=null;}
+    var suggestedLocation=Home.scanLocation({name:name,he:he,categoryId:category,productType:type,categories_tags:product.categories_tags});
     return Promise.resolve({
-      barcode:code,name:name,he:he||match&&match.he||'',productType:type,
+      barcode:code,name:name,he:he||match&&match.he||'',productType:type,location:suggestedLocation,
       brand:String(product.brands||'').split(',')[0].trim(),size:String(product.quantity||'').trim(),
       categoryId:category,unit:match&&match.unit||'pcs',emoji:match&&match.emoji||null,image:null,imageUrl:image||null,source:'off'
     });
@@ -2705,7 +2706,7 @@
       barcode:barcode,name:product.he||product.name||'',nameHe:product.he||null,nameEn:product.name||null,
       categoryId:product.categoryId||'other',unit:'pack',quantity:1,
       unitPriceAgorot:product.unitPriceAgorot,
-      location:product.location||(product.productType==='beauty'?'Shower':product.productType==='product'?'House':defaultInventoryLocation()),
+      location:Home.scanLocation(product),
       emoji:product.emoji||null,imageFull:product.image||null,imageUrl:product.imageUrl||null
     }});
   }

@@ -13,6 +13,25 @@
     items.forEach(function(item){var room=result.rooms[space(item)];room.total++;if(attention(item)){room.attention++;result.attention++;}if(state(item)==='out'){room.out++;result.out++;}});
     return result;
   }
+  // A reviewable storage suggestion; previously saved placement always wins.
+  function scanLocation(product){
+    product=product||{};
+    if(roomFor[product.location])return product.location;
+    var text=normalize([product.he,product.name,product.nameHe,product.nameEn,product.generic_name,(product.categories_tags||[]).join(' ')].filter(Boolean).join(' '));
+    var category=product.categoryId||product.category||'other',type=product.productType||product.product_type;
+    if(/נייר טואלט|אסלה|מנקה אסלות|toilet|toothpaste|toothbrush|dental|משחת שיניים|מברשת שיניים|סבון ידיים|hand soap|תחבושות|טמפונים|tampon|sanitary pad/.test(text))return 'Toilet';
+    if(/נייר אפייה|נייר כסף|baking paper|aluminum foil|aluminium foil|kitchen towel|נייר סופג/.test(text))return 'Pantry';
+    if(/כביסה|מדיח|ניקוי|אקונומיקה|laundry|dishwash|detergent|bleach|cleaner/.test(text))return 'House';
+    if(/שמפו|מרכך שיער|מסכת שיער|גוף|מקלחת|shampoo|conditioner|body wash|shower gel/.test(text))return 'Shower';
+    if(type==='beauty'||['care','hair','skincare'].indexOf(category)>=0)return 'Shower';
+    if(['dental','hygiene','paper'].indexOf(category)>=0)return 'Toilet';
+    if(type==='product'||type==='petfood'||['household','cleaning','laundry','dishwashing','health','baby','pets','disposables'].indexOf(category)>=0)return 'House';
+    if(category==='frozen'||/frozen|ice[ -]?cream|גליד[הת]|קפוא|מוקפא|ארטיק|שלגון/.test(text))return 'Freezer';
+    if(/canned|tinned|שימור|משומר|אבקת חלב|milk powder|uht|long[ -]?life|עמיד/.test(text))return 'Pantry';
+    if(['dairy','meat','produce','fruit'].indexOf(category)>=0)return 'Fridge';
+    if(/יוגורט|גבינ[הת]|חלב|חמאה|שמנת|ביצים|yogurt|cheese|milk|butter|cream|eggs/.test(text)&&category==='other')return 'Fridge';
+    return 'Pantry';
+  }
   function prioritySpace(item){
     if(roomFor[item.location])return space(item);
     if(['care','dental','hair','skincare','hygiene','paper'].indexOf(item.categoryId)>=0)return 'Bathroom';
@@ -113,5 +132,5 @@
     }else date.setDate(date.getDate()+Number(value));
     return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
   }
-  root.HomeModel={comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  root.HomeModel={scanLocation:scanLocation,comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);

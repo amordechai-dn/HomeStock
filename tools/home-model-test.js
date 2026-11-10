@@ -65,3 +65,31 @@ assert.equal(M.prioritySpace({categoryId:'dental'}),'Bathroom');
 assert.equal(M.prioritySpace({categoryId:'laundry'}),'House');
 assert.equal(M.prioritySpace({categoryId:'dental',location:'Pantry'}),'Kitchen','explicit placement overrides category');
 console.log('PASS shared priority: nearest expiry, shortages, Kitchen/Bathroom/General, shopping category fallback and unchanged records');
+
+const storageCases=[
+ [{he:'חלב',categoryId:'dairy'},'Fridge'],
+ [{he:'גבינה צהובה',categoryId:'dairy'},'Fridge'],
+ [{he:'עגבניות',categoryId:'produce'},'Fridge'],
+ [{he:'פסק זמן',categoryId:'snacks'},'Pantry'],
+ [{he:'אורז',categoryId:'grains'},'Pantry'],
+ [{he:'חלב עמיד',categoryId:'dairy'},'Pantry'],
+ [{name:'UHT milk',categoryId:'dairy'},'Pantry'],
+ [{name:'Canned tuna',categoryId:'meat'},'Pantry'],
+ [{he:'אפונה קפואה',categoryId:'produce'},'Freezer'],
+ [{name:'Pizza',categoryId:'other',categories_tags:['en:frozen-foods']},'Freezer'],
+ [{he:'גלידת וניל',categoryId:'dairy'},'Freezer'],
+ [{he:'נייר טואלט',categoryId:'household'},'Toilet'],
+ [{he:'משחת שיניים',productType:'beauty',categoryId:'care'},'Toilet'],
+ [{he:'סבון ידיים',categoryId:'care'},'Toilet'],
+ [{he:'שמפו',productType:'beauty'},'Shower'],
+ [{name:'Body wash',categoryId:'care'},'Shower'],
+ [{he:'נוזל כביסה',categoryId:'household'},'House'],
+ [{he:'טבליות למדיח',categoryId:'household'},'House'],
+ [{he:'נייר אפייה',categoryId:'paper'},'Pantry'],
+ [{name:'Dog food',productType:'petfood'},'House'],
+ [{categoryId:'other'},'Pantry'],
+ [{he:'חלב',categoryId:'dairy',location:'Freezer'},'Freezer'],
+ [{he:'חלב',categoryId:'dairy',location:'invalid'},'Fridge']
+];
+for(const [product,location] of storageCases){const snapshot=JSON.stringify(product);assert.equal(M.scanLocation(product),location,JSON.stringify(product));assert.equal(JSON.stringify(product),snapshot);}
+console.log('PASS scan storage: 23 Hebrew/English/category/tag cases, shelf-stable and frozen exceptions, valid saved location priority, no record mutation');
