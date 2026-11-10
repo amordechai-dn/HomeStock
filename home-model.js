@@ -13,6 +13,20 @@
     items.forEach(function(item){var room=result.rooms[space(item)];room.total++;if(attention(item)){room.attention++;result.attention++;}if(state(item)==='out'){room.out++;result.out++;}});
     return result;
   }
+  function prioritySpace(item){
+    if(roomFor[item.location])return space(item);
+    if(['care','dental','hair','skincare','hygiene','paper'].indexOf(item.categoryId)>=0)return 'Bathroom';
+    if(['produce','fruit','dairy','meat','bakery','grains','pasta','dry','frozen','snacks','spreads','baking','condiments','oils','drinks','hotdrinks','alcohol'].indexOf(item.categoryId)>=0)return 'Kitchen';
+    return 'House';
+  }
+  function comparePriority(a,b,today){
+    function priority(item){var due=expiry(item,today);return item.quantity>0&&due&&due.urgent?0:attention(item)?1:2;}
+    var delta=priority(a)-priority(b);if(delta)return delta;
+    if(priority(a)===0){delta=String(a.expiryDate).localeCompare(String(b.expiryDate));if(delta)return delta;}
+    if(priority(a)===1){delta=(state(a)==='out'?0:1)-(state(b)==='out'?0:1);if(delta)return delta;}
+    var rooms={Kitchen:0,Bathroom:1,House:2};
+    return rooms[prioritySpace(a)]-rooms[prioritySpace(b)]||name(a).localeCompare(name(b),'he')||String(a.id||'').localeCompare(String(b.id||''));
+  }
   function select(items,options){
     options=options||{};
     var query=normalize(options.query),terms=query.split(' ').filter(Boolean);
@@ -27,7 +41,7 @@
     });
     return rows.sort(function(a,b){
       if(options.sort==='recent'){var delta=String(b.updatedAt||'').localeCompare(String(a.updatedAt||''));if(delta)return delta;}
-      if(options.sort==='attention'){var score={out:0,low:1,ready:2},delta=score[state(a)]-score[state(b)];if(delta)return delta;}
+      if(!options.sort||options.sort==='attention')return comparePriority(a,b);
       return name(a).localeCompare(name(b),'he')||String(a.id).localeCompare(String(b.id));
     });
   }
@@ -99,5 +113,5 @@
     }else date.setDate(date.getDate()+Number(value));
     return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
   }
-  root.HomeModel={expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  root.HomeModel={comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);

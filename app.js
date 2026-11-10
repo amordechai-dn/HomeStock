@@ -964,7 +964,10 @@
     return normName((rec && (rec.nameEn || rec.name || rec.nameHe)) || '');
   }
   function activeShopping() {
-    return shoppingItems.filter(function (x) { return !x.purchased; });
+    return shoppingItems.filter(function (x) { return !x.purchased; }).sort(function(a,b){
+      function source(row){return items.find(function(item){return shopKey(item)===shopKey(row)&&(item.unit||'pcs')===(row.unit||'pcs');})||row;}
+      return Home.comparePriority(source(a),source(b));
+    });
   }
   function findActiveShoppingByKey(key,unit) {
     for (var i = 0; i < shoppingItems.length; i++) {
@@ -1209,7 +1212,7 @@
     // Suggestions from inventory "to restock" not already on the list.
     var activeKeys = {};
     active.forEach(function (s) { activeKeys[shopKey(s)] = true; });
-    var suggestions=Home.shoppingPlan(items,shoppingItems).map(function(need){return Object.assign({},need.item,{missing:need.quantity});});
+    var suggestions=Home.shoppingPlan(items,shoppingItems).map(function(need){return Object.assign({},need.item,{missing:need.quantity});}).sort(function(a,b){return Home.comparePriority(a,b);});
 
     if (!active.length) {
       container.appendChild(
@@ -1525,7 +1528,7 @@
     ['מוצר','קטגוריה','כמה יש','סוג','כמות רצויה','מחיר ליחידה','תאריך תפוגה','איפה המוצר נמצא','איפה בדיוק','הערות',''].forEach(function(label){head.appendChild(h('th',{scope:'col',text:label}));});
     table.appendChild(h('thead',{},head));
     var rows=h('tbody',{});
-    selected.slice().sort(function(a,b){return itemName(a).localeCompare(itemName(b),'he');}).forEach(function(item){
+    selected.slice().sort(function(a,b){return Home.comparePriority(a,b);}).forEach(function(item){
       var space=SPACES.find(function(entry){return entry.id===locationSpace(item.location);});
       var date=item.expiryDate&&!item.noExpiry?new Date(item.expiryDate+'T12:00:00').toLocaleDateString('he-IL'):'—';
       var row=h('tr',{'data-item-id':item.id},h('th',{scope:'row'},h('button',{type:'button',class:'stock-product','aria-label':'עריכת '+itemName(item),onclick:function(){openForm(item);}},itemThumb(item),h('span',{dir:'auto',text:itemName(item)}))));
@@ -1610,7 +1613,7 @@
     inventoryFilterButtons=[];inventoryTitle=null;cardRefs={};prepareWorkspace();
     var summary=Home.summary(items),month=window.PantryDB.getMonthlyLog()[ym()]||{};
     var needed=Home.select(items,{filter:'attention',sort:'attention'});
-    var expiring=items.filter(function(item){var status=Home.expiry(item);return item.quantity>0&&status&&status.urgent;}).sort(function(a,b){return String(a.expiryDate).localeCompare(String(b.expiryDate));});
+    var expiring=items.filter(function(item){var status=Home.expiry(item);return item.quantity>0&&status&&status.urgent;}).sort(function(a,b){return Home.comparePriority(a,b);});
     var plan=Home.shoppingPlan(items,shoppingItems),shopping=activeShopping();
     var page=h('main',{class:'kitchen-workspace home-overview',id:'main-content',tabindex:'-1'});
     var greetingName=window.CurrentUser&&window.CurrentUser.id()==='sigal'?'סיגל':'אבירז';

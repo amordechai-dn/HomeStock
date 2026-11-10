@@ -46,3 +46,22 @@ assert.equal(M.expiryPreset('7','2026-11-07'),'2026-11-14');
 assert.equal(M.expiryPreset('month','2027-01-31'),'2027-02-28');
 assert.equal(M.expiryPreset('month','2028-01-31'),'2028-02-29');
 console.log('PASS quick expiry dates across month/year boundaries and leap years');
+
+const priorityRows=[
+ {id:'general-ready',name:'א כללי',quantity:2,location:'House'},
+ {id:'bath-ready',name:'א רחצה',quantity:2,location:'Shower'},
+ {id:'kitchen-ready',name:'ת מטבח',quantity:2,location:'Pantry'},
+ {id:'general-low',name:'כללי חסר',quantity:1,desiredAmount:3,location:'House'},
+ {id:'bath-out',name:'רחצה אזל',quantity:0,location:'Toilet',expiryDate:'2026-11-01'},
+ {id:'kitchen-out',name:'מטבח אזל',quantity:0,location:'Fridge'},
+ {id:'general-expiry',name:'כללי תוקף',quantity:1,location:'House',expiryDate:'2026-11-11'},
+ {id:'bath-expired',name:'רחצה פג',quantity:1,location:'Shower',expiryDate:'2026-11-09'}
+];
+const snapshot=JSON.stringify(priorityRows);
+assert.deepEqual(priorityRows.slice().sort((a,b)=>M.comparePriority(a,b,'2026-11-10')).map(row=>row.id),['bath-expired','general-expiry','kitchen-out','bath-out','general-low','kitchen-ready','bath-ready','general-ready']);
+assert.equal(JSON.stringify(priorityRows),snapshot);
+assert.equal(M.prioritySpace({categoryId:'grains'}),'Kitchen','shopping food without a saved location sorts in kitchen');
+assert.equal(M.prioritySpace({categoryId:'dental'}),'Bathroom');
+assert.equal(M.prioritySpace({categoryId:'laundry'}),'House');
+assert.equal(M.prioritySpace({categoryId:'dental',location:'Pantry'}),'Kitchen','explicit placement overrides category');
+console.log('PASS shared priority: nearest expiry, shortages, Kitchen/Bathroom/General, shopping category fallback and unchanged records');
