@@ -714,7 +714,7 @@
       var addBtn = h(
         'button',
         { class: 'btn ghost', type: 'button', onclick: function () { fileInput.click(); } },
-        'בחירת תמונה'
+        preview?t('form.changePhoto'):'בחירת תמונה'
       );
       var rm = preview
         ? h(
