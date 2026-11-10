@@ -13,16 +13,33 @@
     { id: 'dairy', emoji: '🧀' },
     { id: 'meat', emoji: '🥩' },
     { id: 'bakery', emoji: '🍞' },
-    { id: 'dry', emoji: '🥫' },
     { id: 'grains', emoji: '🌾' },
+    { id: 'pasta', emoji: '🍝' },
+    { id: 'dry', emoji: '🥫' },
     { id: 'frozen', emoji: '🧊' },
-    { id: 'drinks', emoji: '🥤' },
     { id: 'snacks', emoji: '🍫' },
+    { id: 'spreads', emoji: '🍯' },
+    { id: 'baking', emoji: '🧁' },
     { id: 'condiments', emoji: '🧂' },
+    { id: 'oils', emoji: '🫒' },
+    { id: 'drinks', emoji: '🥤' },
+    { id: 'hotdrinks', emoji: '☕' },
+    { id: 'alcohol', emoji: '🍷' },
     { id: 'care', emoji: '🧴' },
+    { id: 'dental', emoji: '🪥' },
+    { id: 'hair', emoji: '🧴' },
+    { id: 'skincare', emoji: '🧴' },
+    { id: 'hygiene', emoji: '🧼' },
     { id: 'paper', emoji: '🧻' },
+    { id: 'cleaning', emoji: '🧽' },
+    { id: 'dishwashing', emoji: '🍽️' },
+    { id: 'laundry', emoji: '🧺' },
+    { id: 'disposables', emoji: '🥡' },
+    { id: 'health', emoji: '🩹' },
+    { id: 'baby', emoji: '🍼' },
+    { id: 'pets', emoji: '🐾' },
     { id: 'household', emoji: '🔋' },
-    { id: 'other', emoji: '🍽️' },
+    { id: 'other', emoji: '📦' },
   ];
   var SPACES = [
     { id: 'Kitchen', label: 'מטבח', icon: 'shelf', defaultLocation: 'Pantry' },
@@ -1329,10 +1346,11 @@
     var photo=photoControl(state),name=h('input',{class:'input',type:'text',value:editing?itemName(existing):'','aria-label':'שם המוצר לקנייה'});
     var qty=h('input',{class:'editor-quantity-input',type:'number',min:1,step:1,value:editing?existing.quantity:1,'aria-label':'כמות לקנייה'});
     var unit=window.HomeDropdown.create({label:'יחידת מידה',value:editing?existing.unit:'pack',options:UNITS.map(function(id){return {value:id,label:t('units.'+id)};})});
+    var category=window.HomeDropdown.create({label:'קטגוריה',value:state.categoryId,options:CATEGORIES.map(function(cat){return {value:cat.id,label:cat.emoji+' '+t('categories.'+cat.id)};}),onChange:function(value){state.categoryId=value;photo.render();}});
     var price=priceField(editing?existing.unitPriceAgorot:null,function(){return Number(qty.value)||0;},'סה״כ משוער');
     function change(delta){qty.value=Math.max(1,(Number(qty.value)||1)+delta);price.update();}
     qty.addEventListener('input',price.update);
-    function close(){if(busy)return;unit.destroy();overlay.remove();}
+    function close(){if(busy)return;unit.destroy();category.destroy();overlay.remove();}
     var error=h('p',{class:'editor-error',role:'alert'});
     var save=h('button',{class:'btn save',type:'button',text:editing?'שמירת שינויים':'הוספה לרשימה',onclick:function(){
       if(busy)return;var quantity=Number(qty.value),cost;
@@ -1349,6 +1367,7 @@
     var overlay=h('div',{class:'overlay center shopping-editor-overlay'},h('div',{class:'dialog shopping-editor',role:'dialog','aria-modal':'true','aria-label':editing?'עריכת מוצר לקנייה':'מוצר לקנייה'},
       h('div',{class:'sheet-header'},h('h2',{text:editing?'עריכת מוצר לקנייה':'מוצר לקנייה'}),h('button',{class:'sheet-close',type:'button','aria-label':'סגירה',text:'✕',onclick:close})),
       h('label',{class:'editor-caption'},'שם המוצר',name),
+      h('div',{class:'shopping-category'},h('h3',{class:'editor-caption',text:'קטגוריה'}),category.element),
       h('div',{class:'shopping-photo'},photo.row,photo.input),
       h('div',{class:'shopping-fields'},h('div',{},h('h3',{text:'כמות'}),h('div',{class:'stepper editor-quantity'},h('button',{type:'button',class:'step-btn','aria-label':'הפחתת כמות לקנייה',text:'−',onclick:function(){change(-1);}}),qty,h('button',{type:'button',class:'step-btn','aria-label':'הגדלת כמות לקנייה',text:'+',onclick:function(){change(1);}}))),h('div',{},h('h3',{text:'יחידה'}),unit.element),price.element),
       error,h('div',{class:'actions'},save,h('button',{class:'btn cancel',type:'button',text:'ביטול',onclick:close}))));
