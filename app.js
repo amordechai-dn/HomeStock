@@ -441,7 +441,7 @@
   // Release an image when no remaining item references it (refcount-by-scan GC).
   function releaseImage(hash) {
     if (!hash) return Promise.resolve();
-    var stillUsed = items.some(function (it) {
+    var stillUsed = items.concat(shoppingItems||[]).some(function (it) {
       return it.imageHash === hash;
     });
     if (stillUsed) return Promise.resolve();
@@ -986,6 +986,7 @@
     var existing = key ? findActiveShoppingByKey(key,input.unit||'pcs') : null;
     var rec;
     if (existing) {
+      existing=Object.assign({},existing);
       existing.quantity = (typeof existing.quantity === 'number' ? existing.quantity : 0) + qty;
       if(Number.isSafeInteger(input.unitPriceAgorot)) existing.unitPriceAgorot=input.unitPriceAgorot;
       rec = existing;
@@ -1002,6 +1003,7 @@
         purchased: false,
       };
     }
+    if(Object.prototype.hasOwnProperty.call(input,'imageHash'))rec.imageHash=input.imageHash;
     return window.PantryDB.putShopping(rec).then(function (saved) {
       upsertLocalShopping(saved);
       recomputeShortfall();
@@ -1066,6 +1068,7 @@
     var applyInv,stockWritten=null,completed=false;
     if (inv) {
       inv=Object.assign({},inv);
+      if(shop.imageHash)inv.imageHash=shop.imageHash;
       if(Number.isSafeInteger(shop.unitPriceAgorot)) inv.unitPriceAgorot=shop.unitPriceAgorot;
       inv=window.HomePackages?window.HomePackages.add(inv,qty,shop.expiryDate):Object.assign({},inv,{quantity:inv.quantity+qty});
       applyInv = window.PantryDB.put(inv).then(function () { return inv; });
@@ -1073,7 +1076,7 @@
       applyInv = window.PantryDB.create({
         name: shop.name, nameEn: shop.nameEn, nameHe: shop.nameHe,
         location: defaultInventoryLocation(),
-        unitPriceAgorot: shop.unitPriceAgorot,
+        unitPriceAgorot: shop.unitPriceAgorot,imageHash:shop.imageHash||null,
         quantity: qty, unit: shop.unit || 'pack', categoryId: shop.categoryId || 'other',expiryDate:shop.expiryDate||null,
       }).then(function (ni) { createdNew = true; items.push(ni); return ni; });
     }
@@ -1260,6 +1263,7 @@
       h(
         'button',
         { class: 'card-info shopping-item-open',type:'button','aria-label':'עריכת '+itemName(shop),onclick:function(){openShoppingForm(shop);} },
+        itemThumb(shop.imageHash===undefined?(findInventoryByKey(shopKey(shop))||shop):shop),
         h('span', { class: 'card-name', dir: 'auto', text: itemName(shop) }),
         h('span', {
           class: 'card-meta',
@@ -1317,79 +1321,38 @@
   }
 
   // Compact add/edit form for a Shopping List item (writes to shopping only).
-  function openShoppingForm(existing) {
-    var editing = !!existing;
-    var overlay = h('div', { class: 'overlay center' });
-    var prevReopen = reopenTop;
-    var myReopen = function () { openShoppingForm(existing); };
-    reopenTop = myReopen;
-    function close() {
-      if(unitSel)unitSel.destroy();
-      overlay.remove();
-      if (reopenTop === myReopen) reopenTop = prevReopen;
-    }
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-
-    var nameInput = h('input', {
-      class: 'input', type: 'text', dir: 'auto',
-      placeholder: t('shopping.namePlaceholder'),
-      value: editing ? itemName(existing) : '',
-    });
-    var qtyInput = h('input', {
-      class: 'input', type: 'number', min: '1', inputmode: 'numeric',
-      value: String(editing ? (existing.quantity || 1) : 1),
-    });
-    var unitSel = window.HomeDropdown.create({
-      label:'יחידת מידה',
-      value:editing ? existing.unit : 'pack',
-      options:UNITS.map(function(unit){return {value:unit,label:t('units.'+unit)};})
-    });
-
-    var price = priceField(editing ? existing.unitPriceAgorot : null,function(){return Number(qtyInput.value)||0;},'עלות מתוכננת');
-    qtyInput.addEventListener('input',price.update);
-    var card = h(
-      'div', { class: 'sync-body shopping-form' },
-      h('h3', { dir: 'auto', text: editing ? t('shopping.editTitle') : t('shopping.addItem') }),
-      h('label', { class: 'field-label', text: t('shopping.nameLabel') }),
-      nameInput,
-      h('label', { class: 'field-label', text: t('shopping.quantity') }),
-      qtyInput,
-      h('label', { class: 'field-label', text: t('form.unit') }),
-      unitSel.element
-    );
-    card.appendChild(price.element);
-    card.appendChild(h('p',{class:'price-note',text:'ההוצאה תירשם רק לאחר סימון הפריט כנרכש.'}));
-    var actions = h('div', { class: 'conflict-actions' });
-    actions.appendChild(h('button', { class: 'btn ghost', type: 'button', onclick: close }, t('form.cancel')));
-    actions.appendChild(h('button', { class: 'btn save', type: 'button', onclick: function () {
-      var nm = nameInput.value.trim();
-      if (!nm) { nameInput.focus(); return; }
-      var qv = parseInt(qtyInput.value, 10);
-      if (!(qv > 0)) qv = 1;
-      var unitPrice;try{unitPrice=price.read();}catch(e){return;}
-      var lang = window.I18N.getLang();
-      if (editing) {
-        // Update the existing shopping record's active-language name + fields.
-        if (lang === 'he') existing.nameHe = nm; else existing.nameEn = nm;
-        existing.name = nm;
-        existing.quantity = qv;
-        existing.unit = unitSel.value;
-        existing.unitPriceAgorot=unitPrice;
-        window.PantryDB.putShopping(existing).then(function (saved) {
-          upsertLocalShopping(saved);
-          refreshShopping();
-        });
-      } else {
-        var input = { name: nm, quantity: qv, unit: unitSel.value,unitPriceAgorot:unitPrice };
-        if (lang === 'he') input.nameHe = nm; else input.nameEn = nm;
-        addToShoppingList(input);
-      }
-      close();
-    } }, t('shopping.save')));
-    card.appendChild(actions);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-    try { nameInput.focus(); } catch (e) {}
+  function openShoppingForm(existing){
+    var editing=!!existing,busy=false;
+    var related=existing&&findInventoryByKey(shopKey(existing));
+    var source=existing&&existing.imageHash!==undefined?existing:related||existing;
+    var state={imageFull:fullImageFor(source),imageThumb:thumbImageFor(source),categoryId:existing&&existing.categoryId||related&&related.categoryId||'other'};
+    var photo=photoControl(state),name=h('input',{class:'input',type:'text',value:editing?itemName(existing):'','aria-label':'שם המוצר לקנייה'});
+    var qty=h('input',{class:'editor-quantity-input',type:'number',min:1,step:1,value:editing?existing.quantity:1,'aria-label':'כמות לקנייה'});
+    var unit=window.HomeDropdown.create({label:'יחידת מידה',value:editing?existing.unit:'pack',options:UNITS.map(function(id){return {value:id,label:t('units.'+id)};})});
+    var price=priceField(editing?existing.unitPriceAgorot:null,function(){return Number(qty.value)||0;},'סה״כ משוער');
+    function change(delta){qty.value=Math.max(1,(Number(qty.value)||1)+delta);price.update();}
+    qty.addEventListener('input',price.update);
+    function close(){if(busy)return;unit.destroy();overlay.remove();}
+    var error=h('p',{class:'editor-error',role:'alert'});
+    var save=h('button',{class:'btn save',type:'button',text:editing?'שמירת שינויים':'הוספה לרשימה',onclick:function(){
+      if(busy)return;var quantity=Number(qty.value),cost;
+      if(!name.value.trim()){name.focus();return;}
+      if(!Number.isInteger(quantity)||quantity<1){error.textContent='הזינו מספר אריזות שלם וחיובי.';return;}
+      try{cost=price.read();}catch(e){return;}
+      busy=true;save.disabled=true;error.textContent='';
+      var image=state.imageFull?storeImagePair({full:state.imageFull,thumb:state.imageThumb}):Promise.resolve(null);
+      image.then(function(hash){
+        var record=Object.assign({},existing||{},{name:name.value.trim(),nameHe:name.value.trim(),quantity:quantity,unit:unit.value,unitPriceAgorot:cost,imageHash:hash,categoryId:state.categoryId});
+        return editing?window.PantryDB.putShopping(record):addToShoppingList(record);
+      }).then(function(saved){if(saved)upsertLocalShopping(saved);busy=false;close();refreshShopping();}).catch(function(){busy=false;save.disabled=false;error.textContent='לא ניתן לשמור כרגע. נסו שוב.';});
+    }});
+    var overlay=h('div',{class:'overlay center shopping-editor-overlay'},h('div',{class:'dialog shopping-editor',role:'dialog','aria-modal':'true','aria-label':editing?'עריכת מוצר לקנייה':'מוצר לקנייה'},
+      h('div',{class:'sheet-header'},h('h2',{text:editing?'עריכת מוצר לקנייה':'מוצר לקנייה'}),h('button',{class:'sheet-close',type:'button','aria-label':'סגירה',text:'✕',onclick:close})),
+      h('label',{class:'editor-caption'},'שם המוצר',name),
+      h('div',{class:'shopping-photo'},photo.row,photo.input),
+      h('div',{class:'shopping-fields'},h('div',{},h('h3',{text:'כמות'}),h('div',{class:'stepper editor-quantity'},h('button',{type:'button',class:'step-btn','aria-label':'הפחתת כמות לקנייה',text:'−',onclick:function(){change(-1);}}),qty,h('button',{type:'button',class:'step-btn','aria-label':'הגדלת כמות לקנייה',text:'+',onclick:function(){change(1);}}))),h('div',{},h('h3',{text:'יחידה'}),unit.element),price.element),
+      h('p',{class:'settings-help',text:'הוצאה תירשם רק לאחר אישור הקנייה.'}),error,h('div',{class:'actions'},save,h('button',{class:'btn cancel',type:'button',text:'ביטול',onclick:close}))));
+    overlay.addEventListener('click',function(event){if(event.target===overlay)close();});overlay.addEventListener('keydown',function(event){if(event.key==='Escape'){event.stopPropagation();close();}if(event.key==='Tab'){var controls=Array.from(overlay.querySelectorAll('button:not(:disabled),input:not([type=file]),textarea'));var first=controls[0],last=controls[controls.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}});document.body.appendChild(overlay);var title=overlay.querySelector('h2');title.tabIndex=-1;title.focus({preventScroll:true});
   }
 
   // Re-render the current base screen (mobile page vs. inventory+panel) without

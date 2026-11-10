@@ -127,19 +127,19 @@
       return api('/contents/'+(path||'household.json'),token,'PUT',body);
     }
     async function uploadImages(doc,token){
-      var hashes={};rows(doc,'items').forEach(function(item){if(item.imageHash)hashes[item.imageHash]=true;});
+      var hashes={};rows(doc,'items').concat(rows(doc,'shopping')).forEach(function(item){if(item.imageHash)hashes[item.imageHash]=true;});
       for(var hash of Object.keys(hashes)){
         if(!/^[a-f0-9]{64}$/.test(hash))continue;
-        if(await store.get('uploaded:'+hash))continue;
+        if(await store.get('uploaded:'+owner+'/'+repo+':'+hash))continue;
         var image=await db.getImage(hash);
         if(!image)continue;
         try {await api('/contents/images/'+hash+'.json',token);}
         catch(e){if(e.status!==404)throw e;try{await putDoc(image,null,token,'images/'+hash+'.json');}catch(conflict){if(conflict.status!==409&&conflict.status!==422)throw conflict;await api('/contents/images/'+hash+'.json',token);}}
-        await store.set('uploaded:'+hash,true);
+        await store.set('uploaded:'+owner+'/'+repo+':'+hash,true);
       }
     }
     async function downloadImages(doc,token){
-      var hashes={};rows(doc,'items').forEach(function(item){if(item.imageHash)hashes[item.imageHash]=true;});
+      var hashes={};rows(doc,'items').concat(rows(doc,'shopping')).forEach(function(item){if(item.imageHash)hashes[item.imageHash]=true;});
       for(var hash of Object.keys(hashes)){
         if(!/^[a-f0-9]{64}$/.test(hash)||await db.getImage(hash))continue;
         var image;
