@@ -1566,7 +1566,7 @@
     links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings'+(currentView==='settings'?' active':''),openSettings));
     nav.appendChild(links);
     nav.appendChild(h('span',{class:'save-status','data-save-status':'',role:'status',text:githubStatusText()}));
-    nav.appendChild(h('span',{class:'nav-app-version','data-app-version':'',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
+    links.querySelector('.nav-settings').appendChild(h('span',{class:'nav-app-version','data-app-version':'','aria-hidden':'true',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     var current=links.querySelector('.active');if(current)current.setAttribute('aria-current','page');
     return nav;
   }

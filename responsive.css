@@ -228,3 +228,9 @@
 .settings-simple summary { cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--muted); }
 .settings-simple .settings-delete-link { margin-block:8px; }
 @media(max-width:600px){.settings-simple .settings-profile-line strong{font-size:17px}.settings-simple .settings-section{padding-block:16px}.settings-simple .settings-profile-section>.btn{flex-basis:100%;text-align:start;width:auto;padding-inline:0}.settings-simple .settings-profile-line{flex-basis:100%}}
+
+@media(min-width:1024px){
+ .kitchen-nav .nav-settings { gap:8px;padding-inline:8px; }
+ .kitchen-nav .nav-settings .nav-app-version { display:inline-block;margin:0;margin-inline-start:auto;padding:0;font-size:14px;line-height:1.4;text-align:left;flex-shrink:0; }
+ .kitchen-nav .nav-settings .ui-icon { flex-shrink:0; }
+}
