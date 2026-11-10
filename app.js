@@ -1928,7 +1928,7 @@
     // textarea values are properties, not HTML value attributes.
     noteInput.value=state.note;
     where.appendChild(h('div',{class:'editor-location-details'},
-      h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערה למוצר'}),noteInput)));
+      h('div',{class:'editor-detail-field'},h('h3',{class:'editor-section-title',text:'הערות'}),noteInput)));
     var expiryInput=h('input',{class:'input',type:'date',value:state.expiryDate,'aria-label':'תאריך תפוגה',oninput:function(){state.expiryDate=this.value;updateExpiryChoice();}});
     var expirySummary=h('span',{class:'expiry-selection',role:'status'});
     var expiryChoices=h('div',{class:'expiry-quick-choices','aria-label':'בחירת תוקף מהירה'});
@@ -1964,10 +1964,14 @@
     var quantityControls=stock.querySelector('.editor-stock-controls');
     var priceHint=stock.querySelector('.editor-price-hint');
     var purchaseChoice=stock.querySelector('.purchase-choice');
-    var priceSection=h('section',{class:'editor-price-section'},price.element,priceHint,purchaseChoice);
+    var priceSection=h('section',{class:'editor-price-section'},price.element,h('div',{class:'editor-expense'},h('h3',{class:'editor-section-title',text:'הוצאה'}),purchaseChoice));
     if(noteSection)noteSection.remove();if(packagesSection)packagesSection.remove();
-    stock.replaceChildren(quantityTitle,quantityControls);
-    body.replaceChildren(identity,photoSection,stock,priceSection,expirySection,where,targetSection,categorySection,noteSection);
+    quantityTitle.textContent='כמה יש';
+    var unitSection=quantityControls.querySelector('.editor-unit');
+    unitSection.prepend(h('h3',{class:'editor-section-title',text:'סוג'}));
+    stock.replaceChildren(h('div',{class:'editor-amount'},quantityTitle,quantityControls.querySelector('.editor-quantity')),unitSection);
+    identity.querySelector('.editor-identity-fields').appendChild(photoSection);
+    body.replaceChildren(identity,categorySection,stock,targetSection,priceSection,expirySection,where,noteSection);
     if(packagesSection)body.appendChild(packagesSection);
     sheet.appendChild(body);
 

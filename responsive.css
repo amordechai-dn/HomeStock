@@ -245,3 +245,17 @@
  .kitchen-nav .nav-settings .nav-label-short { grid-row:2;grid-column:1/-1; }
 }
 .settings-simple .settings-data-section .settings-delete-link { display:block;margin-block-start:20px;min-height:44px; }
+
+/* Product fields follow one reading order, with paired quantity/unit and price/expense. */
+.product-editor .product-identity { display:block; }
+.product-editor .editor-identity-fields { display:block; }
+.product-editor .editor-identity-fields .editor-photo { margin-block-start:12px; }
+.product-editor .editor-stock { display:grid;grid-template-columns:minmax(0,200px) minmax(0,160px);gap:16px;align-items:end; }
+.product-editor .editor-stock .editor-section-title { margin:0 0 10px; }
+.product-editor .editor-unit { display:block; }
+.product-editor .editor-price-section { display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:16px;align-items:start; }
+.product-editor .editor-expense .editor-section-title { margin:0 0 10px; }
+.product-editor .editor-expense .purchase-choice { margin:0;min-height:46px; }
+.product-editor .editor-category { display:block; }
+.product-editor .editor-category>.editor-caption { display:block;margin-block-end:10px; }
+@media(max-width:380px){.product-editor .editor-stock{grid-template-columns:minmax(0,1fr) 100px;gap:12px}.product-editor .editor-price-section{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}}
