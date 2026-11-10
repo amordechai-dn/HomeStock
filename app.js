@@ -1361,7 +1361,7 @@
   var restoringNavigation=false;
   function routeView(){
     var view=location.hash.slice(2);
-    return ['inventory','shopping','expenses','settings'].indexOf(view)>=0?view:'inventory';
+    return ['inventory','stock','shopping','expenses','settings'].indexOf(view)>=0?view:'inventory';
   }
   function pageAddress(view) {
     if(view!=='scanner'&&scannerCleanup){var cleanup=scannerCleanup;scannerCleanup=null;cleanup();}
@@ -1395,7 +1395,7 @@
     var active=document.activeElement;
     var focusKey=active&&root&&root.contains(active)&&active.getAttribute('data-focus-key');
     var selection=focusKey==='inventory-search'?[active.selectionStart,active.selectionEnd]:null;
-    if(currentView==='shopping')renderShopping();else if(currentView==='expenses')openMonthly();else if(currentView==='settings')openSettings();else renderMain();
+    if(currentView==='stock')renderStockTable();else if(currentView==='shopping')renderShopping();else if(currentView==='expenses')openMonthly();else if(currentView==='settings')openSettings();else renderMain();
     if(focusKey){
       var target=Array.prototype.find.call(root.querySelectorAll('[data-focus-key]'),function(node){return node.getAttribute('data-focus-key')===focusKey;});
       if(target){target.focus({preventScroll:true});if(selection)target.setSelectionRange(selection[0],selection[1]);}
@@ -1505,7 +1505,7 @@
     var nav=root.querySelector('.kitchen-nav');
     if(!nav)nav=renderNavigation();
     else{
-      var views=['inventory','shopping','expenses','settings'];
+      var views=['inventory','stock','shopping','expenses','settings'];
       nav.querySelectorAll('.nav-link').forEach(function(button,index){
         var active=views[index]===currentView;
         button.classList.toggle('active',active);
@@ -1516,14 +1516,15 @@
   }
   function renderNavigation() {
     var nav = h('nav', { class: 'kitchen-nav', 'aria-label': 'ניווט ראשי' });
-    nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'הום סטוק — המלאי שלי'},
+    nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'הום סטוק — בית'},
       h('span',{class:'brand-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),
       h('span',{class:'brand-word',dir:'rtl',text:'הום סטוק'})));
     nav.appendChild(h('a',{class:'skip-link',href:'#main-content',text:'דילוג לתוכן'}));
     var links = h('div', {class:'nav-links'});
-    links.appendChild(actionButton('המלאי שלי','shelf','nav-link' + (currentView === 'inventory' ? ' active':''),function(){
+    links.appendChild(actionButton('בית','house','nav-link' + (currentView === 'inventory' ? ' active':''),function(){
       currentView='inventory'; inventoryLocation='all'; renderMain();window.scrollTo({top:0,behavior:'auto'});
     }));
+    links.appendChild(actionButton('מלאי','shelf','nav-link'+(currentView==='stock'?' active':''),function(){currentView='stock';renderStockTable();window.scrollTo({top:0,behavior:'auto'});}));
     links.appendChild(actionButton('רשימת קניות','bag','nav-link' + (currentView === 'shopping' ? ' active':''),openShopping));
     links.appendChild(actionButton('הוצאות','calendar','nav-link nav-monthly'+(currentView==='expenses'?' active':''),openMonthly));
     links.appendChild(actionButton('הגדרות','settings','nav-link nav-settings'+(currentView==='settings'?' active':''),openSettings));
@@ -1532,6 +1533,31 @@
     links.querySelector('.nav-settings').appendChild(h('span',{class:'nav-app-version','data-app-version':'','aria-hidden':'true',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     var current=links.querySelector('.active');if(current)current.setAttribute('aria-current','page');
     return nav;
+  }
+
+  function renderStockTable(){
+    if(!hasDOM())return;
+    pageAddress('stock');currentView='stock';prepareWorkspace();
+    var page=h('main',{class:'kitchen-workspace stock-workspace',id:'main-content',tabindex:'-1'});
+    page.appendChild(h('header',{class:'kitchen-header stock-header'},h('h1',{text:'מלאי'}),
+      actionButton('הוספת מוצר','plus','kitchen-button primary header-add',openProductEntry)));
+    var table=h('table',{class:'stock-table'},h('caption',{class:'sr-only',text:'כל המוצרים בבית'}));
+    var head=h('tr',{});
+    ['מוצר','קטגוריה','כמה יש','סוג','כמות רצויה','מחיר ליחידה','תאריך תפוגה','איפה המוצר נמצא','איפה בדיוק','הערות',''].forEach(function(label){head.appendChild(h('th',{scope:'col',text:label}));});
+    table.appendChild(h('thead',{},head));
+    var rows=h('tbody',{});
+    items.slice().sort(function(a,b){return itemName(a).localeCompare(itemName(b),'he');}).forEach(function(item){
+      var space=SPACES.find(function(entry){return entry.id===locationSpace(item.location);});
+      var date=item.expiryDate&&!item.noExpiry?new Date(item.expiryDate+'T12:00:00').toLocaleDateString('he-IL'):'—';
+      var row=h('tr',{'data-item-id':item.id},h('th',{scope:'row'},h('button',{type:'button',class:'stock-product','aria-label':'עריכת '+itemName(item),onclick:function(){openForm(item);}},itemThumb(item),h('span',{dir:'auto',text:itemName(item)}))));
+      [t('categories.'+item.categoryId),formatQty(item.quantity),t('units.'+item.unit),formatQty(item.desiredAmount||0),item.unitPriceAgorot==null?'—':formatMoney(item.unitPriceAgorot),date,space?space.label:'—',item.location==='House'?'—':t('locations.'+item.location),item.note||'—'].forEach(function(value){row.appendChild(h('td',{dir:'auto',text:value}));});
+      row.appendChild(h('td',{},h('button',{type:'button',class:'stock-delete','aria-label':'מחיקת '+itemName(item),onclick:function(){confirmDelete(item);}},uiIcon('trash'))));
+      rows.appendChild(row);
+    });
+    if(!items.length)rows.appendChild(h('tr',{},h('td',{colspan:'11',class:'stock-empty',text:'המלאי ריק'})));
+    table.appendChild(rows);
+    page.appendChild(h('div',{class:'stock-table-scroll',tabindex:'0',role:'region','aria-label':'טבלת המלאי — גלילה לרוחב'},table));
+    root.appendChild(page);
   }
 
   function filteredInventory(rows, query, location, space) {
