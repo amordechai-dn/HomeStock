@@ -2146,7 +2146,7 @@
         });content.appendChild(chart);
       }
       if(purchases.length) {
-        var purchaseList=h('div',{class:'expense-list'});
+        var purchaseList=h('section',{class:'expense-list','aria-label':'פירוט הוצאות'},h('h2',{class:'expense-list-title',text:'פירוט הוצאות'}));
         purchases.forEach(function(entry){
           purchaseList.appendChild(h('div',{class:'expense-row'},
             h('div',{},h('strong',{text:entry.name,dir:'auto'}),h('span',{text:new Date(entry.at).toLocaleDateString('he-IL')+' · '+formatQty(entry.quantity)+' '+t('units.'+entry.unit)+' × '+formatMoney(entry.unitPriceAgorot)})),
