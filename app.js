@@ -592,12 +592,55 @@
 
   // On-device photo control. `state` is mutated in place (state.imageFull /
   // state.imageThumb); the placeholder falls back to state.emoji or category.
+  var cameraConstraintQueues=new WeakMap();
+  function updateCameraConstraints(track,changes){
+    var previous=cameraConstraintQueues.get(track)||Promise.resolve();
+    var work=previous.catch(function(){}).then(function(){
+      if(track.readyState==='ended')throw new Error('camera-ended');
+      var constraints=track.getConstraints?Object.assign({},track.getConstraints()):{};
+      var keys=changes.reduce(function(all,change){return all.concat(Object.keys(change));},[]);
+      keys.forEach(function(key){delete constraints[key];});
+      constraints.advanced=(constraints.advanced||[]).map(function(entry){var out=Object.assign({},entry);keys.forEach(function(key){delete out[key];});return out;}).filter(function(entry){return Object.keys(entry).length;}).concat(changes);
+      return track.applyConstraints(constraints);
+    });
+    cameraConstraintQueues.set(track,work);
+    function done(){if(cameraConstraintQueues.get(track)===work)cameraConstraintQueues.delete(track);}
+    work.then(done,done);return work;
+  }
+  function cameraTorch(status){
+    var track=null,on=false,busy=false,generation=0;
+    var label=h('span',{text:'פלאש כבוי'});
+    var button=h('button',{type:'button',class:'btn ghost camera-torch',hidden:true,'aria-pressed':'false','aria-label':'הפעלת פלאש',onclick:function(){
+      if(!track||busy)return;
+      var active=track,version=generation,wanted=!on;busy=true;button.disabled=true;
+      updateCameraConstraints(active,[{torch:wanted}]).then(function(){
+        if(track!==active||generation!==version)return;
+        var settings=active.getSettings?active.getSettings():{};
+        on=typeof settings.torch==='boolean'?settings.torch:wanted;
+        if(on!==wanted)throw new Error('torch-not-applied');
+      }).catch(function(){if(track===active&&generation===version)status.textContent='לא ניתן לשנות את הפלאש במצלמה הזאת.';}).then(function(){
+        if(track!==active||generation!==version)return;
+        busy=false;render();
+      });
+    }},uiIcon('flash'),label);
+    function render(){button.disabled=busy;button.setAttribute('aria-pressed',String(on));button.setAttribute('aria-label',on?'כיבוי פלאש':'הפעלת פלאש');label.textContent=on?'פלאש פעיל':'פלאש כבוי';}
+    function attach(next){
+      generation++;track=next;busy=false;on=false;var caps={};
+      try{caps=track&&track.getCapabilities?track.getCapabilities():{};}catch(error){}
+      var supported=!!(track&&track.applyConstraints&&(caps.torch===true||Array.isArray(caps.torch)&&caps.torch.indexOf(true)>=0));
+      button.hidden=!supported;
+      if(supported){try{on=!!track.getSettings().torch;}catch(error){}}render();
+    }
+    return {button:button,attach:attach,detach:function(){attach(null);}};
+  }
+
   function captureProductPhoto(onCapture,onFallback){
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){onFallback();return;}
     var stream=null,closed=false;
     var video=h('video',{autoplay:true,muted:true,playsinline:true,class:'product-camera-video'});video.muted=true;video.playsInline=true;
     var status=h('p',{class:'settings-help',role:'status',text:''});
-    function close(){closed=true;if(stream)stream.getTracks().forEach(function(track){track.stop();});video.srcObject=null;overlay.remove();}
+    var torch=cameraTorch(status);
+    function close(){closed=true;torch.detach();if(stream)stream.getTracks().forEach(function(track){track.stop();});video.srcObject=null;overlay.remove();}
     var capture=h('button',{type:'button',class:'btn save',text:'צילום',disabled:true,onclick:function(){
       if(!video.videoWidth||!video.videoHeight)return;
       var size=Math.min(video.videoWidth,video.videoHeight),canvas=document.createElement('canvas');
@@ -608,7 +651,7 @@
       close();onCapture(pair);
     }});
     var overlay=h('div',{class:'overlay center product-camera-overlay'},h('div',{class:'dialog product-camera-dialog',role:'dialog','aria-modal':'true','aria-label':'צילום מוצר'},
-      h('h2',{text:'צילום מוצר'}),h('div',{class:'product-camera-square'},video),status,
+      h('h2',{text:'צילום מוצר'}),h('div',{class:'product-camera-square'},video),h('div',{class:'product-camera-tools'},torch.button),status,
       h('div',{class:'actions'},capture,h('button',{type:'button',class:'btn cancel',text:'ביטול',onclick:close}))));
     overlay.addEventListener('keydown',function(event){if(event.key==='Escape'){event.stopPropagation();close();}});
     video.addEventListener('loadeddata',function(){if(!closed)capture.disabled=false;});
@@ -616,8 +659,8 @@
     navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}}).then(function(result){
       if(closed){result.getTracks().forEach(function(track){track.stop();});return;}
       stream=result;video.srcObject=result;
-      var track=result.getVideoTracks()[0],caps=track.getCapabilities?track.getCapabilities():{};
-      if(caps.focusMode&&caps.focusMode.indexOf('continuous')>=0)track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){});
+      var track=result.getVideoTracks()[0],caps=track.getCapabilities?track.getCapabilities():{};torch.attach(track);
+      if(caps.focusMode&&caps.focusMode.indexOf('continuous')>=0)updateCameraConstraints(track,[{focusMode:'continuous'}]).catch(function(){});
       video.play().catch(function(){if(!closed)status.textContent='לא ניתן להציג את המצלמה. נסו לפתוח אותה מחדש.';});
     }).catch(function(error){if(!closed)status.textContent=t('scan.'+window.HomeBarcode.cameraErrorKey(error));});
   }
@@ -1450,6 +1493,7 @@
   function uiIcon(name) {
     var paths = {
       bath: '<path d="M3 12h18v3a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-3Zm3 8v2m12-2v2M5 12V5a3 3 0 0 1 6 0"/><path d="M9 6h4"/>',
+      flash: '<path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/>',
       edit: '<path d="m15 5 4 4M4 20l4-1L20 7a3 3 0 0 0-4-4L4 15v5Z"/>',
       house: '<path d="m3 11 9-8 9 8M5 10v11h14V10M10 21v-7h4v7"/>',
       trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/>',
@@ -2454,9 +2498,10 @@
     var frame = h('div', { class: 'scan-frame' }, video, h('div', { class: 'scan-reticle' }), codeBadge);
     var status = h('div', { class: 'scan-status', text: t('scan.point') });
 
+    var torch=cameraTorch(status);
     var panel=h('div',{class:'scan-panel'},frame,status);
     var cameraTools=h('div',{class:'scanner-camera-tools'},
-      h('button',{type:'button',class:'btn ghost',text:'מיקוד מחדש',onclick:function(){applyAdvancedCamera(true);}}));
+      h('button',{type:'button',class:'btn ghost',text:'מיקוד מחדש',onclick:function(){applyAdvancedCamera(true);}}),torch.button);
     panel.insertBefore(cameraTools,frame.nextSibling);
     overlay.appendChild(panel);
     var page=document.querySelector('.scanner-shell .scanner-body');
@@ -2473,6 +2518,7 @@
     // Full teardown: stop decoding, release the ZXing capture canvas, and stop
     // the camera tracks. Called on close.
     function stop() {
+      torch.detach();
       pauseLoop();
       try { if (controls && controls.stop) controls.stop(); } catch (e) {}
       try { if (reader.reset) reader.reset(); } catch (e) {}
@@ -2557,7 +2603,7 @@
       if(!focus){if(manual)status.textContent='הדפדפן אינו מאפשר שליטה במיקוד. הרחיקו מעט את הברקוד וודאו שיש אור טוב.';return;}
       var advanced=[{focusMode:focus}];
       if(caps.exposureMode&&caps.exposureMode.indexOf('continuous')>=0)advanced.push({exposureMode:'continuous'});
-      track.applyConstraints({advanced:advanced}).then(function(){if(manual&&!closed)status.textContent='המיקוד האוטומטי פעיל';}).catch(function(){if(manual&&!closed)status.textContent='לא ניתן לשנות מיקוד דרך הדפדפן. נסו להרחיק מעט את המוצר.';});
+      updateCameraConstraints(track,advanced).then(function(){if(manual&&!closed)status.textContent='המיקוד האוטומטי פעיל';}).catch(function(){if(manual&&!closed)status.textContent='לא ניתן לשנות מיקוד דרך הדפדפן. נסו להרחיק מעט את המוצר.';});
     }
 
     // Map a ZXing BarcodeFormat enum value to a human label for the debug panel.
@@ -2602,6 +2648,7 @@
         .then(function (s) {
           if (closed) { s.getTracks().forEach(function (tr) { tr.stop(); }); return; }
           stream = s;
+          torch.attach(s.getVideoTracks()[0]);
           video.srcObject = s;
           video.setAttribute('playsinline', 'true');
           var p = video.play();
