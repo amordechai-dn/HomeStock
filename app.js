@@ -1621,7 +1621,7 @@
       container.appendChild(h('section',{class:'kitchen-empty'},
         h('div',{class:'empty-room-symbol','aria-hidden':'true'},uiIcon(isEmpty?room.icon:'check')),
         h('h2',{text:title}),h('p',{text:isEmpty?'מתחילים במה שכבר נמצא בבית. מוסיפים מוצר, כמות ומחיר, והכול מקבל מקום.':inventoryQuery?'נסו שם אחר. החיפוש כולל מוצרים מכל אזורי הבית.':'אפשר לחזור לכל המוצרים או לבחור אזור אחר.'}),
-        isEmpty?(!items.length?actionButton('הוספת מוצר ראשון','plus','kitchen-button primary',function(){openForm(null);}):null):
+        isEmpty?(!items.length?actionButton('הוספת מוצר ראשון','plus','kitchen-button primary',function(){openProductEntry();}):null):
           actionButton('הצגת כל המוצרים','shelf','kitchen-button secondary',function(){inventoryStatus='all';inventoryQuery='';inventoryLocation='all';renderMain();})));
       return;
     }
@@ -1649,7 +1649,7 @@
         h('time',{class:'inventory-heading-date',text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}),
         h('span',{class:'inventory-heading-count',text:productCount(summary.total)+' בבית'}),
         h('span',{class:'inventory-heading-status',text:summary.attention?summary.attention+' צריכים השלמה':'יש מהכול'})),
-      actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openForm(null);})));
+      actionButton('הוספת מוצר','plus','kitchen-button primary header-add',function(){openProductEntry();})));
     var expiring=items.filter(function(item){var status=Home.expiry(item);return item.quantity>0&&status&&status.urgent;});
     if(expiring.length)workspace.appendChild(h('div',{class:'expiry-notice',role:'status'},
       h('strong',{text:'כדאי לבדוק את התוקף'}),
@@ -1763,6 +1763,18 @@
 
   // A product passport: identity first, stock and place next, optional details
   // last. Only the body scrolls; the consequence of Save stays in view.
+  function openProductEntry(){
+    var previous=document.activeElement;
+    function close(){overlay.remove();if(previous&&previous.isConnected)previous.focus({preventScroll:true});}
+    var manual=h('button',{type:'button',class:'product-entry-option',onclick:function(){close();openForm(null,{review:true});}},uiIcon('plus'),h('span',{},h('strong',{text:'הוספה ידנית'}),h('span',{text:'שם המוצר והכמות — כל השאר לבחירתכם'})));
+    var scan=h('button',{type:'button',class:'product-entry-option',onclick:function(){close();openScanner();}},uiIcon('scan'),h('span',{},h('strong',{text:'סריקת ברקוד'}),h('span',{text:'סורקים, בודקים את הפרטים ושומרים'})));
+    var cancel=h('button',{type:'button',class:'btn ghost',text:'ביטול',onclick:close});
+    var overlay=h('div',{class:'overlay center product-entry-overlay'},h('div',{class:'dialog product-entry-dialog',role:'dialog','aria-modal':'true','aria-label':'הוספת מוצר'},h('h2',{text:'איך להוסיף את המוצר?'}),manual,scan,cancel));
+    overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
+    overlay.addEventListener('keydown',function(event){if(event.key==='Escape'){event.stopPropagation();close();}if(event.key==='Tab'){var controls=[manual,scan,cancel],index=controls.indexOf(document.activeElement);event.preventDefault();controls[(index+(event.shiftKey?-1:1)+3)%3].focus();}});
+    document.body.appendChild(overlay);manual.focus();
+  }
+
   var editorCounter=0;
   function openForm(existing, opts) {
     opts=opts||{};
@@ -1993,7 +2005,7 @@
     }});
     body.insertBefore(h('div',{class:'editor-voice'},voiceButton,voiceStatus,dictationFallback),body.firstChild);
     if(opts.review){
-      var extra=h('details',{class:'product-review-extras'},h('summary',{text:'מיקום, תמונה ופרטים נוספים'}));
+      var extra=h('details',{class:'product-review-extras'},h('summary',{text:'פרטים נוספים: מיקום, תמונה והערות'}));
       [identity.querySelector('.editor-photo'),identity.querySelector('.editor-category'),body.querySelector('.editor-voice'),where,stock.querySelector('.editor-location-details')].forEach(function(element){if(element)extra.appendChild(element);});
       body.appendChild(extra);
     }

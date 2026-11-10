@@ -19,7 +19,7 @@ for(const [location,quantity] of [['Freezer',0],['Fridge',1],['Pantry',9]])await
 await w.localStorage.setItem('homestock.profileChosen','1');w.App.start();await new Promise(r=>setTimeout(r,100));
 button('המלאי שלי').click();
 assert.deepEqual([...w.document.querySelectorAll('.storage-shelf')].map(n=>n.getAttribute('aria-label')),['מזווה','מקרר','מקפיא'],'shelves keep location order regardless of stock sorting');
-button('הוספת מוצר').click();
+button('הוספת מוצר').click();w.document.querySelector('.product-entry-option').click();w.document.querySelector('.product-review-extras').open=true;
 assert.deepEqual([...w.document.querySelectorAll('.location-subspaces button')].map(n=>n.textContent.trim().replace(/^\S+\s+/,'')),['מזווה','מקרר','מקפיא'],'editor location order');
 console.log('PASS DOM: page background clicks, all noncamera navigation, profile open/cancel/save preserve settings');w.close();
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -25,7 +25,7 @@ function pick(label,index){btn(label).click();const opts=w.document.querySelecto
 const locations=[['מטבח','מזווה','Pantry'],['מטבח','מקרר','Fridge'],['מטבח','מקפיא','Freezer'],['חדר רחצה','שירותים','Toilet'],['חדר רחצה','מקלחת','Shower'],['כללי',null,'House']];
 let count=0;
 for(let category=0;category<15;category++)for(const [room,place,id] of locations){
-btn(count?'הוספת מוצר':'הוספת מוצר ראשון').click();field('שם המוצר','QA-'+category+'-'+id);field('כמות במלאי','2');field('מחיר ליחידה בשקלים','7.50');field('כמות רצויה בבית','3');field('הערה למוצר','QA note');field('תאריך תפוגה','2027-02-01');pick('קטגוריה',category);
+btn(count?'הוספת מוצר':'הוספת מוצר ראשון').click();w.document.querySelector('.product-entry-option').click();const extra=w.document.querySelector('.product-review-extras');if(extra)extra.open=true;field('שם המוצר','QA-'+category+'-'+id);field('כמות במלאי','2');field('מחיר ליחידה בשקלים','7.50');field('כמות רצויה בבית','3');field('הערה למוצר','QA note');field('תאריך תפוגה','2027-02-01');pick('קטגוריה',category);
 const picker=w.document.querySelector('.location-picker');btn(room,picker).click();if(place)[...picker.querySelectorAll('.location-subspaces button')].find(b=>b.textContent.includes(place)).click();
 w.document.querySelector('[aria-label="קנייה חדשה"]').checked=true;w.document.querySelector('.editor-save').click();await wait();const rows=await w.PantryDB.getAll();assert.equal(rows.length,++count);const row=rows.find(r=>r.name==='QA-'+category+'-'+id);assert.equal(row.location,id);assert.equal(row.quantity,2);assert.equal(row.unitPriceAgorot,750);assert.equal(row.expiryDate,'2027-02-01');assert.equal(row.desiredAmount,3);
 }
