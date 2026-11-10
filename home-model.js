@@ -73,6 +73,19 @@
     items.filter(attention).forEach(function(item){var key=identity(item),missing=item.desiredAmount>0?Math.max(0,item.desiredAmount-item.quantity):1;if(!wanted[key])wanted[key]={item:item,quantity:0};wanted[key].quantity+=missing;});
     return Object.keys(wanted).map(function(key){var need=wanted[key],already=active[key];return {item:need.item,quantity:need.quantity-(already?already.quantity:0),existing:already?already.row:null};}).filter(function(row){return row.quantity>0;});
   }
+  // Review only: never remove shopping entries or mutate either source.
+  function shoppingCoverage(items,shopping){
+    function aliases(row){return [row.name,row.nameHe,row.nameEn].filter(Boolean).map(normalize).filter(Boolean);}
+    return shopping.filter(function(row){return !row.purchased;}).map(function(shop){
+      var names=aliases(shop),unit=shop.unit||'pcs';
+      var matched=items.filter(function(item){return (item.unit||'pcs')===unit&&((item.barcode&&shop.barcode&&item.barcode===shop.barcode)||aliases(item).some(function(value){return names.indexOf(value)>=0;}));});
+      if(!matched.length||matched.some(function(item){return !Number.isFinite(item.desiredAmount)||item.desiredAmount<=0||!Number.isFinite(item.quantity)||item.quantity<0;}))return null;
+      var quantity=matched.reduce(function(sum,item){return sum+item.quantity;},0),target=matched.reduce(function(sum,item){return sum+item.desiredAmount;},0);
+      if(quantity<target)return null;
+      var fingerprint=JSON.stringify([unit,shop.quantity,matched.slice().sort(function(a,b){return String(a.id).localeCompare(String(b.id));}).map(function(item){return [item.id,item.quantity,item.desiredAmount,item.updatedAt||''];})]);
+      return shop.stockReviewKeep===fingerprint?null:{shop:shop,quantity:quantity,target:target,unit:unit,fingerprint:fingerprint};
+    }).filter(Boolean);
+  }
   function purchaseAmount(quantity, unitPrice) {
     if (!Number.isSafeInteger(unitPrice) || unitPrice < 0 || !Number.isFinite(quantity) || quantity <= 0) return null;
     // Multiply the entered decimal quantity as a rational number. Floating
@@ -132,5 +145,5 @@
     }else date.setDate(date.getDate()+Number(value));
     return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
   }
-  root.HomeModel={scanLocation:scanLocation,comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  root.HomeModel={shoppingCoverage:shoppingCoverage,scanLocation:scanLocation,comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);

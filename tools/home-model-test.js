@@ -93,3 +93,19 @@ const storageCases=[
 ];
 for(const [product,location] of storageCases){const snapshot=JSON.stringify(product);assert.equal(M.scanLocation(product),location,JSON.stringify(product));assert.equal(JSON.stringify(product),snapshot);}
 console.log('PASS scan storage: 23 Hebrew/English/category/tag cases, shelf-stable and frozen exceptions, valid saved location priority, no record mutation');
+
+const cracker={id:'cracker',name:'קרקרים',nameEn:'Crackers',unit:'pack',quantity:2,desiredAmount:2,updatedAt:'2026-11-10T10:00:00Z'};
+const plannedCracker={id:'buy-cracker',name:'קרקרים',unit:'pack',quantity:1};
+let covered=M.shoppingCoverage([cracker],[plannedCracker]);assert.equal(covered.length,1);assert.equal(covered[0].quantity,2);assert.equal(covered[0].target,2);
+const kept={...plannedCracker,stockReviewKeep:covered[0].fingerprint};assert.equal(M.shoppingCoverage([cracker],[kept]).length,0);
+assert.equal(M.shoppingCoverage([{...cracker,quantity:3}],[kept]).length,1);
+assert.equal(M.shoppingCoverage([{...cracker,desiredAmount:3}],[kept]).length,0);
+assert.equal(M.shoppingCoverage([{...cracker,desiredAmount:1}],[kept]).length,1);
+assert.equal(M.shoppingCoverage([{...cracker,quantity:1}],[plannedCracker]).length,0);
+assert.equal(M.shoppingCoverage([{...cracker,desiredAmount:0}],[plannedCracker]).length,0);
+assert.equal(M.shoppingCoverage([cracker],[{...plannedCracker,unit:'kg'}]).length,0);
+assert.equal(M.shoppingCoverage([cracker],[{...plannedCracker,purchased:true}]).length,0);
+assert.equal(M.shoppingCoverage([cracker],[{...plannedCracker,name:'CRACKERS'}]).length,1);
+assert.equal(M.shoppingCoverage([cracker],[{...plannedCracker,name:'קרקרים אחרים'}]).length,0);
+assert.equal(plannedCracker.stockReviewKeep,undefined,'coverage never mutates the shopping record');
+console.log('PASS shopping coverage: target threshold, same-unit/name matching, keep acknowledgement and invalidation, no automatic deletion');

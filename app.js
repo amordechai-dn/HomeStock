@@ -1156,6 +1156,36 @@
     shoppingDeletes[shop.id]=operation;return operation;
   }
 
+  var coverageSeen=Object.create(null);
+  function announceCoveredShopping(){
+    if(currentView==='shopping'||document.querySelector('.overlay'))return;
+    var covered=Home.shoppingCoverage(items,shoppingItems);
+    var fresh=covered.filter(function(review){return coverageSeen[review.shop.id]!==review.fingerprint;});
+    if(!fresh.length)return;
+    fresh.forEach(function(review){coverageSeen[review.shop.id]=review.fingerprint;});
+    showToast(fresh.length===1?'יש מספיק '+itemName(fresh[0].shop)+' בבית. להשאיר בקניות?':fresh.length+' מוצרים בקניות כבר בכמות הרצויה בבית.',openShopping,'לבדיקה');
+    var toast=document.querySelector('.toast');if(toast)toast.setAttribute('data-shopping-review','');
+  }
+  function coverageQuestion(review){
+    var busy=false;
+    var notice=h('div',{class:'shopping-coverage',role:'group','aria-label':'בדיקת הצורך ב'+itemName(review.shop)});
+    function decide(keep){
+      if(busy)return;busy=true;notice.querySelectorAll('button').forEach(function(button){button.disabled=true;});
+      Promise.all([window.PantryDB.getAll(),window.PantryDB.getAllShopping()]).then(function(data){
+        var liveShop=data[1].find(function(row){return row.id===review.shop.id;});
+        var live=liveShop&&Home.shoppingCoverage(data[0],[liveShop])[0];
+        if(!live){return refresh().then(function(){showToast('הנתונים השתנו. הרשימה עודכנה לבדיקה.');});}
+        // Reconfirm when the quantities changed since the question was displayed.
+        if(live.fingerprint!==review.fingerprint)return refresh().then(function(){showToast('הכמויות השתנו. בדקו את ההצעה המעודכנת.');});
+        if(!keep)return removeShoppingItem(liveShop);
+        return window.PantryDB.putShopping(Object.assign({},liveShop,{stockReviewKeep:live.fingerprint})).then(function(saved){upsertLocalShopping(saved);refreshShopping();});
+      }).catch(function(){showToast('לא ניתן לעדכן כרגע. המוצר נשאר ברשימת הקניות.');}).then(function(){busy=false;notice.querySelectorAll('button').forEach(function(button){button.disabled=false;});});
+    }
+    notice.appendChild(h('p',{},h('strong',{text:'כבר יש מספיק בבית'}),h('span',{text:formatQty(review.quantity)+' '+t('units.'+review.unit)+' בבית · כמות רצויה '+formatQty(review.target)}),h('span',{text:'להסיר מרשימת הקניות?'})));
+    notice.appendChild(h('div',{class:'shopping-coverage-actions'},h('button',{type:'button',class:'btn ghost',text:'הסרה מהקניות',onclick:function(){decide(false);}}),h('button',{type:'button',class:'btn ghost',text:'להשאיר',onclick:function(){decide(true);}})));
+    return notice;
+  }
+
   // THE single shared Shopping List renderer (both sidebar + page modes). Backed
   // by the separate shopping model; inventory shortfall is shown as suggestions.
   function renderShoppingList(container, mode) {
@@ -1249,7 +1279,7 @@
     var minus=h('button',{type:'button',class:'step-btn',disabled:quantity<=1,'aria-label':'הפחתת כמות '+itemName(shop),onclick:function(){changeShoppingQty(shop,-1);}},'−');
     var plus=h('button',{type:'button',class:'step-btn primary','aria-label':'הגדלת כמות '+itemName(shop),onclick:function(){changeShoppingQty(shop,1);}},'+');
     var known=Number.isSafeInteger(shop.unitPriceAgorot);
-    return h('article',{class:'shopping-row','data-shopping-id':shop.id,'aria-label':itemName(shop)},
+    var row=h('article',{class:'shopping-row','data-shopping-id':shop.id,'aria-label':itemName(shop)},
       h('button',{class:'shopping-item-open',type:'button','aria-label':'עריכת '+itemName(shop),onclick:function(){openShoppingForm(shop);}},
         itemThumb(shop.imageHash===undefined?(findInventoryByKey(shopKey(shop))||shop):shop),
         h('span',{class:'shopping-identity'},h('strong',{class:'card-name',dir:'auto',text:itemName(shop)}),
@@ -1259,6 +1289,9 @@
         h('span',{text:known?formatMoney(shop.unitPriceAgorot)+' ל'+unit:'ללא מחיר'})),
       checkbox,
       h('button',{type:'button',class:'shopping-remove','aria-label':'הסרת '+itemName(shop)+' מהרשימה',title:'הסרה מהרשימה',onclick:function(){removeShoppingItem(shop);}},uiIcon('trash')));
+    var coverage=Home.shoppingCoverage(items,[shop])[0];
+    if(coverage)row.appendChild(coverageQuestion(coverage));
+    return row;
   }
 
   // A suggestion row (inventory running low). The ＋ writes to the shopping
@@ -1376,6 +1409,7 @@
       if(target){target.focus({preventScroll:true});if(selection)target.setSelectionRange(selection[0],selection[1]);}
       else {var search=root.querySelector('.inventory-search');if(search)search.focus({preventScroll:true});}
     }
+    announceCoveredShopping();
   }
 
   // One render path keeps room counts, filters, planned totals and stock
@@ -1386,6 +1420,7 @@
 
   function renderShopping() {
     if(!hasDOM())return;
+    var reminder=document.querySelector('.toast[data-shopping-review]');if(reminder)reminder.remove();
     if(!root)root=document.getElementById('root');
     pageAddress('shopping');currentView='shopping';prepareWorkspace();
     var page=h('main',{class:'kitchen-workspace shopping-workspace',id:'main-content',tabindex:'-1'});
