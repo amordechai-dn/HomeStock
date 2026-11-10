@@ -259,3 +259,6 @@
 .product-editor .editor-category { display:block; }
 .product-editor .editor-category>.editor-caption { display:block;margin-block-end:10px; }
 @media(max-width:380px){.product-editor .editor-stock{grid-template-columns:minmax(0,1fr) 100px;gap:12px}.product-editor .editor-price-section{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}}
+
+/* Empty live regions remain available for errors without leaving blank spacing. */
+.product-editor .price-preview:empty,.editor-save-summary:empty,.scan-status:empty,.product-camera-dialog .settings-help:empty { display:none; }

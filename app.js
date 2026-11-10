@@ -579,7 +579,7 @@
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){onFallback();return;}
     var stream=null,closed=false;
     var video=h('video',{autoplay:true,muted:true,playsinline:true,class:'product-camera-video'});video.muted=true;video.playsInline=true;
-    var status=h('p',{class:'settings-help',role:'status',text:'מקמו את המוצר בתוך הריבוע. רק האזור הזה יישמר.'});
+    var status=h('p',{class:'settings-help',role:'status',text:''});
     function close(){closed=true;if(stream)stream.getTracks().forEach(function(track){track.stop();});video.srcObject=null;overlay.remove();}
     var capture=h('button',{type:'button',class:'btn save',text:'צילום',disabled:true,onclick:function(){
       if(!video.videoWidth||!video.videoHeight)return;
@@ -844,7 +844,7 @@
       try {
         var price = parseUnitPrice(input.value);
         var amount = purchaseAmount(getQuantity(),price);
-        total.textContent = price !== null && getQuantity() <= 0 ? 'שינוי מחיר בלבד לא יוסיף הוצאה. הוסיפו כמות כדי לרשום קנייה.' : amount === null ? 'מחיר הוא רשות. פריטים ללא מחיר לא נכללים בהוצאות.' : (estimateLabel || 'הוצאה עבור התוספת למלאי') + ': ' + formatMoney(amount);
+        total.textContent = amount === null || getQuantity() <= 0 ? '' : (estimateLabel || 'הוצאה עבור התוספת למלאי') + ': ' + formatMoney(amount);
         input.removeAttribute('aria-invalid');
       } catch(e) {total.textContent='הזינו מחיר מאפס ומעלה, עם עד שתי ספרות אחרי הנקודה.';}
     }
@@ -1200,7 +1200,7 @@
           'div',
           { class: 'shopping-empty' },
           h('div', { class: 'shopping-empty-emoji' }, uiIcon('bag')),
-          h('div', { class: 'shopping-empty-text', text: 'הרשימה נקייה. מה חסר בבית?' })
+          h('div', { class: 'shopping-empty-text', text: 'רשימת הקניות ריקה' })
         )
       );
     } else {
@@ -1351,7 +1351,7 @@
       h('label',{class:'editor-caption'},'שם המוצר',name),
       h('div',{class:'shopping-photo'},photo.row,photo.input),
       h('div',{class:'shopping-fields'},h('div',{},h('h3',{text:'כמות'}),h('div',{class:'stepper editor-quantity'},h('button',{type:'button',class:'step-btn','aria-label':'הפחתת כמות לקנייה',text:'−',onclick:function(){change(-1);}}),qty,h('button',{type:'button',class:'step-btn','aria-label':'הגדלת כמות לקנייה',text:'+',onclick:function(){change(1);}}))),h('div',{},h('h3',{text:'יחידה'}),unit.element),price.element),
-      h('p',{class:'settings-help',text:'הוצאה תירשם רק לאחר אישור הקנייה.'}),error,h('div',{class:'actions'},save,h('button',{class:'btn cancel',type:'button',text:'ביטול',onclick:close}))));
+      error,h('div',{class:'actions'},save,h('button',{class:'btn cancel',type:'button',text:'ביטול',onclick:close}))));
     overlay.addEventListener('click',function(event){if(event.target===overlay)close();});overlay.addEventListener('keydown',function(event){if(event.key==='Escape'){event.stopPropagation();close();}if(event.key==='Tab'){var controls=Array.from(overlay.querySelectorAll('button:not(:disabled),input:not([type=file]),textarea'));var first=controls[0],last=controls[controls.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}});document.body.appendChild(overlay);var title=overlay.querySelector('h2');title.tabIndex=-1;title.focus({preventScroll:true});
   }
 
@@ -1415,11 +1415,11 @@
     pageAddress('shopping');currentView='shopping';prepareWorkspace();
     var page=h('main',{class:'kitchen-workspace shopping-workspace',id:'main-content',tabindex:'-1'});
     page.appendChild(h('header',{class:'kitchen-header'},h('div',{},
-      h('h1',{text:'הקנייה הבאה'}),h('p',{class:'kitchen-subtitle',text:'מסמנים מה נקנה. המלאי וההוצאות מתעדכנים יחד.'}))));
+      h('h1',{text:'הקנייה הבאה'}))));
     var estimate=Home.shoppingEstimate(shoppingItems);
     var trip=h('section',{class:'shopping-brief','aria-label':'תכנון הקנייה'},
       h('div',{},h('span',{class:'brief-label',text:'סכום משוער'}),h('strong',{dir:'auto',text:formatMoney(estimate.totalAgorot)})),
-      h('p',{text:estimate.unknown?estimate.unknown+' מוצרים ללא מחיר. הסכום חלקי.':estimate.count?'לפי הכמויות והמחירים ברשימה.':'הוסיפו מוצרים כדי לתכנן את הקנייה.'}),
+      estimate.unknown?h('p',{text:estimate.unknown+' מוצרים ללא מחיר'}):null,
       h('span',{class:'trip-count',text:productCount(estimate.count)+' לקנייה'}));
     page.appendChild(trip);
     var list=h('div',{class:'shopping-page'});renderShoppingList(list,'page');page.appendChild(list);root.appendChild(page);
@@ -1582,7 +1582,7 @@
       var title=inventoryQuery?'לא מצאנו התאמה.':isEmpty?'מה יש ב'+(inventorySpace==='Kitchen'?'מטבח':inventorySpace==='Bathroom'?'חדר הרחצה':'אזור הכללי')+'?':inventoryStatus==='attention'?'לא חסר כאן דבר.':inventoryStatus==='out'?'יש מהכול.':'לא מצאנו התאמה.';
       container.appendChild(h('section',{class:'kitchen-empty'},
         h('div',{class:'empty-room-symbol','aria-hidden':'true'},uiIcon(isEmpty?room.icon:'check')),
-        h('h2',{text:title}),h('p',{text:isEmpty?'מתחילים במה שכבר נמצא בבית. מוסיפים מוצר, כמות ומחיר, והכול מקבל מקום.':inventoryQuery?'נסו שם אחר. החיפוש כולל מוצרים מכל אזורי הבית.':'אפשר לחזור לכל המוצרים או לבחור אזור אחר.'}),
+        h('h2',{text:title}),
         isEmpty?(!items.length?actionButton('הוספת מוצר ראשון','plus','kitchen-button primary',function(){openProductEntry();}):null):
           actionButton('הצגת כל המוצרים','shelf','kitchen-button secondary',function(){inventoryStatus='all';inventoryQuery='';inventoryLocation='all';renderMain();})));
       return;
@@ -1629,7 +1629,7 @@
     var strip=h('div',{class:'house-brief'});
     var plan=Home.shoppingPlan(items,shoppingItems);
     strip.appendChild(h('div',{class:'shopping-nudge'+(plan.length?' has-needs':'')},uiIcon('bag'),h('div',{},
-      h('strong',{text:plan.length?'משלימים את מה שחסר':activeShopping().length?'הרשימה לקנייה הבאה מוכנה':'קונים רק מה שצריך'}),
+      h('strong',{text:plan.length?'משלימים את מה שחסר':activeShopping().length?'הרשימה לקנייה הבאה מוכנה':'רשימת קניות'}),
       h('span',{text:plan.length?productCount(plan.length)+' עוד לא מכוסים ברשימת הקניות':activeShopping().length?productCount(activeShopping().length)+' ברשימה':'הרשימה ריקה כרגע'})),
       plan.length?actionButton('הוספת '+plan.length+' חוסרים לרשימה','plus','kitchen-button secondary',function(e){addMissingToShopping(e.currentTarget);}):null));
     strip.appendChild(h('div',{class:'month-glance'},h('span',{text:'נרשם החודש'}),h('strong',{dir:'auto',text:formatMoney(expenseTotal(month.expenses||[]))})));
@@ -1728,8 +1728,8 @@
   function openProductEntry(){
     var previous=document.activeElement;
     function close(){overlay.remove();if(previous&&previous.isConnected)previous.focus({preventScroll:true});}
-    var manual=h('button',{type:'button',class:'product-entry-option',onclick:function(){close();openForm(null,{review:true});}},uiIcon('plus'),h('span',{},h('strong',{text:'הוספה ידנית'}),h('span',{text:'שם המוצר והכמות — כל השאר לבחירתכם'})));
-    var scan=h('button',{type:'button',class:'product-entry-option',onclick:function(){close();openScanner();}},uiIcon('scan'),h('span',{},h('strong',{text:'סריקת ברקוד'}),h('span',{text:'סורקים, בודקים את הפרטים ושומרים'})));
+    var manual=h('button',{type:'button',class:'product-entry-option',onclick:function(){close();openForm(null,{review:true});}},uiIcon('plus'),h('span',{},h('strong',{text:'הוספה ידנית'})));
+    var scan=h('button',{type:'button',class:'product-entry-option',onclick:function(){close();openScanner();}},uiIcon('scan'),h('span',{},h('strong',{text:'סריקת ברקוד'})));
     var cancel=h('button',{type:'button',class:'btn ghost',text:'ביטול',onclick:close});
     var overlay=h('div',{class:'overlay center product-entry-overlay'},h('div',{class:'dialog product-entry-dialog',role:'dialog','aria-modal':'true','aria-label':'הוספת מוצר'},h('h2',{text:'איך להוסיף את המוצר?'}),manual,scan,cancel));
     overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
@@ -1901,7 +1901,6 @@
     var price=priceField(state.unitPriceAgorot,function(){return Math.max(0,state.quantity-originalQuantity);});
     if(state.priceDraft!=null)price.input.value=state.priceDraft;
     stock.appendChild(price.element);
-    stock.appendChild(h('p',{class:'editor-price-hint',text:'המחיר הוא ליחידת המידה שנבחרה. אין חובה להזין מחיר.'}));
     var where=h('section',{class:'editor-section editor-place','aria-label':'מיקום בבית'},
       h('h3',{class:'editor-section-title',text:'איפה המוצר נמצא?'}),
       locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));
@@ -1962,7 +1961,6 @@
     var packagesSection=where.querySelector('.package-list');
     var quantityTitle=stock.querySelector('.editor-section-title');
     var quantityControls=stock.querySelector('.editor-stock-controls');
-    var priceHint=stock.querySelector('.editor-price-hint');
     var purchaseChoice=stock.querySelector('.purchase-choice');
     var priceSection=h('section',{class:'editor-price-section'},price.element,h('div',{class:'editor-expense'},h('h3',{class:'editor-section-title',text:'הוצאה'}),purchaseChoice));
     if(noteSection)noteSection.remove();if(packagesSection)packagesSection.remove();
@@ -1997,7 +1995,7 @@
         var added=Math.max(0,state.quantity-originalQuantity);
         var amount=purchaseInput&&purchaseInput.checked?purchaseAmount(added,unitPrice):null;
         consequence.textContent=amount!==null ? 'תוספת של '+formatQty(added)+' '+t('units.'+state.unit)+' · הוצאה חדשה '+formatMoney(amount) :
-          !purchaseInput.checked ? 'יישמר במלאי בלבד, ללא רישום הוצאה.' : unitPrice!==null && !added ? 'שמירת הפרטים לא תיצור הוצאה חדשה.' : 'לא תירשם הוצאה ללא מחיר.';
+          '';
         consequence.classList.toggle('has-expense',amount!==null);
       }catch(e){consequence.textContent='בדקו את המחיר: עד שתי ספרות אחרי הנקודה.';}
     }
@@ -2136,7 +2134,7 @@
       content.appendChild(h('section',{class:'expense-summary','aria-label':'הוצאות החודש'},
         h('span',{class:'expense-heading',text:'הוצאות שנרשמו החודש'}),
         h('strong',{class:'expense-total',dir:'auto',text:formatMoney(expenseTotal(purchases))}),
-        h('p',{text:purchases.length === 1 ? 'קנייה אחת עם מחיר שנרשם' : purchases.length ? purchases.length+' קניות עם מחיר שנרשם' : 'עדיין אין קניות עם מחיר בחודש הזה.'})));
+        h('p',{text:purchases.length === 1 ? 'קנייה אחת' : purchases.length ? purchases.length+' קניות' : 'אין הוצאות החודש'})));
       if(purchases.length){
         var breakdown=Home.expensesBySpace(purchases),total=expenseTotal(purchases);
         var chart=h('section',{class:'expense-rooms','aria-label':'הוצאות לפי אזור בבית'},h('h3',{text:'לאן הכסף הלך?'}));
@@ -2146,7 +2144,6 @@
             h('div',{class:'expense-track','aria-hidden':'true'},h('i',{style:'width:'+share+'%'})),h('strong',{dir:'auto',text:formatMoney(breakdown[space.id])})));
         });content.appendChild(chart);
       }
-      content.appendChild(h('p',{class:'expense-disclaimer',text:'הסכום כולל רק תוספות למלאי עם מחיר. עדכון מחיר אינו משנה קניות קודמות. ההיסטוריה נשמרת גם במכשירים המחוברים לאחר השלמת העדכון.'}));
       if(purchases.length) {
         var purchaseList=h('div',{class:'expense-list'});
         purchases.forEach(function(entry){
@@ -2401,9 +2398,6 @@
     // video frame) — the root cause of "camera works but zero detections".
     var stream = null;
     var loopTimer = null;
-    var startedAt = 0;
-    var tipsShown = false;
-    var TIP_MS = 6000; // show guidance if nothing found after ~6s (keep scanning)
 
     var overlay = h('div', { class: 'scanner-content' });
     var video = h('video', { class: 'scan-video' });
@@ -2415,28 +2409,9 @@
     var frame = h('div', { class: 'scan-frame' }, video, h('div', { class: 'scan-reticle' }), codeBadge);
     var status = h('div', { class: 'scan-status', text: t('scan.point') });
 
-    // Guidance shown on the detection timeout (hidden until then). The camera
-    // keeps decoding in the background while these tips are visible.
-    var tips = h(
-      'div',
-      { class: 'scan-tips', style: 'display:none' },
-      h('div', { class: 'scan-tips-title', text: t('scan.tipsTitle') }),
-      h(
-        'ul',
-        { class: 'scan-tips-list' },
-        h('li', { text: t('scan.tipCloser') }),
-        h('li', { text: t('scan.tipLight') }),
-        h('li', { text: t('scan.tipSteady') }),
-        h('li', { text: t('scan.tipRotate') })
-      )
-    );
-    function showTips() { tipsShown = true; tips.style.display = 'block'; }
-    function hideTips() { tipsShown = false; tips.style.display = 'none'; }
-
-    var panel=h('div',{class:'scan-panel'},frame,status,tips);
+    var panel=h('div',{class:'scan-panel'},frame,status);
     var cameraTools=h('div',{class:'scanner-camera-tools'},
-      h('button',{type:'button',class:'btn ghost',text:'מיקוד מחדש',onclick:function(){applyAdvancedCamera(true);}}),
-      h('p',{class:'settings-help',text:'החזיקו את הברקוד במרחק של כ־15–25 ס״מ, באור טוב. אם התמונה מטושטשת, הרחיקו מעט את המוצר מהעדשה.'}));
+      h('button',{type:'button',class:'btn ghost',text:'מיקוד מחדש',onclick:function(){applyAdvancedCamera(true);}}));
     panel.insertBefore(cameraTools,frame.nextSibling);
     overlay.appendChild(panel);
     var page=document.querySelector('.scanner-shell .scanner-body');
@@ -2537,7 +2512,7 @@
       if(!focus){if(manual)status.textContent='הדפדפן אינו מאפשר שליטה במיקוד. הרחיקו מעט את הברקוד וודאו שיש אור טוב.';return;}
       var advanced=[{focusMode:focus}];
       if(caps.exposureMode&&caps.exposureMode.indexOf('continuous')>=0)advanced.push({exposureMode:'continuous'});
-      track.applyConstraints({advanced:advanced}).then(function(){if(manual&&!closed)status.textContent='המיקוד האוטומטי פעיל. החזיקו את המוצר יציב.';}).catch(function(){if(manual&&!closed)status.textContent='לא ניתן לשנות מיקוד דרך הדפדפן. נסו להרחיק מעט את המוצר.';});
+      track.applyConstraints({advanced:advanced}).then(function(){if(manual&&!closed)status.textContent='המיקוד האוטומטי פעיל';}).catch(function(){if(manual&&!closed)status.textContent='לא ניתן לשנות מיקוד דרך הדפדפן. נסו להרחיק מעט את המוצר.';});
     }
 
     // Map a ZXing BarcodeFormat enum value to a human label for the debug panel.
@@ -2574,7 +2549,6 @@
     function startDecode() {
       status.classList.remove('error');
       status.textContent = t('scan.point');
-      hideTips();
       pickConstraints()
         .then(function (constraints) { return navigator.mediaDevices.getUserMedia(constraints).catch(function(error){
           if(error.name!=='OverconstrainedError'&&error.name!=='NotFoundError')throw error;
@@ -2603,8 +2577,6 @@
     // that truly reflect decoding — visible in the debug overlay.
     function startLoop() {
       dbg.running = true;
-      startedAt = Date.now();
-      tipsShown = false;
       var DELAY = 90; // ~11 decode attempts/sec
       function tick() {
         if (closed || !dbg.running) return;
@@ -2648,8 +2620,6 @@
             if (!isNoCode(err)) dbg.lastError = 'לא ניתן לפענח את הברקוד';
           }
         }
-        // Timeout guidance: keep decoding, just reveal tips once.
-        if (!tipsShown && !busy  && Date.now() - startedAt > TIP_MS) showTips();
         loopTimer = setTimeout(tick, DELAY);
       }
       tick();
@@ -2666,7 +2636,6 @@
       status.classList.remove('error');
       status.textContent = t('scan.point');
       codeBadge.classList.remove('show');
-      hideTips();
       if (stream && stream.active !== false) {
         startLoop();
       } else {
@@ -2705,7 +2674,6 @@
       if (window.HomeBarcode.key(code) === window.HomeBarcode.key(lastCode) && now - lastTime < 2500) return; // debounce dupes (~2.5s cooldown)
       lastCode = code;
       lastTime = now;
-      hideTips();
       hit();          // flash frame + beep + vibrate
       showCode(code); // show the detected barcode number
       busy=true;
@@ -3878,21 +3846,19 @@
     // Never use the development CLI token or put a token in a URL/QR.
     var url='https://github.com/settings/personal-access-tokens/new?name=HomeStock&description=HomeStock+device+sync&target_name='+encodeURIComponent(config.GITHUB_OWNER)+'&contents=write&expires_in=365';
     var form=h('div',{class:'shared-connect-form'},
-      h('p',{text:'מחברים פעם אחת בכל מכשיר. אחר כך המלאי, רשימת הקניות וההוצאות מתעדכנים אוטומטית כשהאפליקציה פתוחה ומחוברת לאינטרנט.'}),
       h('ol',{class:'shared-steps'},
         h('li',{},h('a',{href:url,target:'_blank',rel:'noopener noreferrer',text:'יצירת מפתח חיבור ב־GitHub'})),
         h('li',{text:'בחרו Only select repositories ואז את מאגר הנתונים של המשתמש הזה בלבד. ההרשאה הנדרשת היא Contents: Read and write.'}),
         h('li',{text:'צרו את המפתח והדביקו אותו כאן. אין לשלוח אותו בצ׳אט.'})),
       h('label',{class:'field-label'},'מפתח חיבור אישי',token),
-      h('p',{class:'shared-hint',text:'המפתח נשמר בדפדפן של המכשיר הזה ונשלח רק ל־GitHub. אפשר לבטל אותו בכל רגע בהגדרות GitHub.'}),error,connect);
+      error,connect);
     var disconnect=state.connected?h('button',{class:'btn cancel',type:'button',onclick:function(){
       if(busy)return;busy=true;disconnect.disabled=true;
       githubSync.disconnect().then(function(){busy=false;close();showToast('המכשיר נותק. הנתונים המקומיים נשמרו.');}).catch(function(){busy=false;disconnect.disabled=false;error.textContent='לא ניתן לנתק כרגע. נסו שוב.';});
     }},'ניתוק המכשיר הזה'):null;
     overlay.appendChild(h('section',{class:'dialog shared-dialog',role:'dialog','aria-modal':'true','aria-label':'אותם הנתונים בכל המכשירים'},
       h('div',{class:'sheet-header'},h('h2',{class:'dialog-title',text:'הבית שלכם, בכל מכשיר'}),closeButton),
-      status, state.connected && state.phase==='synced' ? h('p',{text:'הכול מחובר. אפשר להמשיך במחשב או בטלפון, והשינויים עוברים אוטומטית ביניהם.'}) : form,
-      h('p',{class:'shared-hint',text:'עובדים גם בלי אינטרנט. שינויים ממתינים במכשיר ונשלחים כשחוזרים לחיבור. בשינוי מקביל של אותו פריט נשמרת גרסה אחת. פריטים שונים והוצאות מתמזגים אוטומטית.'}),disconnect));
+      status, state.connected && state.phase==='synced' ? null : form,disconnect));
     if(githubSync)unsub=githubSync.subscribe(function(){status.textContent=githubStatusText();});
     overlay.addEventListener('click',function(e){if(e.target===overlay)close();});
     overlay.addEventListener('keydown',function(e){
@@ -3928,7 +3894,7 @@
   }
 
   function openProfilePicker(){
-    var page=h('main',{class:'profile-picker'},h('h1',{text:'מי משתמש באפליקציה?'}),h('p',{text:'לכל משתמש מלאי, קניות והוצאות משלו.'}));
+    var page=h('main',{class:'profile-picker'},h('h1',{text:'מי משתמש באפליקציה?'}));
     var all=window.Auth.listUsers(),primary;
     try{primary=window.Auth.getUser(localStorage.getItem('homestock.singleUser'));}catch(error){}
     primary=primary&&primary.id!=='sigal'?primary:window.Auth.getUser('aviraz')||all.find(function(user){return user.id!=='sigal';});
@@ -3979,8 +3945,7 @@
     }
     updateNotificationToggle();
     content.appendChild(h('section',{class:'settings-section settings-notifications-section','aria-label':'התראות תפוגה'},
-      h('h2',{text:'התראות תפוגה'}),notificationToggle,
-      h('p',{class:'settings-help',text:'באפליקציה שבוע מראש; בטלפון ביום התפוגה.'})));
+      h('h2',{text:'התראות תפוגה'}),notificationToggle));
     content.appendChild(h('section',{class:'settings-section settings-data-section','aria-label':'ניהול הנתונים'},
       h('h2',{text:'גיבוי'}),exportButton,
       h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory})));
