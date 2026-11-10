@@ -208,3 +208,6 @@
 .product-editor .editor-category { justify-content:flex-start; }
 .product-editor .editor-location-details { display:block; }
 .product-editor .editor-location-details .editor-section-title { margin-block-end:10px; }
+
+.scanner-dialog{width:min(100%,560px);max-height:92dvh;overflow:auto}.scanner-dialog .scan-panel{display:block;padding:0;max-width:none;max-height:none;overflow:visible}.scanner-dialog .scan-frame{height:min(48dvh,380px);aspect-ratio:auto}.scanner-dialog .scan-video{object-fit:cover}.scanner-dialog .scanner-camera-tools{margin-block:12px}.scanner-dialog .scan-status{margin-block:12px}.scanner-dialog .sheet-header{margin-block-end:14px}
+@media(max-width:1023px){.kitchen-nav .nav-links{grid-template-columns:repeat(4,minmax(0,1fr));}}
