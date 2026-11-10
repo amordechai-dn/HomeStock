@@ -1,0 +1,23 @@
+'use strict';
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
+(async()=>{
+ const dom=new JSDOM('<div id="root"></div>',{url:'https://qa.invalid/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
+ w.scrollTo=()=>{};w.matchMedia=()=>({matches:false,addEventListener(){}});w.HTMLElement.prototype.scrollIntoView=function(){};
+ for(const file of ['config.js','data/foods.js','i18n.js','packages.js','db.js','auth.js','dropdown.js','home-model.js','brand.js','barcode.js','app.js'])w.eval(fs.readFileSync(file,'utf8'));
+ const wait=()=>new Promise(r=>setTimeout(r,60));
+ w.localStorage.setItem('homestock.profileChosen','1');w.App.start();await wait();
+ assert(w.document.querySelector('.home-overview'));assert(!w.document.querySelector('.inventory-workbench'));assert.equal(w.document.querySelectorAll('.home-room').length,3);
+ const db=w.PantryDB,today=w.HomeModel.expiryPreset(0);
+ for(const row of [{name:'חלב',location:'Fridge',quantity:1,desiredAmount:3,expiryDate:today},{name:'אורז',location:'Pantry',quantity:0,desiredAmount:2},{name:'סבון',location:'Shower',quantity:2},{name:'נייר',location:'Toilet',quantity:1},{name:'קפוא',location:'Freezer',quantity:1},{name:'ציוד',location:'House',quantity:1}])await db.create(Object.assign({unit:'pack',categoryId:'other'},row));
+ w.App.start();await wait();
+ assert.deepEqual([...w.document.querySelectorAll('.home-metric strong')].map(n=>n.textContent),['6','2','1','0']);
+ assert.equal(w.document.querySelectorAll('.home-status-section')[0].querySelectorAll('.home-alert-row').length,2);
+ assert.equal(w.document.querySelectorAll('.home-status-section')[1].querySelectorAll('.home-alert-row').length,1);
+ const home=()=>[...w.document.querySelectorAll('.nav-link')].find(b=>b.getAttribute('aria-label')==='בית').click();
+ w.document.querySelectorAll('.home-metric')[1].click();assert.equal(w.location.hash,'#/stock');assert.equal(w.document.querySelectorAll('.stock-table tbody tr[data-item-id]').length,2);
+ home();w.document.querySelectorAll('.home-metric')[2].click();assert.equal(w.document.querySelectorAll('.stock-table tbody tr[data-item-id]').length,1);
+ home();w.document.querySelectorAll('.home-room')[1].click();assert.equal(w.document.querySelectorAll('.stock-table tbody tr[data-item-id]').length,2);
+ home();w.document.querySelector('.home-shopping-status .kitchen-button').click();await wait();assert.equal((await db.getAllShopping()).filter(r=>!r.purchased).length,2);assert(!w.document.querySelector('.home-shopping-status .kitchen-button'),'covered shortages are not added twice');
+ w.document.querySelector('.home-expense').click();assert.equal(w.location.hash,'#/expenses');assert.equal((await db.getAll()).length,6);
+ w.close();console.log('PASS home overview: empty state, cross-room counts, expiry and shortages, inventory drilldowns, idempotent shopping coverage, expenses and preserved inventory');
+})().catch(e=>{console.error(e);process.exit(1)});

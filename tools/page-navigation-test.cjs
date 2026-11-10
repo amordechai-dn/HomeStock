@@ -33,7 +33,7 @@ w.document.querySelector('.delete-confirm-overlay .cancel').click();
 assert.equal((await w.PantryDB.getAll()).length,3,'cancel delete leaves records intact');
 assert.equal(w.location.hash,'#/stock');
 button('בית').click();
-assert.deepEqual([...w.document.querySelectorAll('.storage-shelf')].map(n=>n.getAttribute('aria-label')),['מזווה','מקרר','מקפיא'],'shelves keep location order regardless of stock sorting');
+assert(w.document.querySelector('.home-overview'));assert.equal(w.document.querySelector('.inventory-workbench'),null,'home is status rather than a product list');
 button('הוספת מוצר').click();w.document.querySelector('.product-entry-option').click();
 assert.deepEqual([...w.document.querySelectorAll('.location-subspaces button')].map(n=>n.textContent.trim().replace(/^\S+\s+/,'')),['מזווה','מקרר','מקפיא'],'editor location order');
 console.log('PASS DOM: page background clicks, all noncamera navigation, simplified settings and version placement');w.close();
