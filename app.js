@@ -3945,13 +3945,8 @@
       h('h1',{class:'page-title',text:'הגדרות'}));
     var profile=h('section',{class:'settings-section settings-profile-section','aria-label':'הפרופיל שלי'},
       h('h2',{class:'sr-only',text:'המשתמש שלי'}));
-    var editor=h('div',{class:'settings-profile-editor'});
-    var edit=h('button',{type:'button',class:'btn ghost','aria-label':'עריכת פרופיל',text:'עריכה',onclick:function(){
-      if(editor.children.length){editor.replaceChildren();edit.setAttribute('aria-expanded','false');return;}
-      edit.setAttribute('aria-expanded','true');openProfile({inline:editor});
-    },'aria-expanded':'false'});
     profile.appendChild(h('div',{class:'settings-profile-line'},avatarEl('lg'),
-      h('strong',{dir:'auto',text:cu?cu.displayName():''}),edit));profile.appendChild(editor);
+      h('strong',{dir:'auto',text:cu?cu.displayName():''})));
     var state=githubSync?githubSync.status():{};
     var devices=h('section',{class:'settings-section settings-devices-section','aria-label':'המכשירים שלי'},
       h('h2',{text:'סנכרון'}),
@@ -3984,8 +3979,7 @@
       h('p',{class:'settings-help',text:'באפליקציה שבוע מראש; בטלפון ביום התפוגה.'})));
     content.appendChild(h('section',{class:'settings-section settings-data-section','aria-label':'ניהול הנתונים'},
       h('h2',{text:'גיבוי'}),exportButton,
-      h('details',{class:'settings-export-info'},h('summary',{text:'מה כלול בקובץ?'}),h('p',{class:'settings-help',text:'מלאי, קניות, הוצאות ופרופיל. תמונות המוצרים ופרטי החיבור אינם כלולים.'})),
-      h('details',{class:'settings-advanced'},h('summary',{text:'אפשרויות נוספות'}),h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory}))));
+      h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory})));
     content.appendChild(h('p',{class:'settings-version',id:'version',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     page.appendChild(content);prepareWorkspace();root.appendChild(page);
   }

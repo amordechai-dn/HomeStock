@@ -12,14 +12,16 @@ for(const [name,route] of [['הוצאות','expenses'],['הגדרות','settings
 button(name).click();assert.equal(w.document.querySelector('.kitchen-nav'),stableNav,'navigation DOM stays mounted');assert.equal(w.location.hash,'#/'+route);const page=w.document.querySelector('#main-content');assert(page);page.click();assert.equal(w.location.hash,'#/'+route,'background stays on '+route);
 }
 button('הגדרות').click();const before=w.location.hash;
-[...w.document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='עריכת פרופיל').click();assert.equal(w.location.hash,before);assert(w.document.querySelector('.profile-dialog'));
-w.document.querySelector('.profile-dialog .btn.cancel').click();assert.equal(w.location.hash,before);assert(w.document.querySelector('.settings-page'));
-[...w.document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='עריכת פרופיל').click();w.document.querySelector('.profile-dialog .btn.save').click();assert.equal(w.location.hash,before);
+assert.equal(w.document.querySelector('.settings-page details'),null,'settings have no collapsed information');
+assert.equal(w.document.querySelector('[aria-label="עריכת פרופיל"]'),null,'profile editing removed');
+assert(button('מחיקת המלאי').closest('.settings-page'),'inventory deletion is directly visible');
+assert(w.document.querySelector('.nav-settings .nav-app-version'),'version stays beside settings');
+assert.equal(w.location.hash,before);
 for(const [location,quantity] of [['Freezer',0],['Fridge',1],['Pantry',9]])await w.PantryDB.create({name:'בדיקת '+location,quantity,location,unit:'pcs',categoryId:'other'});
 await w.localStorage.setItem('homestock.profileChosen','1');w.App.start();await new Promise(r=>setTimeout(r,100));
 button('המלאי שלי').click();
 assert.deepEqual([...w.document.querySelectorAll('.storage-shelf')].map(n=>n.getAttribute('aria-label')),['מזווה','מקרר','מקפיא'],'shelves keep location order regardless of stock sorting');
 button('הוספת מוצר').click();w.document.querySelector('.product-entry-option').click();
 assert.deepEqual([...w.document.querySelectorAll('.location-subspaces button')].map(n=>n.textContent.trim().replace(/^\S+\s+/,'')),['מזווה','מקרר','מקפיא'],'editor location order');
-console.log('PASS DOM: page background clicks, all noncamera navigation, profile open/cancel/save preserve settings');w.close();
+console.log('PASS DOM: page background clicks, all noncamera navigation, simplified settings and version placement');w.close();
 })().catch(e=>{console.error(e);process.exit(1)});
