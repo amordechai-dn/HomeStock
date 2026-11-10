@@ -221,6 +221,7 @@
       image: input.image || null,
       // Content-hash reference into the deduped per-user image store.
       imageHash: input.imageHash || null,
+      imageUrl:input.imageUrl||null,
       // Desired amount / par level (target stock). 0 = not tracked.
       desiredAmount:
         typeof input.desiredAmount === 'number' ? input.desiredAmount : 0,

@@ -463,7 +463,7 @@
       var r = imageMap[item.imageHash];
       return r.thumb || r.full;
     }
-    return item.image || null;
+    return item.image || item.imageUrl || null;
   }
 
   // One-time migration: move any legacy inline item.image into the deduped
@@ -612,7 +612,7 @@
     var row = h('div', { class: 'photo-row' });
     function render() {
       row.innerHTML = '';
-      var preview = state.imageFull || state.imageThumb;
+      var preview = state.imageFull || state.imageThumb || state.imageUrl;
       var tile = preview
         ? h(
             'div',
@@ -635,20 +635,20 @@
             {
               class: 'btn ghost danger',
               type: 'button',
-              onclick: function () { state.imageFull = null; state.imageThumb = null; render(); },
+              onclick: function () { state.photoRevision=(state.photoRevision||0)+1;state.imageUrl=null;state.imageFull = null; state.imageThumb = null; render(); },
             },
             t('form.removePhoto')
           )
         : null;
       row.appendChild(tile);
-      var cameraBtn=h('button',{class:'btn ghost',type:'button',text:'צילום',onclick:function(){captureProductPhoto(function(pair){state.imageFull=pair.full;state.imageThumb=pair.thumb;render();},function(){cameraInput.click();});}});
+      var cameraBtn=h('button',{class:'btn ghost',type:'button',text:'צילום',onclick:function(){captureProductPhoto(function(pair){state.photoRevision=(state.photoRevision||0)+1;state.imageUrl=null;state.imageFull=pair.full;state.imageThumb=pair.thumb;render();},function(){cameraInput.click();});}});
       row.appendChild(h('div', { class: 'photo-actions' }, cameraBtn,addBtn, rm));
     }
     function readPhoto(input) {
       var f = input.files && input.files[0];
       if (!f) return;
       processImage(f, function (pair) {
-        if (pair) { state.imageFull=pair.full;state.imageThumb=pair.thumb;render(); }
+        if (pair) { state.photoRevision=(state.photoRevision||0)+1;state.imageUrl=null;state.imageFull=pair.full;state.imageThumb=pair.thumb;render(); }
         else showToast(t('form.imageError'));
         input.value = '';
       });
@@ -1758,6 +1758,7 @@
       expiryDate:editing?(opts.addQuantity?'':existing.noExpiry?'':existing.expiryDate||''):prefill.expiryDate||'',
       barcode:editing?existing.barcode:prefill.barcode,
       emoji:editing?existing.emoji:prefill.emoji,
+      imageUrl:editing?existing.imageUrl||null:prefill.imageUrl||null,photoRevision:0,
       imageFull:editing?fullImageFor(existing):prefill.imageFull||prefill.image||null,
       imageThumb:editing?thumbImageFor(existing):prefill.imageThumb||prefill.image||null
     };
@@ -1804,6 +1805,26 @@
     });
 
     var photo=photoControl(state);
+    var imageStatus=h('p',{class:'settings-help',role:'status'});
+    async function loadScannedPhoto(){
+      var revision=state.photoRevision;
+      try{
+        if(!state.imageUrl&&opts.loadBarcodePhoto&&state.barcode&&!state.imageFull){
+          imageStatus.textContent='בודק תמונה במאגר…';
+          var result=await lookupBarcode(state.barcode,true);
+          if(closed||state.photoRevision!==revision)return;
+          if(result.product)state.imageUrl=result.product.imageUrl||null;
+        }
+        if(!state.imageUrl||state.imageFull){imageStatus.textContent=state.imageFull?'':opts.loadBarcodePhoto?'לא נמצאה תמונה במאגר. אפשר לצלם או לבחור תמונה.':'';return;}
+        imageStatus.textContent='טוען תמונת מוצר…';photo.render();
+        var image=await fetchImageLocal(state.imageUrl);
+        if(closed||state.photoRevision!==revision)return;
+        if(image){state.imageFull=image;state.imageThumb=null;photo.render();imageStatus.textContent='';}
+        else imageStatus.textContent='לא ניתן לשמור את התמונה לשימוש ללא אינטרנט כרגע.';
+      }catch(error){if(!closed)imageStatus.textContent='לא ניתן לטעון תמונה כרגע. אפשר לצלם או לבחור תמונה.';}
+    }
+    if(state.imageUrl||opts.loadBarcodePhoto){setTimeout(function(){if(!closed){photo.row.parentNode.appendChild(imageStatus);loadScannedPhoto();}},0);}
+
     var nameInput=h('input',{class:'input editor-name',type:'text',dir:'auto',value:state.name,'aria-label':'שם המוצר',placeholder:'מה מוסיפים לבית?',autocomplete:'off'});
     var acBox=h('div',{class:'ac-box editor-suggestions',role:'listbox','aria-label':'הצעות למוצר',id:titleId+'-suggestions',style:'display:none'});
     nameInput.setAttribute('aria-controls',acBox.id);
@@ -2003,7 +2024,7 @@
         unit:state.unit,unitPriceAgorot:unitPrice,categoryId:state.categoryId,
         location:state.location,note:noteInput.value.trim()||null,desiredAmount:desired,
         expiryDate:state.expiryDate||null,noExpiry:false,
-        barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
+        imageUrl:state.imageUrl||null,barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
       if(payload.categoryId==='other'&&match&&match.category)payload.categoryId=match.category;
       var added=Math.max(0,quantity-originalQuantity);
       if(window.HomePackages){
@@ -2026,7 +2047,7 @@
         if(previousHash&&previousHash!==saved.imageHash)return releaseImage(previousHash).catch(function(){});
       }).then(function(){
         if(!payload.barcode)return;
-        return window.PantryDB.putBarcode({barcode:payload.barcode,name:payload.nameEn||payload.name,he:payload.nameHe||'',categoryId:payload.categoryId,unit:payload.unit,location:payload.location,emoji:payload.emoji,source:'user'}).catch(function(){});
+        return window.PantryDB.putBarcode({barcode:payload.barcode,name:payload.nameEn||payload.name,he:payload.nameHe||'',categoryId:payload.categoryId,unit:payload.unit,location:payload.location,emoji:payload.emoji,image:state.imageFull||null,imageUrl:state.imageUrl||null,source:'user'}).catch(function(){});
       }).then(function(){close(true);return opts.onSaved?opts.onSaved():refresh();}).then(function(){
         var next=cardRefs[savedId]?cardRefs[savedId].querySelector('.item-open'):document.querySelector('.nav-link.active');
         if(next&&next.isConnected)next.focus({preventScroll:true});
@@ -2240,10 +2261,10 @@
     return new Promise(function(resolve){
       var controller=new AbortController(),finished=false;
       function done(image){if(finished)return;finished=true;clearTimeout(timer);resolve(image);}
-      var timer=setTimeout(function(){controller.abort();done(null);},3500);
+      var timer=setTimeout(function(){controller.abort();done(null);},8000);
       try{
         var source=new URL(url);
-        if(source.protocol!=='https:'||!/(^|\.)open(food|beauty|products|petfood)facts\.org$/.test(source.hostname)){done(null);return;}
+        if(source.protocol!=='https:'||!/(^|\.)open(food|beauty|products|petfood)facts\.(org|net)$/.test(source.hostname)){done(null);return;}
         fetch(source.href,{signal:controller.signal,credentials:'omit'}).then(function(response){return response.ok?response.blob():null;})
           .then(function(blob){if(!blob){done(null);return;}processImage(blob,function(pair){done(pair?pair.full:null);});}).catch(function(){done(null);});
       }catch(e){done(null);}
@@ -2258,12 +2279,13 @@
     if(type==='beauty')category='care';
     else if(type==='product')category=match?match.category:'household';
     else if(category==='other')category=categoryFromProductName([he,name,product.generic_name].filter(Boolean).join(' '));
-    var image=product.image_front_small_url||product.image_small_url||product.image_front_url;
-    return (image?fetchImageLocal(image):Promise.resolve(null)).then(function(localImage){return {
+    var image=product.image_front_url||product.image_front_small_url||product.image_small_url;
+    try{var source=new URL(image);if(source.protocol!=='https:'||!/(^|\.)open(food|beauty|products|petfood)facts\.(org|net)$/.test(source.hostname))image=null;}catch(error){image=null;}
+    return Promise.resolve({
       barcode:code,name:name,he:he||match&&match.he||'',productType:type,
       brand:String(product.brands||'').split(',')[0].trim(),size:String(product.quantity||'').trim(),
-      categoryId:category,unit:match&&match.unit||'pcs',emoji:match&&match.emoji||null,image:localImage,source:'off'
-    };});
+      categoryId:category,unit:match&&match.unit||'pcs',emoji:match&&match.emoji||null,image:null,imageUrl:image||null,source:'off'
+    });
   }
 
   function scanDisplayName(p) {
@@ -2280,12 +2302,12 @@
   //      ('offline' is a distinct new-product case with no network)
   // Never rejects; always resolves to a normalized { source, ... } descriptor.
   var sharedBarcodeLookup=null;
-  function lookupBarcode(code) {
+  function lookupBarcode(code,refresh) {
     if(!sharedBarcodeLookup)sharedBarcodeLookup=window.HomeBarcode.createLookup({
       db:window.PantryDB,items:function(){return items;},online:function(){return navigator.onLine!==false;},
       fetch:function(url,options){return fetch(url,options);},map:mapPublicProduct
     });
-    return sharedBarcodeLookup(code).then(function(result){
+    return sharedBarcodeLookup(code,refresh).then(function(result){
       if(result.source!=='inventory'&&result.product&&result.product.categoryId==='other'){
         var product=result.product;var inferred=categoryFromProductName((product.he||'')+' '+(product.name||''));
         if(inferred!=='other')result.product=Object.assign({},product,{categoryId:inferred});
@@ -2695,7 +2717,7 @@
   // Known product already in inventory: choose how many units to add, then
   // increment the existing item (no duplicate). onCancel/onSaved handle flow.
   function openAddUnits(item,onCancel,onSaved){
-    openForm(item,{addQuantity:1,review:true,onCancel:onCancel,onSaved:onSaved});
+    openForm(item,{addQuantity:1,review:true,loadBarcodePhoto:true,onCancel:onCancel,onSaved:onSaved});
   }
 
   // Barcode recognition only prefills the same editor used everywhere else.
@@ -2703,12 +2725,12 @@
     var product=opts.product||{},barcode=String(opts.barcode||product.barcode||'');
     var existing=itemByBarcode(barcode);
     if(existing){openAddUnits(existing,onCancel,onSaved);return;}
-    openForm(null,{review:true,onCancel:onCancel,onSaved:onSaved,prefill:{
+    openForm(null,{review:true,loadBarcodePhoto:true,onCancel:onCancel,onSaved:onSaved,prefill:{
       barcode:barcode,name:product.he||product.name||'',nameHe:product.he||null,nameEn:product.name||null,
       categoryId:product.categoryId||'other',unit:'pack',quantity:1,
       unitPriceAgorot:product.unitPriceAgorot,
       location:product.location||(product.productType==='beauty'?'Shower':product.productType==='product'?'House':defaultInventoryLocation()),
-      emoji:product.emoji||null,imageFull:product.image||null
+      emoji:product.emoji||null,imageFull:product.image||null,imageUrl:product.imageUrl||null
     }});
   }
 

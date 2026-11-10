@@ -48,11 +48,11 @@
       }catch(e){return fallback(code,'unreachable');}
       finally{clearTimeout(timer);}
     }
-    return async function(value){
+    return async function(value,refresh){
       var code=normalize(value);
       if(!code)return fallback(code,'format');
       try{
-        var cached=await local(code);if(cached)return cached;
+        var cached=refresh?null:await local(code);if(cached)return cached;
         var canonical=key(code);if(inFlight.has(canonical))return inFlight.get(canonical);
         var work=online(code);inFlight.set(canonical,work);
         try{return await work;}finally{inFlight.delete(canonical);}
