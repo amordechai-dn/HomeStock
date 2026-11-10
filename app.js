@@ -2083,7 +2083,7 @@
     if(window.visualViewport){window.visualViewport.addEventListener('resize',fitEditorViewport);window.visualViewport.addEventListener('scroll',fitEditorViewport);}
     fitEditorViewport();
     overlay.appendChild(sheet);document.body.appendChild(overlay);
-    setTimeout(function(){if(!closed){if(!editing&&!state.name)nameInput.focus();else title.focus({preventScroll:true});}},40);
+    setTimeout(function(){if(!closed)title.focus({preventScroll:true});},40);
   }
 
   // ---- Delete confirm ----

@@ -10,7 +10,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.5.2`
+**Current version:** `v4.5.3`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -288,7 +288,7 @@ all PNG sizes use a forest/sage tile. Maskable icons keep the mark inside their
 safe zone. Regenerate every format with `node tools/generate-icons.js`.
 
 
-## Household workflow — v4.5.2
+## Household workflow — v4.5.3
 
 - Phone-first list default, optional remembered card layout; finished stock offers adding to shopping.
 - Legacy items are normalized lazily into one batch using their recorded quantity/date. No fabricated dates or automatic conversion of legacy kilograms/liters into packages. Updates persist batches; existing financial history stays intact.
@@ -303,7 +303,7 @@ safe zone. Regenerate every format with `node tools/generate-icons.js`.
 Additional tests: `node tools/packages-test.js`, `node tools/pwa-idle-test.js`, and with jsdom available `node tools/household-v4-test.cjs`. The full isolated 90-product QA matrix is still available in `tools/full-qa.cjs`.
 
 
-## Separate profiles — v4.5.2
+## Separate profiles — v4.5.3
 
 First opening offers אבירז / סיגל, with no authentication. The selection is remembered and can be changed in Settings. Local inventory, shopping, expenses, profile and layout preferences are scoped independently. The original household identifier and data repository remain unchanged. Sigal starts empty and uses HomeStock-data-sigal if connected later. Sync credentials are scoped to repository and profile; legacy credentials are migrated only to the original household. Switching stores the next selection and reloads before changing the database scope, keeping in-flight work bound to its previous household.
 
