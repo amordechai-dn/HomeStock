@@ -3956,11 +3956,10 @@
     currentView='settings';pageAddress('settings');
     var cu=window.CurrentUser;
     var page=h('main',{class:'kitchen-workspace standalone-page',id:'main-content'});
-    var content=h('div',{class:'page-content settings-page settings-redesign'},
-      h('h1',{class:'page-title',text:'הגדרות'}),
-      h('p',{class:'settings-intro',text:'הבית שלכם, בדיוק כמו שנוח לכם.'}));
+    var content=h('div',{class:'page-content settings-page settings-redesign settings-simple'},
+      h('h1',{class:'page-title',text:'הגדרות'}));
     var profile=h('section',{class:'settings-section settings-profile-section','aria-label':'הפרופיל שלי'},
-      h('h2',{text:'הפרופיל שלי'}));
+      h('h2',{class:'sr-only',text:'המשתמש שלי'}));
     var editor=h('div',{class:'settings-profile-editor'});
     var edit=h('button',{type:'button',class:'btn ghost','aria-label':'עריכת פרופיל',text:'עריכה',onclick:function(){
       if(editor.children.length){editor.replaceChildren();edit.setAttribute('aria-expanded','false');return;}
@@ -3970,11 +3969,11 @@
       h('strong',{dir:'auto',text:cu?cu.displayName():''}),edit));profile.appendChild(editor);
     var state=githubSync?githubSync.status():{};
     var devices=h('section',{class:'settings-section settings-devices-section','aria-label':'המכשירים שלי'},
-      h('h2',{text:'המכשירים שלי'}),
+      h('h2',{text:'סנכרון'}),
       h('p',{class:'settings-sync-label',role:'status',text:githubStatusText()}),
-      h('p',{class:'settings-help',text:state.lastSync?'סנכרון אחרון: '+new Date(state.lastSync).toLocaleString('he-IL'):'לאחר חיבור בכל מכשיר, הנתונים מתעדכנים אוטומטית.'}),
-      h('button',{type:'button',class:'btn ghost',text:state.connected?'ניהול החיבור':'חיבור מכשיר נוסף',onclick:openGitHubConnection}));
-    var exportButton=h('button',{type:'button',class:'btn ghost',text:'ייצוא הנתונים לקובץ',onclick:function(){
+      h('p',{class:'settings-help',text:state.lastSync?'עודכן: '+new Date(state.lastSync).toLocaleString('he-IL'):'נשמר במכשיר הזה'}),
+      h('button',{type:'button',class:'btn ghost',text:state.connected?'ניהול':'חיבור לסנכרון',onclick:openGitHubConnection}));
+    var exportButton=h('button',{type:'button',class:'btn ghost',text:'הורדת גיבוי',onclick:function(){
       exportButton.disabled=true;
       Promise.all([window.PantryDB.getAll(),window.PantryDB.getAllShopping(),window.PantryDB.getAllBarcodes()]).then(function(data){
         var backup={version:1,exportedAt:new Date().toISOString(),items:data[0],shopping:data[1],barcodes:data[2],monthly:window.PantryDB.getMonthlyLog(),profile:{displayName:cu.displayName(),avatar:cu.avatar()}};
@@ -3984,16 +3983,24 @@
     }});
     profile.appendChild(h('button',{type:'button',class:'btn ghost',text:'החלפת משתמש',onclick:openProfilePicker}));
     content.appendChild(profile);content.appendChild(devices);
+    var notificationsOn=false;
+    var notificationToggle=h('button',{type:'button',class:'btn ghost',text:'הפעלת התראות',onclick:async function(){
+      notificationToggle.disabled=true;
+      if(notificationsOn)await disableExpiryNotifications();else await enableExpiryNotifications();
+      await updateNotificationToggle();
+    }});
+    async function updateNotificationToggle(){
+      try{var reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();notificationsOn=!!(reg&&reg.pushManager&&await reg.pushManager.getSubscription());}catch(error){notificationsOn=false;}
+      notificationToggle.textContent=notificationsOn?'ביטול התראות':'הפעלת התראות';notificationToggle.setAttribute('aria-pressed',String(notificationsOn));notificationToggle.disabled=false;
+    }
+    updateNotificationToggle();
     content.appendChild(h('section',{class:'settings-section settings-notifications-section','aria-label':'התראות תפוגה'},
-      h('h2',{text:'התראות תפוגה'}),
-      h('div',{class:'notification-actions'},
-        h('button',{type:'button',class:'btn ghost',text:'הפעלה בטלפון',onclick:enableExpiryNotifications}),
-        h('button',{type:'button',class:'btn ghost',text:'ביטול התראות',onclick:disableExpiryNotifications})),
-      h('p',{class:'settings-help',text:'באפליקציה: שבוע מראש. בטלפון: ביום התפוגה, גם כשהאפליקציה סגורה. נדרשים סנכרון והרשאה במכשיר. משלוח ברקע נבדק פעמיים ביום.'})));
+      h('h2',{text:'התראות תפוגה'}),notificationToggle,
+      h('p',{class:'settings-help',text:'באפליקציה שבוע מראש; בטלפון ביום התפוגה.'})));
     content.appendChild(h('section',{class:'settings-section settings-data-section','aria-label':'ניהול הנתונים'},
-      h('h2',{text:'ניהול הנתונים'}),exportButton,
+      h('h2',{text:'גיבוי'}),exportButton,
       h('details',{class:'settings-export-info'},h('summary',{text:'מה כלול בקובץ?'}),h('p',{class:'settings-help',text:'מלאי, קניות, הוצאות ופרופיל. תמונות המוצרים ופרטי החיבור אינם כלולים.'})),
-      h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory})));
+      h('details',{class:'settings-advanced'},h('summary',{text:'אפשרויות נוספות'}),h('button',{type:'button',class:'settings-delete-link',text:'מחיקת המלאי',onclick:openClearInventory}))));
     content.appendChild(h('p',{class:'settings-version',id:'version',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
     page.appendChild(content);prepareWorkspace();root.appendChild(page);
   }

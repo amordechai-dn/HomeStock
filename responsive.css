@@ -211,3 +211,20 @@
 
 .scanner-dialog{width:min(100%,560px);max-height:92dvh;overflow:auto}.scanner-dialog .scan-panel{display:block;padding:0;max-width:none;max-height:none;overflow:visible}.scanner-dialog .scan-frame{height:min(48dvh,380px);aspect-ratio:auto}.scanner-dialog .scan-video{object-fit:cover}.scanner-dialog .scanner-camera-tools{margin-block:12px}.scanner-dialog .scan-status{margin-block:12px}.scanner-dialog .sheet-header{margin-block-end:14px}
 @media(max-width:1023px){.kitchen-nav .nav-links{grid-template-columns:repeat(4,minmax(0,1fr));}}
+
+/* Settings: a short consistent list, with technical/destructive details tucked away. */
+.settings-simple { max-width:720px; }
+.settings-simple .settings-section { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;align-items:center;padding-block:20px; }
+.settings-simple .settings-section>h2 { grid-column:1;grid-row:1;font-size:17px;margin:0;color:var(--text); }
+.settings-simple .settings-section>.btn { grid-column:2;grid-row:1;width:auto;min-height:44px;padding:8px 14px; }
+.settings-simple .settings-section>.settings-help,.settings-simple .settings-section>.settings-sync-label { grid-column:1;grid-row:auto;margin:0;font-size:14px; }
+.settings-simple .settings-section>.settings-sync-label { grid-row:2; }
+.settings-simple .settings-profile-section { display:flex;flex-wrap:wrap;gap:12px; }
+.settings-simple .settings-profile-line { flex:1;min-width:0; }
+.settings-simple .settings-profile-editor { flex-basis:100%; }
+.settings-simple .settings-profile-editor:empty { display:none; }
+.settings-simple .settings-profile-section>.btn { margin:0; }
+.settings-simple .settings-export-info,.settings-simple .settings-advanced { grid-column:1/-1;font-size:14px; }
+.settings-simple summary { cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--muted); }
+.settings-simple .settings-delete-link { margin-block:8px; }
+@media(max-width:600px){.settings-simple .settings-profile-line strong{font-size:17px}.settings-simple .settings-section{padding-block:16px}.settings-simple .settings-profile-section>.btn{flex-basis:100%;text-align:start;width:auto;padding-inline:0}.settings-simple .settings-profile-line{flex-basis:100%}}
