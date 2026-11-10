@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import os
 with sync_playwright() as p:
  browser=p.chromium.launch(headless=True)
- for width,height in [(390,844),(320,740),(1440,1000)]:
+ for width,height in [(390,844),(320,740),(768,1000),(1440,1000)]:
   context=browser.new_context(viewport={'width':width,'height':height},device_scale_factor=1)
   page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   page.goto(os.environ.get('HOMESTOCK_QA_URL','http://127.0.0.1:8769'));page.wait_for_load_state('networkidle')
