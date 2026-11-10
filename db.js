@@ -209,6 +209,7 @@
       unitPriceAgorot: Number.isSafeInteger(input.unitPriceAgorot) && input.unitPriceAgorot >= 0 ? input.unitPriceAgorot : null,
       categoryId: input.categoryId || 'other',
       location: input.location || 'Fridge',
+      locationSource:input.locationSource||null,
       note: input.note || null,
       expiryDate:input.noExpiry?null:input.expiryDate||null,
       noExpiry:!!input.noExpiry,

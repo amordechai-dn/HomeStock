@@ -269,13 +269,40 @@
     return 'other';
   }
 
-  function categoryFromProductName(name){
-    var text=String(name||'').toLowerCase().replace(/[־–-]/g,' ').replace(/\s+/g,' ').trim();
-    // Specific product phrases precede ingredient words (chocolate != chocolate milk).
+  function specificCategoryFromName(name){
+    var text=Home.normalize(name).replace(/[־–-]/g,' ').replace(/\s+/g,' ').trim();
+    if(/משחת שיניים|מברשת שיניים|toothpaste|toothbrush|dental floss/.test(text))return 'dental';
+    if(/שמפו|מרכך שיער|shampoo|hair conditioner/.test(text))return 'hair';
+    if(/אבקת כביסה|נוזל כביסה|מרכך כביסה|laundry/.test(text))return 'laundry';
+    if(/מדיח|dishwash/.test(text))return 'dishwashing';
+    if(/נייר טואלט|toilet paper/.test(text))return 'paper';
+    if(/גליד[הת]|גלידות|ice cream|ארטיק|שלגון|קפוא|frozen/.test(text))return 'frozen';
     if(/חלב שוקולד|(?:^|\s)שוקו(?:\s|$)|chocolate milk/.test(text))return 'dairy';
-    if(/גליד[הת]|ice cream/.test(text))return 'frozen';
-    if(/פסק זמן|פסקזמן|pesek\s*zman|time out|שוקולד|חטיף|במבה|ביסלי|ופל|וופל|ביסקוויט|סוכריות|סוכריה|chocolate|wafer|biscuit|candy|crisps|snack/.test(text))return 'snacks';
-    var match=foodMatch(text);return match?match.category:'other';
+    if(/קרקרים?|קרקר|crackers?|פסק זמן|פסקזמן|pesek\s*zman|time out|במבה|ביסלי|ופל|וופל|ביסקוויט|סוכריות|סוכריה|wafer|biscuit|candy|crisps|snack/.test(text))return 'snacks';
+    if(/עוגת גבינה|cheesecake|cheese cake/.test(text))return 'bakery';
+    if(/גבינ[הת]|גבינות|סימפוניה|symphonia|symphony|קוטג|לבנה|יוגורט|יוגורטים|חמאה|שמנת|cream cheese|cheese|yog[hu]?urt|cottage|butter/.test(text))return 'dairy';
+    if(/שוקולד|chocolate/.test(text))return 'snacks';
+    if(/(?:^|\s)חלב(?:\s|$)|(?:^|\s)milk(?:\s|$)|ביצים|eggs/.test(text))return 'dairy';
+    if(/(?:^|\s)אורז(?:\s|$)|rice|עדשים|lentils/.test(text))return 'grains';
+    if(/פסטה|אטריות|pasta|noodles/.test(text))return 'pasta';
+    return 'other';
+  }
+  function categoryFromProductName(name){
+    var inferred=specificCategoryFromName(name);
+    if(inferred!=='other')return inferred;
+    var match=foodMatch(name);return match?match.category:'other';
+  }
+  function refineScannedProduct(product){
+    var refined=Object.assign({},product),before=refined.categoryId||'other';
+    var inferred=specificCategoryFromName([refined.he,refined.name,refined.nameHe,refined.nameEn].filter(Boolean).join(' '));
+    if(before==='other'&&inferred!=='other'){
+      refined.categoryId=inferred;
+      // Old scan caches saved a generic Pantry fallback without provenance.
+      if(refined.locationSource!=='user'&&(!refined.location||refined.location==='Pantry')){
+        refined.location=Home.scanLocation(Object.assign({},refined,{location:null}));
+      }
+    }
+    return refined;
   }
 
   // ---- tiny DOM helper ----
@@ -1822,8 +1849,9 @@
       quantity:editing?existing.quantity+(opts.addQuantity||0):prefill.quantity!=null?prefill.quantity:1,
       unit:editing?existing.unit:prefill.unit||'pack',
       unitPriceAgorot:editing?existing.unitPriceAgorot:prefill.unitPriceAgorot,
-      categoryId:editing?existing.categoryId:prefill.categoryId||'other',
-      location:editing?existing.location:prefill.location||defaultInventoryLocation(),
+      categoryId:editing?opts.categoryId||existing.categoryId:prefill.categoryId||'other',
+      location:editing?opts.location||existing.location:prefill.location||defaultInventoryLocation(),
+      locationSource:editing?existing.locationSource:prefill.locationSource,
       note:editing?existing.note||'':'',
       desiredAmount:editing?existing.desiredAmount||0:0,
       expiryDate:editing?(opts.addQuantity?opts.expiryDate||'':existing.noExpiry?'':existing.expiryDate||''):prefill.expiryDate||'',
@@ -1974,7 +2002,7 @@
     stock.appendChild(price.element);
     var where=h('section',{class:'editor-section editor-place','aria-label':'מיקום בבית'},
       h('h3',{class:'editor-section-title',text:'איפה המוצר נמצא?'}),
-      locationPicker(function(){return state.location;},function(value){state.location=value;updateSummary();}));
+      locationPicker(function(){return state.location;},function(value){state.location=value;state.locationSource='user';updateSummary();}));
     body.appendChild(h('div',{class:'editor-main-grid'},stock,where));
 
     var targetInput=h('input',{class:'editor-quantity-input',type:'text',inputmode:'decimal',dir:'ltr',value:state.targetDraft!=null?state.targetDraft:formatQty(state.desiredAmount),'aria-label':'כמות רצויה בבית'});
@@ -2112,7 +2140,7 @@
       var names=resolveNames(name,state.nameEn,state.nameHe);
       var payload={name:name,nameEn:names.nameEn,nameHe:names.nameHe,quantity:quantity,
         unit:state.unit,unitPriceAgorot:unitPrice,categoryId:state.categoryId,
-        location:state.location,note:noteInput.value.trim()||null,desiredAmount:desired,
+        location:state.location,locationSource:state.locationSource||'inferred',note:noteInput.value.trim()||null,desiredAmount:desired,
         expiryDate:state.expiryDate||null,noExpiry:false,
         imageUrl:state.imageUrl||null,barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
       if(payload.categoryId==='other'&&match&&match.category)payload.categoryId=match.category;
@@ -2137,7 +2165,7 @@
         if(previousHash&&previousHash!==saved.imageHash)return releaseImage(previousHash).catch(function(){});
       }).then(function(){
         if(!payload.barcode)return;
-        return window.PantryDB.putBarcode({barcode:payload.barcode,name:payload.nameEn||payload.name,he:payload.nameHe||'',categoryId:payload.categoryId,unit:payload.unit,location:payload.location,emoji:payload.emoji,image:state.imageFull||null,imageUrl:state.imageUrl||null,source:'user'}).catch(function(){});
+        return window.PantryDB.putBarcode({barcode:payload.barcode,name:payload.nameEn||payload.name,he:payload.nameHe||'',categoryId:payload.categoryId,unit:payload.unit,location:payload.location,locationSource:payload.locationSource,emoji:payload.emoji,image:state.imageFull||null,imageUrl:state.imageUrl||null,source:'user'}).catch(function(){});
       }).then(function(){close(true);return opts.onSaved?opts.onSaved():refresh();}).then(function(){
         var next=cardRefs[savedId]?cardRefs[savedId].querySelector('.item-open'):document.querySelector('.nav-link.active');
         if(next&&next.isConnected)next.focus({preventScroll:true});
@@ -2365,8 +2393,11 @@
     var he=String(product.product_name_he||'').trim(),type=product.product_type||'food';
     if(!name&&!he)return Promise.resolve(null);
     var match=foodMatch(he||name),category=deriveCategory(product.categories_tags);
-    if(type==='beauty')category='care';
+    var named=specificCategoryFromName([he,name,product.product_name,product.generic_name].filter(Boolean).join(' '));
+    if(type==='beauty')category=['dental','hair','skincare','hygiene','care'].indexOf(named)>=0?named:'care';
     else if(type==='product')category=match?match.category:'household';
+    else if(type==='petfood')category='pets';
+    else if(named!=='other')category=named;
     else if(category==='other')category=categoryFromProductName([he,name,product.generic_name].filter(Boolean).join(' '));
     var image=product.image_front_url||product.image_front_small_url||product.image_small_url;
     try{var source=new URL(image);if(source.protocol!=='https:'||!/(^|\.)open(food|beauty|products|petfood)facts\.(org|net)$/.test(source.hostname))image=null;}catch(error){image=null;}
@@ -2398,10 +2429,7 @@
       fetch:function(url,options){return fetch(url,options);},map:mapPublicProduct
     });
     return sharedBarcodeLookup(code,refresh).then(function(result){
-      if(result.source!=='inventory'&&result.product&&result.product.categoryId==='other'){
-        var product=result.product;var inferred=categoryFromProductName((product.he||'')+' '+(product.name||''));
-        if(inferred!=='other')result.product=Object.assign({},product,{categoryId:inferred});
-      }
+      if(result.product)result.product=refineScannedProduct(result.product);
       return result;
     });
   }
@@ -2781,19 +2809,20 @@
   // Known product already in inventory: choose how many units to add, then
   // increment the existing item (no duplicate). onCancel/onSaved handle flow.
   function openAddUnits(item,onCancel,onSaved){
-    openForm(item,{addQuantity:1,review:true,loadBarcodePhoto:true,onCancel:onCancel,onSaved:onSaved});
+    var suggestion=refineScannedProduct(item);
+    openForm(item,{addQuantity:1,review:true,loadBarcodePhoto:true,categoryId:suggestion.categoryId,location:suggestion.location,onCancel:onCancel,onSaved:onSaved});
   }
 
   // Barcode recognition only prefills the same editor used everywhere else.
   function openBarcodeProduct(opts,onCancel,onSaved){
-    var product=opts.product||{},barcode=String(opts.barcode||product.barcode||'');
+    var product=refineScannedProduct(opts.product||{}),barcode=String(opts.barcode||product.barcode||'');
     var existing=itemByBarcode(barcode);
     if(existing){openAddUnits(existing,onCancel,onSaved);return;}
     openForm(null,{review:true,loadBarcodePhoto:true,onCancel:onCancel,onSaved:onSaved,prefill:{
       barcode:barcode,name:product.he||product.name||'',nameHe:product.he||null,nameEn:product.name||null,
       categoryId:product.categoryId||'other',unit:'pack',quantity:1,
       unitPriceAgorot:product.unitPriceAgorot,
-      location:Home.scanLocation(product),
+      location:Home.scanLocation(product),locationSource:product.locationSource,
       emoji:product.emoji||null,imageFull:product.image||null,imageUrl:product.imageUrl||null
     }});
   }

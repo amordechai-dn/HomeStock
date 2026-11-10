@@ -29,7 +29,7 @@
     if(category==='frozen'||/frozen|ice[ -]?cream|גליד[הת]|קפוא|מוקפא|ארטיק|שלגון/.test(text))return 'Freezer';
     if(/canned|tinned|שימור|משומר|אבקת חלב|milk powder|uht|long[ -]?life|עמיד/.test(text))return 'Pantry';
     if(['dairy','meat','produce','fruit'].indexOf(category)>=0)return 'Fridge';
-    if(/יוגורט|גבינ[הת]|חלב|חמאה|שמנת|ביצים|yogurt|cheese|milk|butter|cream|eggs/.test(text)&&category==='other')return 'Fridge';
+    if(/יוגורט|גבינ[הת]|גבינות|סימפוניה|symphonia|symphony|חלב|חמאה|שמנת|ביצים|yogurt|cheese|milk|butter|cream|eggs/.test(text)&&category==='other')return 'Fridge';
     return 'Pantry';
   }
   function prioritySpace(item){
