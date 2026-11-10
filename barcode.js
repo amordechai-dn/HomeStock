@@ -31,7 +31,7 @@
       requests.push(at);
       var controller=new AbortController(),timer;
       try{
-        var url='https://world.openfoodfacts.org/api/v3/product/'+encodeURIComponent(code)+'?product_type=all&fields=code,product_type,product_name,product_name_en,product_name_he,generic_name,brands,categories_tags,image_front_small_url,image_small_url,image_front_url,quantity';
+        var url='https://world.openfoodfacts.org/api/v3/product/'+encodeURIComponent(code)+'?product_type=all&fields=code,product_type,product_name,product_name_en,product_name_he,generic_name,brands,categories_tags,image_front_small_url,image_small_url,image_front_url,quantity,product_quantity,product_quantity_unit';
         var work=Promise.resolve().then(function(){return options.fetch(url,{signal:controller.signal,credentials:'omit'});}).then(async function(response){
           if(response.status===429){var retry=response.headers&&response.headers.get('Retry-After');blockedUntil=now()+Math.max(60000,(Number(retry)||0)*1000);return fallback(code,'rate-limit');}
           if(response.status===404){misses.set(canonical,now()+300000);return fallback(code,'notfound');}

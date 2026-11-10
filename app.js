@@ -278,9 +278,10 @@
     if(/נייר טואלט|toilet paper/.test(text))return 'paper';
     if(/גליד[הת]|גלידות|ice cream|ארטיק|שלגון|קפוא|frozen/.test(text))return 'frozen';
     if(/חלב שוקולד|(?:^|\s)שוקו(?:\s|$)|chocolate milk/.test(text))return 'dairy';
-    if(/קרקרים?|קרקר|crackers?|פסק זמן|פסקזמן|pesek\s*zman|time out|במבה|ביסלי|ופל|וופל|ביסקוויט|סוכריות|סוכריה|wafer|biscuit|candy|crisps|snack/.test(text))return 'snacks';
+    if(/קרקרים?|קרקר|crackers?|צ[׳']?יפס|chips|popcorn|פופקורן|פסק זמן|פסקזמן|pesek\s*zman|time out|במבה|ביסלי|ופל|וופל|ביסקוויט|סוכריות|סוכריה|wafer|biscuit|candy|crisps|snack/.test(text))return 'snacks';
+    if(/פסטה|אטריות|רביולי|אנלוטי|pasta|noodles|ravioli|tortellini/.test(text))return 'pasta';
     if(/עוגת גבינה|cheesecake|cheese cake/.test(text))return 'bakery';
-    if(/גבינ[הת]|גבינות|סימפוניה|symphonia|symphony|קוטג|לבנה|יוגורט|יוגורטים|חמאה|שמנת|cream cheese|cheese|yog[hu]?urt|cottage|butter/.test(text))return 'dairy';
+    if(/גבינ[הת]|גבינות|פרמזן|פרמזאן|parmesan|parmigiano|grana padano|סימפוניה|symphonia|symphony|קוטג|לבנה|יוגורט|יוגורטים|חמאה|שמנת|cream cheese|cheese|yog[hu]?urt|cottage|butter/.test(text))return 'dairy';
     if(/שוקולד|chocolate/.test(text))return 'snacks';
     if(/(?:^|\s)חלב(?:\s|$)|(?:^|\s)milk(?:\s|$)|ביצים|eggs/.test(text))return 'dairy';
     if(/(?:^|\s)אורז(?:\s|$)|rice|עדשים|lentils/.test(text))return 'grains';
@@ -294,6 +295,7 @@
   }
   function refineScannedProduct(product){
     var refined=Object.assign({},product),before=refined.categoryId||'other';
+    refined.packageSize=refined.packageSize||Home.packageSize(refined.size);
     var inferred=specificCategoryFromName([refined.he,refined.name,refined.nameHe,refined.nameEn].filter(Boolean).join(' '));
     if(before==='other'&&inferred!=='other'){
       refined.categoryId=inferred;
@@ -635,28 +637,30 @@
     work.then(done,done);return work;
   }
   function cameraTorch(status){
-    var track=null,on=false,busy=false,generation=0;
+    var track=null,on=false,busy=false,available=false,knownSupport=false,generation=0;
     var label=h('span',{text:'פלאש כבוי'});
     var button=h('button',{type:'button',class:'btn ghost camera-torch',hidden:true,'aria-pressed':'false','aria-label':'הפעלת פלאש',onclick:function(){
-      if(!track||busy)return;
+      if(!track||busy||!available)return;
       var active=track,version=generation,wanted=!on;busy=true;button.disabled=true;
       updateCameraConstraints(active,[{torch:wanted}]).then(function(){
         if(track!==active||generation!==version)return;
         var settings=active.getSettings?active.getSettings():{};
+        if(typeof settings.torch!=='boolean'&&!knownSupport){available=false;throw new Error('torch-not-supported');}
         on=typeof settings.torch==='boolean'?settings.torch:wanted;
-        if(on!==wanted)throw new Error('torch-not-applied');
+        if(on!==wanted){available=false;throw new Error('torch-not-applied');}
       }).catch(function(){if(track===active&&generation===version)status.textContent='לא ניתן לשנות את הפלאש במצלמה הזאת.';}).then(function(){
         if(track!==active||generation!==version)return;
         busy=false;render();
       });
     }},uiIcon('flash'),label);
-    function render(){button.disabled=busy;button.setAttribute('aria-pressed',String(on));button.setAttribute('aria-label',on?'כיבוי פלאש':'הפעלת פלאש');label.textContent=on?'פלאש פעיל':'פלאש כבוי';}
+    function render(){button.disabled=busy||!available;button.setAttribute('aria-pressed',String(on));button.setAttribute('aria-label',available?(on?'כיבוי פלאש':'הפעלת פלאש'):'פלאש לא זמין במצלמה הזאת');label.textContent=available?(on?'פלאש פעיל':'פלאש כבוי'):'פלאש לא זמין';button.title=available?'':'הדפדפן לא מאפשר להפעיל פלאש במצלמה הזאת';}
     function attach(next){
       generation++;track=next;busy=false;on=false;var caps={};
       try{caps=track&&track.getCapabilities?track.getCapabilities():{};}catch(error){}
-      var supported=!!(track&&track.applyConstraints&&(caps.torch===true||Array.isArray(caps.torch)&&caps.torch.indexOf(true)>=0));
-      button.hidden=!supported;
-      if(supported){try{on=!!track.getSettings().torch;}catch(error){}}render();
+      knownSupport=caps.torch===true||Array.isArray(caps.torch)&&caps.torch.indexOf(true)>=0;
+      available=!!(track&&track.applyConstraints&&(knownSupport||caps.torch===undefined));
+      button.hidden=!track;
+      if(available){try{on=!!track.getSettings().torch;}catch(error){}}render();
     }
     return {button:button,attach:attach,detach:function(){attach(null);}};
   }
@@ -686,9 +690,9 @@
     navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}}).then(function(result){
       if(closed){result.getTracks().forEach(function(track){track.stop();});return;}
       stream=result;video.srcObject=result;
-      var track=result.getVideoTracks()[0],caps=track.getCapabilities?track.getCapabilities():{};torch.attach(track);
+      var track=result.getVideoTracks()[0],caps=track.getCapabilities?track.getCapabilities():{};
       if(caps.focusMode&&caps.focusMode.indexOf('continuous')>=0)updateCameraConstraints(track,[{focusMode:'continuous'}]).catch(function(){});
-      video.play().catch(function(){if(!closed)status.textContent='לא ניתן להציג את המצלמה. נסו לפתוח אותה מחדש.';});
+      video.play().then(function(){if(!closed)torch.attach(track);}).catch(function(){if(!closed)status.textContent='לא ניתן להציג את המצלמה. נסו לפתוח אותה מחדש.';});
     }).catch(function(error){if(!closed)status.textContent=t('scan.'+window.HomeBarcode.cameraErrorKey(error));});
   }
 
@@ -1637,7 +1641,7 @@
     selected.slice().sort(function(a,b){return Home.comparePriority(a,b);}).forEach(function(item){
       var space=SPACES.find(function(entry){return entry.id===locationSpace(item.location);});
       var date=item.expiryDate&&!item.noExpiry?new Date(item.expiryDate+'T12:00:00').toLocaleDateString('he-IL'):'—';
-      var row=h('tr',{'data-item-id':item.id},h('th',{scope:'row'},h('button',{type:'button',class:'stock-product','aria-label':'עריכת '+itemName(item),onclick:function(){openForm(item);}},itemThumb(item),h('span',{dir:'auto',text:itemName(item)}))));
+      var row=h('tr',{'data-item-id':item.id},h('th',{scope:'row'},h('button',{type:'button',class:'stock-product','aria-label':'עריכת '+itemName(item),onclick:function(){openForm(item);}},itemThumb(item),h('span',{class:'stock-product-label'},h('span',{dir:'auto',text:itemName(item)}),item.packageSize?h('small',{text:item.packageSize+' לאריזה'}):null))));
       [t('categories.'+item.categoryId),formatQty(item.quantity),t('units.'+item.unit),formatQty(item.desiredAmount||0),item.unitPriceAgorot==null?'—':formatMoney(item.unitPriceAgorot),date,space?space.label:'—',item.location==='House'?'—':t('locations.'+item.location),item.note||'—'].forEach(function(value){row.appendChild(h('td',{dir:'auto',text:value}));});
       row.appendChild(h('td',{},finishedButton(item),h('button',{type:'button',class:'stock-delete','aria-label':'מחיקת '+itemName(item),onclick:function(){confirmDelete(item);}},uiIcon('trash'))));
       rows.appendChild(row);
@@ -1852,6 +1856,7 @@
       categoryId:editing?opts.categoryId||existing.categoryId:prefill.categoryId||'other',
       location:editing?opts.location||existing.location:prefill.location||defaultInventoryLocation(),
       locationSource:editing?existing.locationSource:prefill.locationSource,
+      packageSize:editing?existing.packageSize:prefill.packageSize,dataSource:editing?existing.dataSource:prefill.dataSource,
       note:editing?existing.note||'':'',
       desiredAmount:editing?existing.desiredAmount||0:0,
       expiryDate:editing?(opts.addQuantity?opts.expiryDate||'':existing.noExpiry?'':existing.expiryDate||''):prefill.expiryDate||'',
@@ -1938,6 +1943,8 @@
       h('div',{class:'editor-identity-fields'},h('label',{class:'editor-caption'},'שם המוצר',nameInput),acBox,
         h('div',{class:'editor-category'},h('span',{class:'editor-caption',text:'קטגוריה'}),categoryChoice.element)),
       h('div',{class:'editor-photo'},photo.row,photo.input));
+    if(state.packageSize)identity.querySelector('.editor-identity-fields').appendChild(h('p',{class:'product-pack-size',text:'תכולת האריזה: '+state.packageSize}));
+    if(state.dataSource==='priceil')identity.querySelector('.editor-identity-fields').appendChild(h('a',{class:'product-data-source',href:'https://priceil.dev/developers',target:'_blank',rel:'noopener noreferrer',text:'מקור נתוני המוצר: PriceIL'}));
     body.appendChild(identity);
 
     function closeSuggestions(){acBox.style.display='none';acBox.innerHTML='';nameInput.setAttribute('aria-expanded','false');nameInput.removeAttribute('aria-activedescendant');suggestions=[];activeIndex=-1;}
@@ -2142,7 +2149,7 @@
         unit:state.unit,unitPriceAgorot:unitPrice,categoryId:state.categoryId,
         location:state.location,locationSource:state.locationSource||'inferred',note:noteInput.value.trim()||null,desiredAmount:desired,
         expiryDate:state.expiryDate||null,noExpiry:false,
-        imageUrl:state.imageUrl||null,barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
+        packageSize:state.packageSize||null,dataSource:state.dataSource||null,imageUrl:state.imageUrl||null,barcode:state.barcode||null,emoji:state.emoji||(match&&match.emoji)||null};
       if(payload.categoryId==='other'&&match&&match.category)payload.categoryId=match.category;
       var added=Math.max(0,quantity-originalQuantity);
       if(window.HomePackages){
@@ -2165,7 +2172,7 @@
         if(previousHash&&previousHash!==saved.imageHash)return releaseImage(previousHash).catch(function(){});
       }).then(function(){
         if(!payload.barcode)return;
-        return window.PantryDB.putBarcode({barcode:payload.barcode,name:payload.nameEn||payload.name,he:payload.nameHe||'',categoryId:payload.categoryId,unit:payload.unit,location:payload.location,locationSource:payload.locationSource,emoji:payload.emoji,image:state.imageFull||null,imageUrl:state.imageUrl||null,source:'user'}).catch(function(){});
+        return window.PantryDB.putBarcode({barcode:payload.barcode,name:payload.nameEn||payload.name,he:payload.nameHe||'',categoryId:payload.categoryId,unit:payload.unit,location:payload.location,locationSource:payload.locationSource,emoji:payload.emoji,image:state.imageFull||null,imageUrl:state.imageUrl||null,packageSize:state.packageSize||null,dataSource:state.dataSource||null,source:'user'}).catch(function(){});
       }).then(function(){close(true);return opts.onSaved?opts.onSaved():refresh();}).then(function(){
         var next=cardRefs[savedId]?cardRefs[savedId].querySelector('.item-open'):document.querySelector('.nav-link.active');
         if(next&&next.isConnected)next.focus({preventScroll:true});
@@ -2404,7 +2411,7 @@
     var suggestedLocation=Home.scanLocation({name:name,he:he,categoryId:category,productType:type,categories_tags:product.categories_tags});
     return Promise.resolve({
       barcode:code,name:name,he:he||match&&match.he||'',productType:type,location:suggestedLocation,
-      brand:String(product.brands||'').split(',')[0].trim(),size:String(product.quantity||'').trim(),
+      brand:String(product.brands||'').split(',')[0].trim(),size:String(product.quantity||'').trim(),packageSize:Home.packageSize(product.quantity)||Home.packageSize(product.product_quantity,product.product_quantity_unit),
       categoryId:category,unit:match&&match.unit||'pcs',emoji:match&&match.emoji||null,image:null,imageUrl:image||null,source:'off'
     });
   }
@@ -2422,13 +2429,38 @@
   //   4) otherwise a create-new-product fallback (barcode filled) -> 'new'
   //      ('offline' is a distinct new-product case with no network)
   // Never rejects; always resolves to a normalized { source, ... } descriptor.
+  var israeliCatalog=null;
+  function lookupIsraeliCatalog(code){
+    if(!israeliCatalog){
+      var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},2500);
+      israeliCatalog=Promise.resolve().then(function(){return fetch('./data/israeli-products.json',{signal:controller.signal,credentials:'omit'});}).then(function(response){if(!response.ok)throw new Error('catalog');return response.json();}).then(function(data){return data.products||{};}).catch(function(){israeliCatalog=null;return {};}).finally(function(){clearTimeout(timer);});
+    }
+    return israeliCatalog.then(function(rows){
+      var row=null;window.HomeBarcode.variants(code).some(function(alias){row=rows[alias];return !!row;});
+      if(!row||typeof row.name!=='string'||!row.name.trim()||window.HomeBarcode.key(row.barcode)!==window.HomeBarcode.key(code))return null;
+      return mapPublicProduct({product_name_he:row.name.slice(0,300),brands:row.brand||''},code).then(function(product){
+        if(!product)return null;var embedded=row.name.match(/\d+(?:[.,]\d+)?\s*(?:ק[״"]?ג|גרם|גר|מ[״"]?ל|ליטר|kg|ml|g|l)(?=$|\s|[.,])/i);
+        product.packageSize=row.weighted?null:Home.packageSize(row.quantity,row.unit)||Home.packageSize(embedded&&embedded[0]);product.size=product.packageSize||'';product.dataSource='priceil';product.source='priceil';return product;
+      });
+    });
+  }
   var sharedBarcodeLookup=null;
   function lookupBarcode(code,refresh) {
     if(!sharedBarcodeLookup)sharedBarcodeLookup=window.HomeBarcode.createLookup({
       db:window.PantryDB,items:function(){return items;},online:function(){return navigator.onLine!==false;},
       fetch:function(url,options){return fetch(url,options);},map:mapPublicProduct
     });
-    return sharedBarcodeLookup(code,refresh).then(function(result){
+    return sharedBarcodeLookup(code,refresh).then(async function(result){
+      var current=result.product||result.item;
+      if(!current||!current.packageSize){
+        var extra=await lookupIsraeliCatalog(code);
+        if(extra){
+          if(result.source==='new'||result.source==='offline')result={source:'catalog',product:extra};
+          else if(result.product)result.product=Object.assign({},result.product,{packageSize:extra.packageSize||null,dataSource:extra.packageSize?'priceil':result.product.dataSource});
+          else if(result.item)result.item=Object.assign({},result.item,{packageSize:extra.packageSize||null,dataSource:extra.packageSize?'priceil':result.item.dataSource});
+          if(result.product){try{await window.PantryDB.putBarcode(result.product);}catch(error){}}
+        }
+      }
       if(result.product)result.product=refineScannedProduct(result.product);
       return result;
     });
@@ -2439,7 +2471,7 @@
   // same for the same barcode. onCancel/onSaved wire the calling flow.
   function openBarcodeResult(res, code, onCancel, onSaved) {
     if (res.source === 'inventory') { openAddUnits(res.item, onCancel, onSaved); return; }
-    if (res.source === 'cache') {
+    if (res.source === 'cache'||res.source==='catalog') {
       openBarcodeProduct({ barcode: code, product: res.product, hint: t('scan.fromCatalog') }, onCancel, onSaved);
       return;
     }
@@ -2676,11 +2708,10 @@
         .then(function (s) {
           if (closed) { s.getTracks().forEach(function (tr) { tr.stop(); }); return; }
           stream = s;
-          torch.attach(s.getVideoTracks()[0]);
           video.srcObject = s;
           video.setAttribute('playsinline', 'true');
           var p = video.play();
-          return Promise.resolve(p).then(function(){if(closed)return;applyAdvancedCamera();startLoop();});
+          return Promise.resolve(p).then(function(){if(closed)return;torch.attach(s.getVideoTracks()[0]);applyAdvancedCamera();startLoop();});
         })
         .catch(function (err) {
           if (closed) return;
@@ -2820,7 +2851,8 @@
     if(existing){openAddUnits(existing,onCancel,onSaved);return;}
     openForm(null,{review:true,loadBarcodePhoto:true,onCancel:onCancel,onSaved:onSaved,prefill:{
       barcode:barcode,name:product.he||product.name||'',nameHe:product.he||null,nameEn:product.name||null,
-      categoryId:product.categoryId||'other',unit:'pack',quantity:1,
+      categoryId:product.categoryId||'other',unit:product.source==='user'&&UNITS.indexOf(product.unit)>=0?product.unit:'pack',quantity:1,
+      packageSize:product.packageSize||Home.packageSize(product.size),dataSource:product.dataSource,
       unitPriceAgorot:product.unitPriceAgorot,
       location:Home.scanLocation(product),locationSource:product.locationSource,
       emoji:product.emoji||null,imageFull:product.image||null,imageUrl:product.imageUrl||null

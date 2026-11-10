@@ -10,7 +10,7 @@ offline and **auto-updates** whenever a new version is deployed.
 
 **Live app:** <https://amordechai-dn.github.io/HomeStock/>
 
-**Current version:** `v4.5.30`
+**Current version:** `v4.5.31`
 
 **Repository:** <https://github.com/amordechai-dn/HomeStock>
 
@@ -288,7 +288,7 @@ all PNG sizes use a forest/sage tile. Maskable icons keep the mark inside their
 safe zone. Regenerate every format with `node tools/generate-icons.js`.
 
 
-## Household workflow — v4.5.30
+## Household workflow — v4.5.31
 
 - Phone-first list default, optional remembered card layout; finished stock offers adding to shopping.
 - Legacy items are normalized lazily into one batch using their recorded quantity/date. No fabricated dates or automatic conversion of legacy kilograms/liters into packages. Updates persist batches; existing financial history stays intact.
@@ -303,7 +303,7 @@ safe zone. Regenerate every format with `node tools/generate-icons.js`.
 Additional tests: `node tools/packages-test.js`, `node tools/pwa-idle-test.js`, and with jsdom available `node tools/household-v4-test.cjs`. The full isolated 90-product QA matrix is still available in `tools/full-qa.cjs`.
 
 
-## Separate profiles — v4.5.30
+## Separate profiles — v4.5.31
 
 First opening offers אבירז / סיגל, with no authentication. The selection is remembered and can be changed in Settings. Local inventory, shopping, expenses, profile and layout preferences are scoped independently. The original household identifier and data repository remain unchanged. Sigal starts empty and uses HomeStock-data-sigal if connected later. Sync credentials are scoped to repository and profile; legacy credentials are migrated only to the original household. Switching stores the next selection and reloads before changing the database scope, keeping in-flight work bound to its previous household.
 
@@ -312,9 +312,15 @@ This picker is a convenience boundary, not access control. Anyone on a connected
 Regression test: `NODE_PATH=/path/to/jsdom/node_modules node tools/profiles-test.cjs`.
 
 
-## Single-product scanner — v4.5.30
+## Single-product scanner — v4.5.31
 
 Navigation has four pages: inventory, shopping, expenses and settings. Barcode scanning opens only through Add product → Scan barcode, as a camera overlay without changing pages. One detected code stops the camera and opens the shared product editor. Multi-product scanning and manual barcode entry were removed. Camera-unavailable states offer ordinary manual product entry.
 
 
-Shopping photos (v4.5.30): shopping rows display a saved photo or a matching inventory photo; the compact shopping editor supports capture/gallery/removal. Purchased new inventory inherits the shopping photo. Shared image sync/GC includes both inventory and shopping, and upload receipts are scoped to repository to avoid skipping a photo in another household.
+Shopping photos (v4.5.31): shopping rows display a saved photo or a matching inventory photo; the compact shopping editor supports capture/gallery/removal. Purchased new inventory inherits the shopping photo. Shared image sync/GC includes both inventory and shopping, and upload receipts are scoped to repository to avoid skipping a photo in another household.
+
+## Israeli barcode fallback catalog
+
+`data/israeli-products.json` contains an attributed snapshot of 1,573 product barcode/name/package records from [PriceIL](https://priceil.dev/developers), fetched through its public anonymous API. It supplements Open Food Facts when a product or package size is missing. This is a limited snapshot, not the provider's full catalog. No prices, product images, credentials, or household data are included.
+
+Refresh manually with `python3 tools/update-israeli-products.py` (requires curl). The script respects the documented anonymous request limit. Package contents such as 100 g are separate from the stock count of one package.

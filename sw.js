@@ -1,6 +1,6 @@
 /* Service worker: precache + cache-first, offline-capable, self-updating.
    Bump VERSION on every deploy to trigger an update for installed PWAs. */
-var VERSION = 'v4.5.30';
+var VERSION = 'v4.5.31';
 var CACHE_PREFIX = 'homestock:' + self.registration.scope + ':';
 var CACHE = CACHE_PREFIX + VERSION;
 
@@ -35,6 +35,7 @@ var ASSETS = [
   // resolves from cache offline, but it is NOT on the startup/parse path.
   './vendor/zxing.min.js',
   './data/foods.js',
+  './data/israeli-products.json',
   './manifest.webmanifest',
   './icons/icon-16.png',
   './icons/icon-32.png',

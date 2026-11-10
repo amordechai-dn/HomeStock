@@ -13,6 +13,18 @@
     items.forEach(function(item){var room=result.rooms[space(item)];room.total++;if(attention(item)){room.attention++;result.attention++;}if(state(item)==='out'){room.out++;result.out++;}});
     return result;
   }
+  function packageSize(raw,unit){
+    var value=String(raw||'').trim();
+    if(!value)return null;
+    if(unit)value=value+' '+String(unit).trim();
+    value=value.replace(/[״"]/g,'').replace(/\s+/g,' ');
+    var match=value.match(/^(\d+(?:[.,]\d+)?)\s*(kg|קג|קילוגרם|g|gr|גרם|גר|ml|מל|מיליליטר|l|ליטר)$/i);
+    if(match){var n=Number(match[1].replace(',','.'));if(!Number.isFinite(n)||n<=0||n>1000000)return null;
+      var key=match[2].toLowerCase(),label=/^(kg|קג|קילוגרם)$/.test(key)?'ק״ג':/^(g|gr|גרם|גר)$/.test(key)?'גרם':/^(ml|מל|מיליליטר)$/.test(key)?'מ״ל':'ליטר';
+      return String(n)+' '+label;
+    }
+    return !unit&&/[0-9]/.test(value)&&/(?:kg|gr?|ml|\bl\b|גרם|גר|קג|מל|ליטר)/i.test(value)?value.slice(0,80):null;
+  }
   // A reviewable storage suggestion; previously saved placement always wins.
   function scanLocation(product){
     product=product||{};
@@ -145,5 +157,5 @@
     }else date.setDate(date.getDate()+Number(value));
     return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
   }
-  root.HomeModel={shoppingCoverage:shoppingCoverage,scanLocation:scanLocation,comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  root.HomeModel={packageSize:packageSize,shoppingCoverage:shoppingCoverage,scanLocation:scanLocation,comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);

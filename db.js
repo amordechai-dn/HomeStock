@@ -210,6 +210,7 @@
       categoryId: input.categoryId || 'other',
       location: input.location || 'Fridge',
       locationSource:input.locationSource||null,
+      packageSize:input.packageSize||null,dataSource:input.dataSource||null,
       note: input.note || null,
       expiryDate:input.noExpiry?null:input.expiryDate||null,
       noExpiry:!!input.noExpiry,

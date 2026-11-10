@@ -109,3 +109,6 @@ assert.equal(M.shoppingCoverage([cracker],[{...plannedCracker,name:'CRACKERS'}])
 assert.equal(M.shoppingCoverage([cracker],[{...plannedCracker,name:'קרקרים אחרים'}]).length,0);
 assert.equal(plannedCracker.stockReviewKeep,undefined,'coverage never mutates the shopping record');
 console.log('PASS shopping coverage: target threshold, same-unit/name matching, keep acknowledgement and invalidation, no automatic deletion');
+
+for(const [raw,unit,wanted] of [['200 g',null,'200 גרם'],['100.000','גרם','100 גרם'],['1L',null,'1 ליטר'],['500 מ״ל',null,'500 מ״ל'],['0.5 kg',null,'0.5 ק״ג'],['6 x 125g',null,'6 x 125g'],['100.000',null,null],['',null,null]])assert.equal(M.packageSize(raw,unit),wanted);
+console.log('PASS package contents remain separate from stock count, normalized g/kg/ml/L, multipacks retained and unitless quantities not invented');
