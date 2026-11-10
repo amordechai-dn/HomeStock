@@ -1357,7 +1357,7 @@
       h('button',{class:'shopping-item-open',type:'button','aria-label':'עריכת '+itemName(shop),onclick:function(){openShoppingForm(shop);}},
         itemThumb(shop.imageHash===undefined?(findInventoryByKey(shopKey(shop))||shop):shop),
         h('span',{class:'shopping-identity'},h('strong',{class:'card-name',dir:'auto',text:itemName(shop)}),
-          h('span',{class:'card-meta',text:t('categories.'+(shop.categoryId||'other'))})),uiIcon('edit')),
+          h('span',{class:'card-meta',text:unit})),uiIcon('edit')),
       h('div',{class:'shopping-quantity'},h('div',{class:'shopping-step',role:'group','aria-label':'כמות '+itemName(shop)},minus,h('span',{class:'shopping-qty-value',text:formatQty(quantity)}),plus),h('span',{class:'shopping-unit',text:unit})),
       h('div',{class:'shopping-line-price'},h('strong',{dir:'auto',text:known?formatMoney(purchaseAmount(quantity,shop.unitPriceAgorot)):'—'}),
         h('span',{text:known?formatMoney(shop.unitPriceAgorot)+' ל'+unit:'ללא מחיר'})),
