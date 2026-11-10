@@ -23,7 +23,7 @@ with sync_playwright() as p:
   row.locator('.shopping-remove').click();page.wait_for_function("!document.querySelector('[data-shopping-id=qa-milk]')");page.locator('.toast-undo').click();page.wait_for_selector('[data-shopping-id="qa-milk"]')
   row.locator('.shopping-buy').click();page.wait_for_selector('.purchase-review');page.locator('.purchase-review .btn.cancel').click();assert page.locator('[data-shopping-id="qa-milk"]').count()==1
   page.screenshot(path=f'/tmp/homestock-shopping-{width}.png',full_page=True)
-  row.locator('.shopping-buy').click();page.locator('.purchase-review .btn.save').click();page.wait_for_function("!document.querySelector('[data-shopping-id=qa-milk]')");assert page.locator('.shopping-bought').count()==1
+  row.locator('.shopping-buy').click();page.locator('.purchase-review .btn.save').click();page.wait_for_function("!document.querySelector('[data-shopping-id=qa-milk]')");assert page.locator('.shopping-bought').count()==0
   result=page.evaluate("async()=>({items:await PantryDB.getAll(),shopping:await PantryDB.getAllShopping(),log:PantryDB.getMonthlyLog()})")
   assert len(result['items'])==1 and result['items'][0]['quantity']==3
   assert sum(e['amountAgorot'] for m in result['log'].values() for e in m.get('expenses',[]))==1950

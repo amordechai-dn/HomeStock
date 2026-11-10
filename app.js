@@ -1226,16 +1226,6 @@
       container.appendChild(listWrap);
     }
 
-    var bought=shoppingItems.filter(function(item){return item.purchased;});
-    if(bought.length){
-      var archive=h('details',{class:'shopping-bought'},h('summary',{text:'נקנו ('+bought.length+')'}));
-      bought.forEach(function(item){archive.appendChild(h('div',{class:'shopping-bought-row'},
-        h('span',{'aria-hidden':'true',text:'✓'}),
-        h('span',{dir:'auto',text:itemName(item)}),
-        h('span',{text:formatQty(item.quantity)+' '+t('units.'+(item.unit||'pcs'))})));});
-      container.appendChild(archive);
-    }
-
     if (suggestions.length) {
       container.appendChild(
         h('div', { class: 'shopping-suggest-head' },
