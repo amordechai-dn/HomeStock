@@ -1640,7 +1640,11 @@
     var expiring=items.filter(function(item){var status=Home.expiry(item);return item.quantity>0&&status&&status.urgent;}).sort(function(a,b){return String(a.expiryDate).localeCompare(String(b.expiryDate));});
     var plan=Home.shoppingPlan(items,shoppingItems),shopping=activeShopping();
     var page=h('main',{class:'kitchen-workspace home-overview',id:'main-content',tabindex:'-1'});
-    page.appendChild(h('header',{class:'home-heading'},h('div',{},h('h1',{text:'בית'}),h('time',{text:new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'}).format(new Date())})),
+    var greetingName=window.CurrentUser&&window.CurrentUser.id()==='sigal'?'סיגל':'אבירז';
+    var headingDate=new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long',timeZone:'Asia/Jerusalem'}).format(new Date());
+    page.appendChild(h('header',{class:'home-heading'},h('div',{class:'home-heading-copy'},
+      h('p',{class:'home-greeting'},h('span',{class:'home-greeting-name',text:'שלום '+greetingName}),h('span',{'aria-hidden':'true',text:' — '}),h('time',{text:headingDate})),
+      h('div',{class:'home-heading-summary'},h('h1',{text:'בית'}),h('span',{'aria-hidden':'true',text:' — '}),h('p',{text:productCount(summary.total)+' מתוכם '+summary.attention+' צריכים השלמה'}))),
       actionButton('הוספת מוצר','plus','kitchen-button primary header-add',openProductEntry)));
     function stock(filter,space){stockFilter=filter||'all';stockSpace=space||'all';currentView='stock';renderStockTable();window.scrollTo({top:0,behavior:'auto'});}
     var metrics=h('div',{class:'home-metrics','aria-label':'מצב הבית'});

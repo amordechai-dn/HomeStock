@@ -1,6 +1,6 @@
 /* Service worker: precache + cache-first, offline-capable, self-updating.
    Bump VERSION on every deploy to trigger an update for installed PWAs. */
-var VERSION = 'v4.5.14';
+var VERSION = 'v4.5.15';
 var CACHE_PREFIX = 'homestock:' + self.registration.scope + ':';
 var CACHE = CACHE_PREFIX + VERSION;
 

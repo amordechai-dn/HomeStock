@@ -10,6 +10,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  const db=w.PantryDB,today=w.HomeModel.expiryPreset(0);
  for(const row of [{name:'חלב',location:'Fridge',quantity:1,desiredAmount:3,expiryDate:today},{name:'אורז',location:'Pantry',quantity:0,desiredAmount:2},{name:'סבון',location:'Shower',quantity:2},{name:'נייר',location:'Toilet',quantity:1},{name:'קפוא',location:'Freezer',quantity:1},{name:'ציוד',location:'House',quantity:1}])await db.create(Object.assign({unit:'pack',categoryId:'other'},row));
  w.App.start();await wait();
+ assert.equal(w.document.querySelector('.home-heading-summary p').textContent,'6 מוצרים מתוכם 2 צריכים השלמה');assert.equal(w.document.querySelector('.home-greeting-name').textContent,'שלום אבירז');assert(w.document.querySelector('.home-greeting time').textContent);
  assert.deepEqual([...w.document.querySelectorAll('.home-metric strong')].map(n=>n.textContent),['6','2','1','0']);
  assert.equal(w.document.querySelectorAll('.home-status-section')[0].querySelectorAll('.home-alert-row').length,2);
  assert.equal(w.document.querySelectorAll('.home-status-section')[1].querySelectorAll('.home-alert-row').length,1);
