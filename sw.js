@@ -1,6 +1,6 @@
 /* Service worker: precache + cache-first, offline-capable, self-updating.
    Bump VERSION on every deploy to trigger an update for installed PWAs. */
-var VERSION = 'v4.5.33';
+var VERSION = 'v4.5.34';
 var CACHE_PREFIX = 'homestock:' + self.registration.scope + ':';
 var CACHE = CACHE_PREFIX + VERSION;
 
@@ -114,7 +114,7 @@ self.addEventListener('message', function (event) {
 
 self.addEventListener('push',function(event){
   var data={};try{data=event.data?event.data.json():{};}catch(error){}
-  event.waitUntil(self.registration.showNotification('הום סטוק — תוקף היום',{
+  event.waitUntil(self.registration.showNotification('HomeStock — תוקף היום',{
     body:typeof data.body==='string'?data.body.slice(0,300):'בדקו את תאריכי התפוגה במלאי.',
     tag:'homestock-expiry-'+(data.date||''),icon:new URL('./icons/icon-192.png',self.registration.scope).href,
     data:{url:new URL('./#/inventory',self.registration.scope).href}

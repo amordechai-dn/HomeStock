@@ -128,10 +128,10 @@ write('icon-maskable-512.png', render(512, { maskable: true }));
 
 // Vector assets use exactly the same paths as all PNG sizes and the UI.
 function vector(name,color) {
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="הום סטוק" style="color:'+color+'">'+Brand.pathMarkup+'</svg>\n';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HomeStock" style="color:'+color+'">'+Brand.pathMarkup+'</svg>\n';
   fs.writeFileSync(path.join(OUT_DIR,name),svg);
 }
 vector('logo-mark.svg','#315f45');
 vector('logo-mark-light.svg','#b9d7bd');
-const tile='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="הום סטוק"><rect width="64" height="64" rx="14" fill="#315f45"/><g transform="translate(6.4 6.4) scale(.8)" style="color:#e0e6d9">'+Brand.pathMarkup+'</g></svg>\n';
+const tile='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HomeStock"><rect width="64" height="64" rx="14" fill="#315f45"/><g transform="translate(6.4 6.4) scale(.8)" style="color:#e0e6d9">'+Brand.pathMarkup+'</g></svg>\n';
 fs.writeFileSync(path.join(OUT_DIR,'icon.svg'),tile);

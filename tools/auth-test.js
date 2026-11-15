@@ -297,12 +297,12 @@ console.log('PASS scanned product names: Pesek Zman, branded snacks, wafers and 
     Object.keys(obj).forEach(function(key){
       var value=obj[key];
       if(value && typeof value === 'object') assertHebrewStrings(value);
-      else ok('Hebrew interface string: '+key, !/[a-z]/i.test(String(value).replace(/{{[^}]+}}/g,'')));
+      else ok('Hebrew interface string: '+key, !/[a-z]/i.test(String(value).replace(/{{[^}]+}}/g,'').replace(/HomeStock/g,'')));
     });
   }
   assertHebrewStrings(dicts.he);
   ok('missing translations never leak English keys', I18N.t('missing.translation') === 'טקסט לא זמין');
-  ok('app name is Hebrew', I18N.t('app.title') === 'הום סטוק');
+  ok('app name is HomeStock', I18N.t('app.title') === 'HomeStock');
   ok('known imported catalog names display in Hebrew', AppI.localName({name:'Milk'}) === 'חלב');
   ok('custom product names are preserved', AppI.localName({name:'My custom product'}) === 'My custom product');
   ['a11y.close', 'a11y.increase', 'a11y.decrease'].forEach(function (k) {

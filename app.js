@@ -1602,9 +1602,9 @@
   }
   function renderNavigation() {
     var nav = h('nav', { class: 'kitchen-nav', 'aria-label': 'ניווט ראשי' });
-    nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'הום סטוק — בית'},
+    nav.appendChild(h('a', {class:'brand', href:'./', 'aria-label':'HomeStock — בית'},
       h('span',{class:'brand-mark','aria-hidden':'true',html:window.HomeStockBrand.svg()}),
-      h('span',{class:'brand-word',dir:'rtl',text:'הום סטוק'})));
+      h('span',{class:'brand-word',dir:'ltr',text:'HomeStock'})));
     nav.appendChild(h('a',{class:'skip-link',href:'#main-content',text:'דילוג לתוכן'}));
     var links = h('div', {class:'nav-links'});
     links.appendChild(actionButton('בית','house','nav-link' + (currentView === 'inventory' ? ' active':''),function(){
