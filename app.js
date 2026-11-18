@@ -1034,11 +1034,14 @@
   function normName(s) {
     return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
   }
+  var shoppingNameAliases=null;
   function shopKey(rec) {
-    var label=(rec&&(rec.nameHe||rec.name||rec.nameEn))||'',key=Home.nameKey(label);
-    var match=FOODS.find(function(food){return [food.name,food.he].concat(food.aliases||[]).some(function(alias){return Home.nameKey(alias)===key;});});
-    if(match)label=match.he||label;
-    return Home.nameKey(label);
+    if(!shoppingNameAliases){
+      shoppingNameAliases=Object.create(null);
+      FOODS.forEach(function(food){var canonical=Home.nameKey(food.he||food.name);[food.name,food.he].concat(food.aliases||[]).forEach(function(alias){var key=Home.nameKey(alias);if(key&&!shoppingNameAliases[key])shoppingNameAliases[key]=canonical;});});
+    }
+    var key=Home.nameKey(rec&&(rec.nameHe||rec.name||rec.nameEn));
+    return shoppingNameAliases[key]||key;
   }
   // Keep a durable receipt before removing duplicates so an interrupted cleanup
   // or an older synced copy cannot add its quantity a second time.
@@ -1070,10 +1073,9 @@
   var shoppingWrites=Promise.resolve();
   function queueShoppingWrite(task){var run=shoppingWrites.catch(function(){}).then(task);shoppingWrites=run;return run;}
   function activeShopping() {
-    return shoppingItems.filter(function (x) { return !x.purchased; }).sort(function(a,b){
-      function source(row){return items.find(function(item){return shopKey(item)===shopKey(row)&&(item.unit||'pcs')===(row.unit||'pcs');})||row;}
-      return Home.comparePriority(source(a),source(b));
-    });
+    var sources=Object.create(null);
+    items.forEach(function(item){var key=shopKey(item)+'|'+(item.unit||'pcs');if(!sources[key])sources[key]=item;});
+    return shoppingItems.filter(function(row){return !row.purchased;}).map(function(row){return {row:row,source:sources[shopKey(row)+'|'+(row.unit||'pcs')]||row};}).sort(function(a,b){return Home.comparePriority(a.source,b.source);}).map(function(entry){return entry.row;});
   }
   function findActiveShoppingByKey(key,unit) {
     for (var i = 0; i < shoppingItems.length; i++) {
@@ -1581,35 +1583,17 @@
 
   var pageTransition=null,mobileTransition=null,mobileNavigationId=0;
   function transitionPage(action){
-    var reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(window.matchMedia('(max-width:1023px)').matches&&!reduced){
-      var id=++mobileNavigationId;
-      if(mobileTransition)mobileTransition.cancel();
-      var previous=document.getElementById('main-content');
-      if(!previous||!previous.animate){action();return;}
-      var leave=previous.animate([{opacity:1},{opacity:.82}],{duration:65,easing:'ease-out',fill:'forwards'});
-      mobileTransition=leave;
-      leave.finished.catch(function(){}).then(function(){
-        if(id!==mobileNavigationId)return;
-        try{
-          action();
-          var next=document.getElementById('main-content');
-          leave.cancel();
-          if(next&&next.animate){
-            var enter=next.animate([{opacity:.82},{opacity:1}],{duration:145,easing:'ease-out'});
-            mobileTransition=enter;
-            enter.finished.catch(function(){}).then(function(){if(id===mobileNavigationId)mobileTransition=null;});
-          }else mobileTransition=null;
-        }catch(error){leave.cancel();mobileTransition=null;throw error;}
-      });
-      return;
-    }
-    if(!document.startViewTransition||window.matchMedia('(prefers-reduced-motion: reduce)').matches){action();return;}
-    if(pageTransition)pageTransition.skipTransition();
-    var transition=document.startViewTransition(function(){action();});
-    pageTransition=transition;
-    transition.ready.catch(function(){});
-    transition.finished.catch(function(){}).then(function(){if(pageTransition===transition)pageTransition=null;});
+    ++mobileNavigationId;
+    if(mobileTransition){mobileTransition.cancel();mobileTransition=null;}
+    if(pageTransition){pageTransition.skipTransition();pageTransition=null;}
+    // Commit navigation in the click itself. Never queue a route behind an
+    // exit animation or a browser snapshot of the previous page.
+    action();
+    var next=document.getElementById('main-content');
+    if(!next||!next.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    var enter=next.animate([{opacity:.94},{opacity:1}],{duration:110,easing:'ease-out'});
+    mobileTransition=enter;
+    enter.finished.catch(function(){}).then(function(){if(mobileTransition===enter)mobileTransition=null;});
   }
   function actionButton(label, icon, cls, action) {
     return h('button', { type: 'button', class: cls, 'aria-label':label, onclick: function(event){
@@ -4226,21 +4210,17 @@
     else if (mqWide.addListener) mqWide.addListener(onChange); // older Safari
   }
 
+  var pageWatcherStarted=false;
   function watchPageTransitions(){
     var host=document.getElementById('root');
-    if(!host||typeof MutationObserver==='undefined')return;
-    var lastView=null,animation=null;
+    if(pageWatcherStarted||!host||typeof MutationObserver==='undefined')return;
+    pageWatcherStarted=true;
+    var lastView=null;
     new MutationObserver(function(){
       var page=host.querySelector('#main-content');
       if(!page||lastView===currentView)return;
       var previous=lastView;lastView=currentView;
-      if(animation){animation.cancel();animation=null;}
       if(previous!==null)window.scrollTo({top:history.state&&history.state.scrollY||0,behavior:'instant'});
-      if(pageTransition||mobileTransition||previous===null||!page.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-      animation=page.animate([
-        {opacity:.65},
-        {opacity:1}
-      ],{duration:140,easing:'ease-out'});
     }).observe(host,{childList:true});
   }
   function start() {
