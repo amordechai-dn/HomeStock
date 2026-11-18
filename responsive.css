@@ -393,3 +393,5 @@ body :is(.sheet-close,.editor-delete,.stock-delete,.shopping-remove,.expense-rem
  .stock-workspace .stock-cards .card-meta{font-size:13px}
 }
 @media(max-width:350px){.shopping-workspace .shopping-row{padding:10px;gap:8px 6px;grid-template-columns:116px minmax(0,1fr) 64px}.shopping-workspace .shopping-row .shopping-step .step-btn{width:42px;min-width:42px}.shopping-workspace .shopping-row .shopping-line-price strong{font-size:14px}}
+/* Out-of-stock replaces the finished action with a clear red status. */
+.stock-workspace .item-finished:disabled{color:#a53232;background:#fff0ef;border:1px solid #e8b7b3;opacity:1;cursor:default}
