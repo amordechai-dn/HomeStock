@@ -846,7 +846,7 @@
         return window.PantryDB.getAllShopping();
       })
       .then(function (shop) {
-        shoppingItems = shop || [];
+        return reconcileShopping(shop || []).then(function(rows){shoppingItems=rows;});
       })
       .then(function () {
         // Hydrate the in-memory image cache so cards render synchronously.
@@ -1035,10 +1035,40 @@
     return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
   }
   function shopKey(rec) {
-    var label=(rec&&(rec.nameHe||rec.name||rec.nameEn))||'',match=foodMatch(label);
-    if(match&&scoreFood(match,String(label).trim().toLowerCase())===0)label=match.he||label;
+    var label=(rec&&(rec.nameHe||rec.name||rec.nameEn))||'',key=Home.nameKey(label);
+    var match=FOODS.find(function(food){return [food.name,food.he].concat(food.aliases||[]).some(function(alias){return Home.nameKey(alias)===key;});});
+    if(match)label=match.he||label;
     return Home.nameKey(label);
   }
+  // Keep a durable receipt before removing duplicates so an interrupted cleanup
+  // or an older synced copy cannot add its quantity a second time.
+  function reconcileShopping(rows){
+    var groups=Object.create(null),result=[],jobs=[];
+    rows.slice().sort(function(a,b){return String(a.id).localeCompare(String(b.id));}).forEach(function(row){
+      var key=shopKey(row)+'|'+(row.unit||'pcs');
+      if(row.purchased||!shopKey(row)){result.push(row);return;}
+      (groups[key]||(groups[key]=[])).push(row);
+    });
+    Object.keys(groups).forEach(function(key){
+      var group=groups[key];if(group.length===1){result.push(group[0]);return;}
+      // Prefer an existing merge receipt over a reappearing source record.
+      group.sort(function(a,b){return (b.mergedShoppingIds||[]).length-(a.mergedShoppingIds||[]).length||String(a.id).localeCompare(String(b.id));});
+      var merged=Object.assign({},group[0]),seen=new Set([merged.id].concat(merged.mergedShoppingIds||[])),notes=[merged.note].filter(Boolean);
+      group.slice(1).forEach(function(row){
+        if(!seen.has(row.id))merged.quantity=(Number(merged.quantity)||1)+(Number(row.quantity)||1);
+        seen.add(row.id);(row.mergedShoppingIds||[]).forEach(function(id){seen.add(id);});
+        ['imageHash','nameHe','nameEn','barcode','packageSize','unitPriceAgorot'].forEach(function(field){if(merged[field]==null&&row[field]!=null)merged[field]=row[field];});
+        if((!merged.categoryId||merged.categoryId==='other')&&row.categoryId)merged.categoryId=row.categoryId;
+        if(row.note&&notes.indexOf(row.note)<0)notes.push(row.note);
+      });
+      merged.note=notes.join(' · ')||null;merged.mergedShoppingIds=Array.from(seen).filter(function(id){return id!==merged.id;}).sort();delete merged.stockReviewKeep;
+      result.push(merged);
+      jobs.push(function(){return window.PantryDB.putShopping(merged).then(function(){return group.slice(1).reduce(function(chain,row){return chain.then(function(){return window.PantryDB.removeShopping(row.id);});},Promise.resolve());});});
+    });
+    return jobs.reduce(function(chain,job){return chain.then(job);},Promise.resolve()).then(function(){return result;});
+  }
+  var shoppingWrites=Promise.resolve();
+  function queueShoppingWrite(task){var run=shoppingWrites.catch(function(){}).then(task);shoppingWrites=run;return run;}
   function activeShopping() {
     return shoppingItems.filter(function (x) { return !x.purchased; }).sort(function(a,b){
       function source(row){return items.find(function(item){return shopKey(item)===shopKey(row)&&(item.unit||'pcs')===(row.unit||'pcs');})||row;}
@@ -1076,6 +1106,9 @@
   // modifies an inventory item. Adding an existing (active) entry bumps its
   // needed quantity instead of duplicating.
   function addToShoppingList(input) {
+    return queueShoppingWrite(function(){return window.PantryDB.getAllShopping().then(reconcileShopping).then(function(rows){shoppingItems=rows;return addShoppingCommitted(input);});});
+  }
+  function addShoppingCommitted(input) {
     input = input || {};
     var qty = typeof input.quantity === 'number' && input.quantity > 0 ? input.quantity : 1;
     var key = shopKey(input);
@@ -1426,7 +1459,7 @@
       var image=state.imageFull?storeImagePair({full:state.imageFull,thumb:state.imageThumb}):Promise.resolve(null);
       image.then(function(hash){
         var record=Object.assign({},existing||{},{name:name.value.trim(),nameHe:name.value.trim(),quantity:quantity,unit:unit.value,unitPriceAgorot:cost,imageHash:hash,categoryId:state.categoryId});
-        return editing?window.PantryDB.putShopping(record):addToShoppingList(record);
+        return editing?queueShoppingWrite(function(){return window.PantryDB.putShopping(record).then(function(){return window.PantryDB.getAllShopping();}).then(reconcileShopping).then(function(rows){shoppingItems=rows;return null;});}):addToShoppingList(record);
       }).then(function(saved){if(saved)upsertLocalShopping(saved);busy=false;close();refreshShopping();}).catch(function(){busy=false;save.disabled=false;error.textContent='לא ניתן לשמור כרגע. נסו שוב.';});
     }});
     var overlay=h('div',{class:'overlay center shopping-editor-overlay'},h('div',{class:'dialog shopping-editor',role:'dialog','aria-modal':'true','aria-label':editing?'עריכת מוצר לקנייה':'מוצר לקנייה'},
@@ -4267,6 +4300,8 @@
       parseLinkToken: parseLinkToken,
       syncAutoRedeem: syncAutoRedeem,
       // Shopping List (separate model) — exposed for the logic harness.
+      reconcileShopping: reconcileShopping,
+      shopKey: shopKey,
       addToShoppingList: addToShoppingList,
       purchaseShoppingItem: purchaseShoppingItem,
       removeShoppingItem: removeShoppingItem,
