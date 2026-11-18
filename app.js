@@ -2128,14 +2128,14 @@
     var quantityTitle=stock.querySelector('.editor-section-title');
     var quantityControls=stock.querySelector('.editor-stock-controls');
     var purchaseChoice=stock.querySelector('.purchase-choice');
-    var priceSection=h('section',{class:'editor-price-section'},price.element,h('div',{class:'editor-expense'},h('h3',{class:'editor-section-title',text:'הוצאה'}),purchaseChoice));
+    var priceSection=h('section',{class:'editor-price-section'},price.element,purchaseChoice);
     if(noteSection)noteSection.remove();if(packagesSection)packagesSection.remove();
     quantityTitle.textContent='כמה יש';
     var unitSection=quantityControls.querySelector('.editor-unit');
     unitSection.prepend(h('h3',{class:'editor-section-title',text:'סוג'}));
-    stock.replaceChildren(h('div',{class:'editor-amount'},quantityTitle,quantityControls.querySelector('.editor-quantity')),unitSection);
+    stock.replaceChildren(h('div',{class:'editor-amount'},quantityTitle,quantityControls.querySelector('.editor-quantity')),unitSection,targetSection);
     identity.querySelector('.editor-identity-fields').appendChild(photoSection);
-    body.replaceChildren(identity,categorySection,stock,targetSection,priceSection,expirySection,where,noteSection);
+    body.replaceChildren(identity,categorySection,stock,priceSection,where,expirySection,noteSection);
     if(packagesSection)body.appendChild(packagesSection);
     sheet.appendChild(body);
 
