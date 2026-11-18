@@ -8,6 +8,7 @@
 
   // ---- Static data ----
   var CATEGORIES = [
+    { id: 'other', emoji: '📦' },
     { id: 'produce', emoji: '🥦' },
     { id: 'fruit', emoji: '🍎' },
     { id: 'dairy', emoji: '🧀' },
@@ -39,7 +40,6 @@
     { id: 'baby', emoji: '🍼' },
     { id: 'pets', emoji: '🐾' },
     { id: 'household', emoji: '🔋' },
-    { id: 'other', emoji: '📦' },
   ];
   var SPACES = [
     { id: 'Kitchen', label: 'מטבח', icon: 'shelf', defaultLocation: 'Pantry' },
