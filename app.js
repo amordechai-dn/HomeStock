@@ -143,7 +143,7 @@
   // Enables fast start-of-word matching across both languages + synonyms.
   FOODS.forEach(function (f) {
     var terms = [f.name.toLowerCase()];
-    if (f.he) terms.push(f.he.toLowerCase());
+    if (f.he){terms.push(f.he.toLowerCase());terms.push(Home.pluralName(f.he).toLowerCase());}
     (f.aliases || []).forEach(function (a) {
       if (a) terms.push(String(a).toLowerCase());
     });
@@ -151,7 +151,7 @@
   });
 
   function foodLabel(f) {
-    return window.I18N.getLang() === 'he' && f.he ? f.he : f.name;
+    return window.I18N.getLang() === 'he' && f.he ? Home.pluralName(f.he) : f.name;
   }
 
   // ---- Language-aware naming ----
@@ -169,12 +169,12 @@
   // he/name (session + barcode + catalog).
   function localName(o) {
     if (!o) return '';
-    if (o.nameHe || o.he) return o.nameHe || o.he;
+    if (o.nameHe || o.he) return Home.pluralName(o.nameHe || o.he);
     var original = o.nameEn || o.name || '';
     var match = foodMatch(original);
     // Translate known catalog labels without rewriting a user's custom text.
-    if (match && match.he && scoreFood(match, original.trim().toLowerCase()) === 0) return match.he;
-    return original;
+    if (match && match.he && scoreFood(match, original.trim().toLowerCase()) === 0) return Home.pluralName(match.he);
+    return Home.pluralName(original);
   }
   // Alias kept expressive at call sites that operate on inventory items.
   var itemName = localName;
@@ -1035,7 +1035,9 @@
     return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
   }
   function shopKey(rec) {
-    return normName((rec && (rec.nameEn || rec.name || rec.nameHe)) || '');
+    var label=(rec&&(rec.nameHe||rec.name||rec.nameEn))||'',match=foodMatch(label);
+    if(match&&scoreFood(match,String(label).trim().toLowerCase())===0)label=match.he||label;
+    return Home.nameKey(label);
   }
   function activeShopping() {
     return shoppingItems.filter(function (x) { return !x.purchased; }).sort(function(a,b){
@@ -1076,7 +1078,7 @@
   function addToShoppingList(input) {
     input = input || {};
     var qty = typeof input.quantity === 'number' && input.quantity > 0 ? input.quantity : 1;
-    var key = normName(input.nameEn || input.name || input.nameHe || '');
+    var key = shopKey(input);
     var existing = key ? findActiveShoppingByKey(key,input.unit||'pcs') : null;
     var rec;
     if (existing) {
@@ -2138,11 +2140,11 @@
     }
     function save(){
       if(saving)return;
-      var typed=Home.normalize(nameInput.value);
+      var typed=Home.nameKey(nameInput.value);
       if(!typed){saveValidated();return;}
       setSaving(true);footerError.textContent='';
       window.PantryDB.getAll().then(function(rows){
-        var duplicate=rows.find(function(row){return (!editing||row.id!==existing.id)&&[row.name,row.nameHe,row.nameEn].some(function(value){return value&&Home.normalize(value)===typed;});});
+        var duplicate=rows.find(function(row){return (!editing||row.id!==existing.id)&&[row.name,row.nameHe,row.nameEn].some(function(value){return value&&Home.nameKey(value)===typed;});});
         setSaving(false);
         if(!duplicate){saveValidated();return;}
         nameInput.setAttribute('aria-invalid','true');

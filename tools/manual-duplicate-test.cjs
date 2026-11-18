@@ -12,5 +12,7 @@ w.App.qaEditor(null);set('שם המוצר','mIlK');w.document.querySelector('.ed
 const rice=await db.create({name:'אורז',quantity:1,unit:'pack'});w.App.qaEditor(rice);set('שם המוצר','חלב');w.document.querySelector('.editor-save').click();await wait();assert(w.document.querySelector('.duplicate-open'),'renaming cannot create a duplicate');assert.equal((await db.getItem(rice.id)).name,'אורז');w.document.querySelector('.product-editor .sheet-close').click();
 // A product created after the editor opened must also be detected.
 w.App.qaEditor(null);await db.create({name:'חדש',quantity:1,unit:'pack'});set('שם המוצר','חדש');w.document.querySelector('.editor-save').click();await wait();assert(w.document.querySelector('.duplicate-open'));assert.equal((await db.getAll()).length,3);
+w.document.querySelector('.product-editor .sheet-close').click();
+const tomato=await db.create({name:'עגבנייה',quantity:2,unit:'pack'});w.App.qaEditor(null);set('שם המוצר','עגבניות');w.document.querySelector('.editor-save').click();await wait();assert(w.document.querySelector('.duplicate-open'),'singular and plural produce names cannot create duplicates');assert.equal((await db.getItem(tomato.id)).name,'עגבנייה');assert.equal((await db.getItem(tomato.id)).quantity,2);
 w.close();console.log('PASS duplicate manual add/rename, normalized Hebrew/English aliases, stale editor check, explicit quantity addition with separate expiry batches and preserved data');
 })().catch(error=>{console.error(error);process.exit(1)});

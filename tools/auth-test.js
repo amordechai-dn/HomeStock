@@ -304,6 +304,9 @@ console.log('PASS scanned product names: Pesek Zman, branded snacks, wafers and 
   ok('missing translations never leak English keys', I18N.t('missing.translation') === 'טקסט לא זמין');
   ok('app name is HomeStock', I18N.t('app.title') === 'HomeStock');
   ok('known imported catalog names display in Hebrew', AppI.localName({name:'Milk'}) === 'חלב');
+  ok('existing Hebrew produce displays in plural', AppI.localName({nameHe:'עגבנייה'}) === 'עגבניות');
+  ok('English catalog produce displays in Hebrew plural', AppI.localName({name:'Tomato'}) === 'עגבניות');
+  ok('plural catalog input resolves original product', AppI.resolveNames('עגבניות', null, null).nameEn === 'Tomato');
   ok('custom product names are preserved', AppI.localName({name:'My custom product'}) === 'My custom product');
   ['a11y.close', 'a11y.increase', 'a11y.decrease'].forEach(function (k) {
     I18N.setLang('en'); var en = I18N.t(k);

@@ -112,3 +112,16 @@ console.log('PASS shopping coverage: target threshold, same-unit/name matching, 
 
 for(const [raw,unit,wanted] of [['200 g',null,'200 גרם'],['100.000','גרם','100 גרם'],['1L',null,'1 ליטר'],['500 מ״ל',null,'500 מ״ל'],['0.5 kg',null,'0.5 ק״ג'],['6 x 125g',null,'6 x 125g'],['100.000',null,null],['',null,null]])assert.equal(M.packageSize(raw,unit),wanted);
 console.log('PASS package contents remain separate from stock count, normalized g/kg/ml/L, multipacks retained and unitless quantities not invented');
+
+// Produce labels use familiar plurals without changing saved records or mass nouns.
+for(const [input,expected] of [['עגבנייה','עגבניות'],['מלפפון','מלפפונים'],['תפוח','תפוחים'],['תפוח אדמה','תפוחי אדמה'],['עגבניות','עגבניות'],['אורז','אורז'],['חלב','חלב'],['פטרוזיליה','פטרוזיליה'],['עגבנייה אורגנית מיוחדת','עגבנייה אורגנית מיוחדת']]) assert.equal(M.pluralName(input),expected);
+const tomato={id:'produce',name:'עגבנייה',quantity:2,desiredAmount:2,unit:'pack',location:'Fridge'};
+const originalTomato=JSON.stringify(tomato);
+assert.equal(M.name(tomato),'עגבניות');
+assert.equal(M.nameKey('עגבנייה'),M.nameKey('עגבניות'));
+assert.equal(M.select([tomato],{query:'עגבניות'}).length,1);
+assert.equal(M.shoppingCoverage([tomato],[{id:'shop-produce',name:'עגבניות',quantity:1,unit:'pack'}]).length,1);
+assert.equal(M.shoppingPlan([{...tomato,quantity:0}],[{name:'עגבניות',quantity:2,unit:'pack'}]).length,0);
+assert.equal(JSON.stringify(tomato),originalTomato);
+console.log('PASS produce plural display/search/identity/coverage with original names and quantities preserved');
+assert.equal(M.select([{...tomato,name:'עגבניות'}],{query:'עגבנייה'}).length,1);

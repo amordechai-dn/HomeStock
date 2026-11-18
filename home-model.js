@@ -3,8 +3,11 @@
   'use strict';
   var roomFor={Fridge:'Kitchen',Freezer:'Kitchen',Pantry:'Kitchen',Shower:'Bathroom',Toilet:'Bathroom',House:'House'};
   function space(item){return roomFor[item.location]||'House';}
-  function name(item){return item.nameHe||item.name||item.nameEn||'';}
+  function name(item){return pluralName(item.nameHe||item.name||item.nameEn||'');}
   function normalize(text){return String(text||'').normalize('NFKD').replace(/[\u0591-\u05c7]/g,'').toLocaleLowerCase('he').replace(/["׳״']/g,'').trim().replace(/\s+/g,' ');}
+  var producePlurals={"עגבנייה":"עגבניות","עגבניה":"עגבניות","עגבניית שרי":"עגבניות שרי","עגבנית שרי":"עגבניות שרי","מלפפון":"מלפפונים","גזר":"גזרים","בצל":"בצלים","בצל סגול":"בצלים סגולים","בצל ירוק":"בצלים ירוקים","תפוח אדמה":"תפוחי אדמה","פלפל":"פלפלים","פלפל אדום":"פלפלים אדומים","פלפל חריף":"פלפלים חריפים","חציל":"חצילים","קישוא":"קישואים","בטטה":"בטטות","סלק":"סלקים","צנון":"צנונים","לפת":"לפתות","כרוב":"כרובים","כרובית":"כרוביות","חסה":"חסות","דלעת":"דלעות","דלורית":"דלוריות","ארטישוק":"ארטישוקים","כרישה":"כרישות","תפוח":"תפוחים","תפוח ירוק":"תפוחים ירוקים","אגס":"אגסים","בננה":"בננות","תפוז":"תפוזים","קלמנטינה":"קלמנטינות","מנדרינה":"מנדרינות","לימון":"לימונים","אשכולית":"אשכוליות","אפרסק":"אפרסקים","נקטרינה":"נקטרינות","משמש":"משמשים","משמש מיובש":"משמשים מיובשים","שזיף":"שזיפים","שזיף מיובש":"שזיפים מיובשים","תמר":"תמרים","תאנה":"תאנים","דובדבן":"דובדבנים","תות שדה":"תותי שדה","רימון":"רימונים","אבטיח":"אבטיחים","מלון":"מלונים","אננס":"אננסים","אפרסמון":"אפרסמונים","פפאיה":"פפאיות","גויאבה":"גויאבות","חמוצית":"חמוציות"};
+  function pluralName(text){var original=String(text||'').trim();return producePlurals[normalize(original)]||original;}
+  function nameKey(text){return normalize(pluralName(text));}
   function state(item){return item.quantity<=0?'out':item.desiredAmount>0&&item.quantity<item.desiredAmount?'low':'ready';}
   function attention(item){return state(item)!=='ready';}
   function summary(items){
@@ -60,11 +63,11 @@
   }
   function select(items,options){
     options=options||{};
-    var query=normalize(options.query),terms=query.split(' ').filter(Boolean);
+    var query=nameKey(options.query),terms=query.split(' ').filter(Boolean);
     var rows=items.filter(function(item){
       if(!query&&options.space&&space(item)!==options.space)return false;
       if(!query&&options.location&&options.location!=='all'&&item.location!==options.location)return false;
-      var haystack=normalize([item.nameHe,item.name,item.nameEn,item.note].filter(Boolean).join(' '));
+      var haystack=normalize([item.nameHe,item.name,item.nameEn,pluralName(item.nameHe||item.name),item.note].filter(Boolean).join(' '));
       if(!terms.every(function(term){return haystack.indexOf(term)>=0;}))return false;
       if(options.filter==='attention'&&!attention(item))return false;
       if(options.filter==='out'&&state(item)!=='out')return false;
@@ -76,7 +79,7 @@
       return name(a).localeCompare(name(b),'he')||String(a.id).localeCompare(String(b.id));
     });
   }
-  function identity(row){return normalize(row.nameEn||row.name||row.nameHe)+'|'+(row.unit||'pcs');}
+  function identity(row){return nameKey(row.nameEn||row.name||row.nameHe)+'|'+(row.unit||'pcs');}
   // Top up a planned quantity instead of repeatedly increasing it. Include
   // out-of-stock items without a target, using a useful default of one unit.
   function shoppingPlan(items,shopping){
@@ -87,7 +90,7 @@
   }
   // Review only: never remove shopping entries or mutate either source.
   function shoppingCoverage(items,shopping){
-    function aliases(row){return [row.name,row.nameHe,row.nameEn].filter(Boolean).map(normalize).filter(Boolean);}
+    function aliases(row){return [row.name,row.nameHe,row.nameEn].filter(Boolean).map(nameKey).filter(Boolean);}
     return shopping.filter(function(row){return !row.purchased;}).map(function(shop){
       var names=aliases(shop),unit=shop.unit||'pcs';
       var matched=items.filter(function(item){return (item.unit||'pcs')===unit&&((item.barcode&&shop.barcode&&item.barcode===shop.barcode)||aliases(item).some(function(value){return names.indexOf(value)>=0;}));});
@@ -157,5 +160,5 @@
     }else date.setDate(date.getDate()+Number(value));
     return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
   }
-  root.HomeModel={packageSize:packageSize,shoppingCoverage:shoppingCoverage,scanLocation:scanLocation,comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
+  root.HomeModel={pluralName:pluralName,nameKey:nameKey,packageSize:packageSize,shoppingCoverage:shoppingCoverage,scanLocation:scanLocation,comparePriority:comparePriority,prioritySpace:prioritySpace,expiryPreset:expiryPreset,expiry:expiry,expenseMonths:expenseMonths,space:space,name:name,normalize:normalize,state:state,attention:attention,summary:summary,select:select,identity:identity,shoppingPlan:shoppingPlan,shoppingEstimate:shoppingEstimate,purchaseAmount:purchaseAmount,expensesBySpace:expensesBySpace};
 })(typeof window!=='undefined'?window:globalThis);
