@@ -1783,7 +1783,6 @@
     pageAddress('inventory');currentView='inventory';shoppingListEl=null;shoppingListMode=null;
     inventoryFilterButtons=[];inventoryTitle=null;cardRefs={};prepareWorkspace();
     var summary=Home.summary(items);
-    var expiring=items.filter(function(item){var status=Home.expiry(item);return item.quantity>0&&status&&status.urgent;}).sort(function(a,b){return Home.comparePriority(a,b);});
     var plan=Home.shoppingPlan(items,shoppingItems),shopping=activeShopping();
     var page=h('main',{class:'kitchen-workspace home-overview',id:'main-content',tabindex:'-1'});
     var greetingName=window.CurrentUser&&window.CurrentUser.id()==='sigal'?'סיגל':'אבירז';
@@ -1801,18 +1800,6 @@
         uiIcon(space.icon),h('strong',{text:space.label}),h('span',{text:productCount(stat.total)}),
         stat.attention?h('span',{class:'home-needs',text:stat.attention+' להשלמה'}):null));
     });page.appendChild(rooms);
-    var attention=items.filter(function(item){return Home.attention(item)||expiring.indexOf(item)>=0;}).sort(function(a,b){return Home.comparePriority(a,b);});
-    var section=h('section',{class:'home-attention','aria-label':'דורש תשומת לב'},h('div',{class:'home-section-heading'},h('h2',{text:'דורש תשומת לב'}),h('span',{text:String(attention.length)})));
-    if(!attention.length)section.appendChild(h('p',{class:'home-empty-status',text:items.length?'אין חוסרים או תוקף קרוב':'המלאי עדיין ריק'}));
-    attention.slice(0,5).forEach(function(item){
-      var details=[],expiry=Home.expiry(item);
-      if(item.quantity>0&&expiry&&expiry.urgent)details.push(expiry.label);
-      if(Home.attention(item))details.push(item.quantity<=0?'אזל':formatQty(item.quantity)+' מתוך '+formatQty(item.desiredAmount)+' '+t('units.'+item.unit));
-      section.appendChild(h('button',{type:'button',class:'home-alert-row','aria-label':'עריכת '+itemName(item),onclick:function(){openForm(item);}},itemThumb(item),
-        h('span',{},h('strong',{dir:'auto',text:itemName(item)}),h('span',{text:details.join(' · ')})),uiIcon('edit')));
-    });
-    if(attention.length)section.appendChild(h('button',{type:'button',class:'btn ghost home-see-all',text:'לכל המוצרים שדורשים טיפול',onclick:function(){stock('urgent');}}));
-    page.appendChild(section);
     var footer=h('section',{class:'home-next-actions','aria-label':'הקנייה הבאה'},
       h('div',{class:'home-shopping-status'},h('div',{},h('h2',{text:'הקנייה הבאה'}),h('span',{text:productCount(shopping.length)+' ברשימה'})),
       plan.length?actionButton('הוספת '+plan.length+' חוסרים לקניות','plus','kitchen-button secondary',function(event){addMissingToShopping(event.currentTarget);}):actionButton('פתיחת הקניות','bag','btn ghost',openShopping)));

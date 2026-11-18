@@ -12,9 +12,8 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  w.App.start();await wait();
  assert.equal(w.document.querySelector('.home-stock-summary').textContent,'6 מוצרים, מתוכם 2 צריכים השלמה');assert.equal(w.document.querySelector('.home-greeting-name').textContent,'שלום אבירז');
  assert.equal(w.document.querySelector('.home-metrics'),null,'duplicate counters removed');
- assert.equal(w.document.querySelectorAll('.home-attention .home-alert-row').length,2,'expiry and shortage on one product are shown once');
+ assert.equal(w.document.querySelector('.home-attention'),null,'attention section removed from home');
  const home=()=>[...w.document.querySelectorAll('.nav-link')].find(b=>b.getAttribute('aria-label')==='בית').click();
- w.document.querySelector('.home-see-all').click();assert.equal(w.location.hash,'#/stock');assert.equal(w.document.querySelectorAll('.stock-table tbody tr[data-item-id]').length,2);
  home();w.document.querySelectorAll('.home-room')[1].click();assert.equal(w.document.querySelectorAll('.stock-table tbody tr[data-item-id]').length,2);
  home();w.document.querySelector('.home-shopping-status .kitchen-button').click();await wait();assert.equal((await db.getAllShopping()).filter(r=>!r.purchased).length,2);assert(!w.document.querySelector('.home-shopping-status .kitchen-button'),'covered shortages are not added twice');
  assert.equal(w.document.querySelector('.home-expense'),null,'expenses stay on their own page');assert.equal((await db.getAll()).length,6);
