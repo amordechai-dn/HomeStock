@@ -376,3 +376,20 @@ body :is(.sheet-close,.editor-delete,.stock-delete,.shopping-remove,.expense-rem
  body .kitchen-nav .nav-link.active{color:var(--primary-dark);font-weight:650}
  body .kitchen-nav .nav-link:active{opacity:.72}
 }
+/* Each shopping product owns one card, including all of its controls. */
+.shopping-workspace .shopping-items{display:grid;gap:12px}
+.shopping-workspace .shopping-row{margin:0;padding:14px;border:1px solid var(--section-rule);border-radius:12px;background:#fff;box-sizing:border-box;min-width:0}
+.shopping-workspace .shopping-row>.shopping-item-open{background:transparent;outline:0;padding:4px 0}
+/* Inventory cards span their entire available row. */
+.stock-workspace .stock-cards{grid-template-columns:minmax(0,1fr);gap:12px}
+.stock-workspace .stock-cards>.card{grid-template-columns:minmax(0,1fr) 150px 100px;align-items:center;gap:16px}
+.stock-workspace .stock-cards .item-open{flex-direction:row;align-items:center;gap:12px}
+.stock-workspace .stock-cards .card-info{flex:1;min-width:0}
+@media(max-width:760px){
+ .shopping-workspace .shopping-row{padding:12px;gap:8px;grid-template-columns:120px minmax(0,1fr) 70px}
+ .stock-workspace .stock-cards>.card{grid-template-columns:minmax(0,1fr) 100px;gap:12px;padding:14px}
+ .stock-workspace .stock-cards .item-open{grid-column:1/-1}
+ .stock-workspace .stock-cards .card-name{font-size:17px}
+ .stock-workspace .stock-cards .card-meta{font-size:13px}
+}
+@media(max-width:350px){.shopping-workspace .shopping-row{padding:10px;gap:8px 6px;grid-template-columns:116px minmax(0,1fr) 64px}.shopping-workspace .shopping-row .shopping-step .step-btn{width:42px;min-width:42px}.shopping-workspace .shopping-row .shopping-line-price strong{font-size:14px}}
