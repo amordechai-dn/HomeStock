@@ -178,6 +178,9 @@
   }
   // Alias kept expressive at call sites that operate on inventory items.
   var itemName = localName;
+  function compareProducts(a,b,sourceA,sourceB){
+    return Home.comparePriority(Object.assign({},sourceA||a,{nameHe:itemName(a)}),Object.assign({},sourceB||b,{nameHe:itemName(b)}));
+  }
 
   // Given a typed/entered name plus any known bilingual pair (e.g. from a
   // catalog pick), produce the {nameEn, nameHe} to persist. When the pair is
@@ -1075,7 +1078,7 @@
   function activeShopping() {
     var sources=Object.create(null);
     items.forEach(function(item){var key=shopKey(item)+'|'+(item.unit||'pcs');if(!sources[key])sources[key]=item;});
-    return shoppingItems.filter(function(row){return !row.purchased;}).map(function(row){return {row:row,source:sources[shopKey(row)+'|'+(row.unit||'pcs')]||row};}).sort(function(a,b){return Home.comparePriority(a.source,b.source);}).map(function(entry){return entry.row;});
+    return shoppingItems.filter(function(row){return !row.purchased;}).map(function(row){return {row:row,source:sources[shopKey(row)+'|'+(row.unit||'pcs')]||row};}).sort(function(a,b){return compareProducts(a.row,b.row,a.source,b.source);}).map(function(entry){return entry.row;});
   }
   function findActiveShoppingByKey(key,unit) {
     for (var i = 0; i < shoppingItems.length; i++) {
@@ -1353,7 +1356,7 @@
     // Suggestions from inventory "to restock" not already on the list.
     var activeKeys = {};
     active.forEach(function (s) { activeKeys[shopKey(s)] = true; });
-    var suggestions=Home.shoppingPlan(items,shoppingItems).map(function(need){return Object.assign({},need.item,{missing:need.quantity});}).sort(function(a,b){return Home.comparePriority(a,b);});
+    var suggestions=Home.shoppingPlan(items,shoppingItems).map(function(need){return Object.assign({},need.item,{missing:need.quantity});}).sort(function(a,b){return compareProducts(a,b);});
 
     if (!active.length) {
       container.appendChild(
@@ -1674,7 +1677,7 @@
     var selected=Home.select(items,{query:stockQuery}).filter(function(item){return (stockSpace==='all'||Home.space(item)===stockSpace)&&(stockFilter==='all'||stockFilter==='urgent'&&(Home.attention(item)||item.quantity>0&&Home.expiry(item)&&Home.expiry(item).urgent)||stockFilter==='attention'&&Home.attention(item)||stockFilter==='expiry'&&item.quantity>0&&Home.expiry(item)&&Home.expiry(item).urgent);});
     if(stockPresentation==='cards'){
       var cards=h('section',{class:'stock-cards','aria-label':'כרטיסיות המלאי'});cardRefs={};
-      selected.slice().sort(function(a,b){return Home.comparePriority(a,b);}).forEach(function(item){var card=renderCard(item);card.setAttribute('data-item-id',item.id);cardRefs[item.id]=card;cards.appendChild(card);});
+      selected.slice().sort(function(a,b){return compareProducts(a,b);}).forEach(function(item){var card=renderCard(item);card.setAttribute('data-item-id',item.id);cardRefs[item.id]=card;cards.appendChild(card);});
       if(!selected.length)cards.appendChild(h('p',{class:'stock-empty',text:stockQuery?'לא נמצאו מוצרים התואמים לחיפוש':items.length?'אין מוצרים בתצוגה הזאת':'המלאי ריק'}));
       page.appendChild(cards);mountWorkspace(page);return;
     }
@@ -1683,7 +1686,7 @@
     ['מוצר','קטגוריה','כמה יש','סוג','כמות רצויה','מחיר ליחידה','תאריך תפוגה','איפה המוצר נמצא','איפה בדיוק','הערות',''].forEach(function(label){head.appendChild(h('th',{scope:'col',text:label}));});
     table.appendChild(h('thead',{},head));
     var rows=h('tbody',{});
-    selected.slice().sort(function(a,b){return Home.comparePriority(a,b);}).forEach(function(item){
+    selected.slice().sort(function(a,b){return compareProducts(a,b);}).forEach(function(item){
       var space=SPACES.find(function(entry){return entry.id===locationSpace(item.location);});
       var date=item.expiryDate&&!item.noExpiry?new Date(item.expiryDate+'T12:00:00').toLocaleDateString('he-IL'):'—';
       var row=h('tr',{'data-item-id':item.id},h('th',{scope:'row'},h('button',{type:'button',class:'stock-product','aria-label':'עריכת '+itemName(item),onclick:function(){openForm(item);}},itemThumb(item),h('span',{class:'stock-product-label'},h('span',{dir:'auto',text:itemName(item)}),item.packageSize?h('small',{text:item.packageSize+' לאריזה'}):null))));

@@ -53,13 +53,15 @@
     if(['produce','fruit','dairy','meat','bakery','grains','pasta','dry','frozen','snacks','spreads','baking','condiments','oils','drinks','hotdrinks','alcohol'].indexOf(item.categoryId)>=0)return 'Kitchen';
     return 'House';
   }
+  var hebrewNames=new Intl.Collator('he',{numeric:true,sensitivity:'base'});
+  function compareNames(a,b){return hebrewNames.compare(nameKey(name(a)),nameKey(name(b)))||String(a.id||'').localeCompare(String(b.id||''));}
   function comparePriority(a,b,today){
     function priority(item){var due=expiry(item,today);return item.quantity>0&&due&&due.urgent?0:attention(item)?1:2;}
     var delta=priority(a)-priority(b);if(delta)return delta;
     if(priority(a)===0){delta=String(a.expiryDate).localeCompare(String(b.expiryDate));if(delta)return delta;}
     if(priority(a)===1){delta=(state(a)==='out'?0:1)-(state(b)==='out'?0:1);if(delta)return delta;}
     var rooms={Kitchen:0,Bathroom:1,House:2};
-    return rooms[prioritySpace(a)]-rooms[prioritySpace(b)]||name(a).localeCompare(name(b),'he')||String(a.id||'').localeCompare(String(b.id||''));
+    return rooms[prioritySpace(a)]-rooms[prioritySpace(b)]||compareNames(a,b);
   }
   function select(items,options){
     options=options||{};
@@ -76,7 +78,7 @@
     return rows.sort(function(a,b){
       if(options.sort==='recent'){var delta=String(b.updatedAt||'').localeCompare(String(a.updatedAt||''));if(delta)return delta;}
       if(!options.sort||options.sort==='attention')return comparePriority(a,b);
-      return name(a).localeCompare(name(b),'he')||String(a.id).localeCompare(String(b.id));
+      return compareNames(a,b);
     });
   }
   function identity(row){return nameKey(row.nameEn||row.name||row.nameHe)+'|'+(row.unit||'pcs');}
