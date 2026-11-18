@@ -67,7 +67,7 @@
     var rows=items.filter(function(item){
       if(!query&&options.space&&space(item)!==options.space)return false;
       if(!query&&options.location&&options.location!=='all'&&item.location!==options.location)return false;
-      var haystack=normalize([item.nameHe,item.name,item.nameEn,pluralName(item.nameHe||item.name),item.note].filter(Boolean).join(' '));
+      var haystack=normalize([item.nameHe,item.name,item.nameEn,item.barcode,pluralName(item.nameHe||item.name),item.note].filter(Boolean).join(' '));
       if(!terms.every(function(term){return haystack.indexOf(term)>=0;}))return false;
       if(options.filter==='attention'&&!attention(item))return false;
       if(options.filter==='out'&&state(item)!=='out')return false;
