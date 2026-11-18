@@ -20,7 +20,7 @@ with sync_playwright() as p:
   for label in ['בית','מלאי','רשימת קניות','הוצאות','הגדרות']:
    page.get_by_role('button',name=label,exact=True).click();allbad+=audit(label)
   page.get_by_role('button',name='ניהול',exact=True).click();allbad+=audit('sync');page.locator('.shared-dialog .sheet-close').click()
-  page.get_by_role('button',name='מלאי',exact=True).click();page.locator('.stock-product').click();allbad+=audit('product-photo');page.locator('.editor-delete').click();allbad+=audit('delete-confirm');page.locator('.delete-confirm-overlay .cancel').click();page.locator('.product-editor .sheet-close').click()
+  page.get_by_role('button',name='מלאי',exact=True).click();page.get_by_role('button',name='טבלה',exact=True).click();page.locator('.stock-product').click();allbad+=audit('product-photo');page.locator('.editor-delete').click();allbad+=audit('delete-confirm');page.locator('.delete-confirm-overlay .cancel').click();page.locator('.product-editor .sheet-close').click()
   page.get_by_role('button',name='הוספת מוצר',exact=True).click();page.get_by_role('button',name='הוספה ידנית',exact=True).click();allbad+=audit('product-add');page.locator('.product-editor .sheet-close').click()
   page.get_by_role('button',name='רשימת קניות',exact=True).click();page.locator('.shopping-item-open').click();allbad+=audit('shopping-photo');page.locator('.shopping-editor .sheet-close').click();page.locator('.shopping-buy').click();allbad+=audit('purchase-review')
   assert not errors,errors

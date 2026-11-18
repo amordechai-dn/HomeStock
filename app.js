@@ -1506,7 +1506,7 @@
       estimate.unknown?h('p',{text:productCount(estimate.unknown)+' ללא מחיר'}):null,
       h('span',{class:'trip-count',text:productCount(estimate.count)+' לקנייה'}));
     page.appendChild(trip);
-    var list=h('div',{class:'shopping-page'});renderShoppingList(list,'page');page.appendChild(list);root.appendChild(page);
+    var list=h('div',{class:'shopping-page'});renderShoppingList(list,'page');page.appendChild(list);mountWorkspace(page);
   }
 
   // ---- Rendering (main screen) ----
@@ -1598,7 +1598,18 @@
         if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
       });
     }
-    root.replaceChildren(nav);
+    if(nav.parentNode!==root)root.prepend(nav);
+  }
+  function mountWorkspace(page){
+    var old=root.querySelector('#main-content'),same=old&&old.getAttribute('data-view')===currentView;
+    var position=same?{x:window.scrollX||0,y:window.scrollY||0}:null;
+    var regions=same?Array.prototype.map.call(old.querySelectorAll('[data-scroll-key]'),function(node){return {key:node.getAttribute('data-scroll-key'),left:node.scrollLeft,top:node.scrollTop};}):[];
+    page.setAttribute('data-view',currentView);
+    if(old)old.replaceWith(page);else root.replaceChildren(root.querySelector('.kitchen-nav'),page);
+    if(position&&!restoringNavigation){
+      regions.forEach(function(saved){var next=Array.prototype.find.call(page.querySelectorAll('[data-scroll-key]'),function(node){return node.getAttribute('data-scroll-key')===saved.key;});if(next){next.scrollLeft=saved.left;next.scrollTop=saved.top;}});
+      window.scrollTo({left:position.x,top:position.y,behavior:'instant'});
+    }
   }
   function renderNavigation() {
     var nav = h('nav', { class: 'kitchen-nav', 'aria-label': 'ניווט ראשי' });
@@ -1621,18 +1632,29 @@
     return nav;
   }
 
-  var stockSpace='all',stockFilter='all';
+  var stockSpace='all',stockFilter='all',stockPresentation='table';
   function renderStockTable(){
     if(!hasDOM())return;
-    pageAddress('stock');currentView='stock';prepareWorkspace();
+    pageAddress('stock');currentView='stock';cardRefs={};prepareWorkspace();
     var page=h('main',{class:'kitchen-workspace stock-workspace',id:'main-content',tabindex:'-1'});
     page.appendChild(h('header',{class:'kitchen-header stock-header'},h('h1',{text:'מלאי'}),
       actionButton('הוספת מוצר','plus','kitchen-button primary header-add',openProductEntry)));
     var filters=h('div',{class:'stock-filters'});
     var spaceChoice=window.HomeDropdown.create({label:'אזור בבית',value:stockSpace,options:[{value:'all',label:'כל הבית'}].concat(SPACES.map(function(space){return {value:space.id,label:space.label};})),onChange:function(value){stockSpace=value;renderStockTable();}});
     var stateChoice=window.HomeDropdown.create({label:'מצב המוצרים',value:stockFilter,options:[{value:'all',label:'כל המוצרים'},{value:'urgent',label:'דורש תשומת לב'},{value:'attention',label:'להשלמה'},{value:'expiry',label:'תוקף קרוב'}],onChange:function(value){stockFilter=value;renderStockTable();}});
-    filters.appendChild(spaceChoice.element);filters.appendChild(stateChoice.element);page.appendChild(filters);
+    filters.appendChild(spaceChoice.element);filters.appendChild(stateChoice.element);
+    var viewChoice=h('div',{class:'stock-view-switch',role:'group','aria-label':'תצוגת המלאי'});
+    [['cards','כרטיסיות'],['table','טבלה']].forEach(function(option){viewChoice.appendChild(h('button',{type:'button',class:'btn ghost','aria-pressed':String(stockPresentation===option[0]),text:option[1],onclick:function(){
+      stockPresentation=option[0];try{localStorage.setItem('homestock.stockPresentation:'+window.CurrentUser.id(),stockPresentation);}catch(error){}renderStockTable();
+    }}));});
+    filters.appendChild(viewChoice);page.appendChild(filters);
     var selected=items.filter(function(item){return (stockSpace==='all'||Home.space(item)===stockSpace)&&(stockFilter==='all'||stockFilter==='urgent'&&(Home.attention(item)||item.quantity>0&&Home.expiry(item)&&Home.expiry(item).urgent)||stockFilter==='attention'&&Home.attention(item)||stockFilter==='expiry'&&item.quantity>0&&Home.expiry(item)&&Home.expiry(item).urgent);});
+    if(stockPresentation==='cards'){
+      var cards=h('section',{class:'stock-cards','aria-label':'כרטיסיות המלאי'});cardRefs={};
+      selected.slice().sort(function(a,b){return Home.comparePriority(a,b);}).forEach(function(item){var card=renderCard(item);card.setAttribute('data-item-id',item.id);cardRefs[item.id]=card;cards.appendChild(card);});
+      if(!selected.length)cards.appendChild(h('p',{class:'stock-empty',text:items.length?'אין מוצרים בתצוגה הזאת':'המלאי ריק'}));
+      page.appendChild(cards);mountWorkspace(page);return;
+    }
     var table=h('table',{class:'stock-table'},h('caption',{class:'sr-only',text:'כל המוצרים בבית'}));
     var head=h('tr',{});
     ['מוצר','קטגוריה','כמה יש','סוג','כמות רצויה','מחיר ליחידה','תאריך תפוגה','איפה המוצר נמצא','איפה בדיוק','הערות',''].forEach(function(label){head.appendChild(h('th',{scope:'col',text:label}));});
@@ -1648,8 +1670,8 @@
     });
     if(!selected.length)rows.appendChild(h('tr',{},h('td',{colspan:'11',class:'stock-empty',text:items.length?'אין מוצרים בתצוגה הזאת':'המלאי ריק'})));
     table.appendChild(rows);
-    page.appendChild(h('div',{class:'stock-table-scroll',tabindex:'0',role:'region','aria-label':'טבלת המלאי — גלילה לרוחב'},table));
-    root.appendChild(page);
+    page.appendChild(h('div',{class:'stock-table-scroll','data-scroll-key':'stock-table',tabindex:'0',role:'region','aria-label':'טבלת המלאי — גלילה לרוחב'},table));
+    mountWorkspace(page);
   }
 
   function filteredInventory(rows, query, location, space) {
@@ -1755,7 +1777,7 @@
     var footer=h('section',{class:'home-next-actions','aria-label':'הקנייה הבאה'},
       h('div',{class:'home-shopping-status'},h('div',{},h('h2',{text:'הקנייה הבאה'}),h('span',{text:productCount(shopping.length)+' ברשימה'})),
       plan.length?actionButton('הוספת '+plan.length+' חוסרים לקניות','plus','kitchen-button secondary',function(event){addMissingToShopping(event.currentTarget);}):actionButton('פתיחת הקניות','bag','btn ghost',openShopping)));
-    page.appendChild(footer);root.appendChild(page);
+    page.appendChild(footer);mountWorkspace(page);
   }
 
   function itemById(id) {
@@ -2310,10 +2332,11 @@
       content
     );
     overlay.appendChild(dialog);
-    prepareWorkspace();root.appendChild(overlay);dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
+    dialog.removeAttribute('aria-modal');dialog.setAttribute('role','main');
     var initial = opts.month && keys.indexOf(opts.month) !== -1 ? opts.month : current;
     select.value = initial;
     renderContent(initial);
+    prepareWorkspace();mountWorkspace(overlay);
     dialog.setAttribute('tabindex','-1');dialog.focus({preventScroll:true});
   }
 
@@ -4109,12 +4132,13 @@
     content.appendChild(h('section',{class:'settings-section settings-inventory-section','aria-label':'ניהול המלאי'},h('h2',{text:'מלאי'}),
       h('button',{type:'button',class:'btn settings-delete-link',onclick:openClearInventory},uiIcon('trash'),h('span',{text:'מחיקת המלאי'}))));
     content.appendChild(h('p',{class:'settings-version',id:'version',text:'v.'+String(window.APP_VERSION||'').replace(/^v/,'')}));
-    page.appendChild(content);prepareWorkspace();root.appendChild(page);
+    page.appendChild(content);prepareWorkspace();mountWorkspace(page);
   }
 
   // ---- Auth / boot ----
   function enterApp() {
     var uid = window.CurrentUser.id();
+    try{var savedStockView=localStorage.getItem('homestock.stockPresentation:'+uid);stockPresentation=['cards','table'].indexOf(savedStockView)>=0?savedStockView:window.matchMedia('(max-width:760px)').matches?'cards':'table';}catch(error){stockPresentation='table';}
     try{inventoryPresentation=localStorage.getItem('homestock.inventoryView:'+uid)||(uid==='sigal'?'list':localStorage.getItem('homestock.inventoryView'))||'list';}catch(error){inventoryPresentation='list';}
     window.PantryDB.setUser(uid); // scope all data access to this user id
     window.I18N.setUser(uid); // load this user's language preference
