@@ -15,7 +15,14 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/stri
  assert.equal(w.document.querySelector('.home-attention'),null,'attention section removed from home');
  const home=()=>[...w.document.querySelectorAll('.nav-link')].find(b=>b.getAttribute('aria-label')==='בית').click();
  home();w.document.querySelectorAll('.home-room')[1].click();assert.equal(w.document.querySelectorAll('.stock-table tbody tr[data-item-id]').length,2);
- home();w.document.querySelector('.home-shopping-status .kitchen-button').click();await wait();assert.equal((await db.getAllShopping()).filter(r=>!r.purchased).length,2);assert(!w.document.querySelector('.home-shopping-status .kitchen-button'),'covered shortages are not added twice');
+ const before=JSON.stringify(await db.getAll());
+ await db.putShopping({name:'לחם',quantity:2,unit:'pack',unitPriceAgorot:600});await db.putShopping({name:'סבון',quantity:1,unit:'pack'});
+ const now=new Date(),key=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');db.setMonthlyLog({[key]:{expenses:[{id:'qa-purchase',amountAgorot:1800,quantity:2,name:'לחם'}]},'2026-10':{expenses:[{id:'old',amountAgorot:99999}]}});
+ w.App.start();await wait();home();
+ const sections=[...w.document.querySelectorAll('.home-status-section')];assert.deepEqual(sections.map(s=>s.querySelector('h2').textContent),['מלאי','קניות','הוצאות']);
+ const values=section=>[...section.querySelectorAll('dd')].map(el=>el.textContent);
+ assert.deepEqual(values(sections[0]),['5','2','1']);assert.equal(values(sections[1])[0],'2');assert(values(sections[1])[1].includes('12'));assert.equal(values(sections[1])[2],'1');assert(values(sections[2])[0].includes('18'));assert.equal(values(sections[2])[1],'1');
+ assert.equal(w.document.querySelector('.home-next-actions'),null);assert(!w.document.querySelector('.home-overview').textContent.includes('הקנייה הבאה'));assert(!w.document.querySelector('.home-overview').textContent.includes('פתיחת הקניות'));assert.equal(JSON.stringify(await db.getAll()),before);assert.equal((await db.getAllShopping()).length,2);
  assert.equal(w.document.querySelector('.home-expense'),null,'expenses stay on their own page');assert.equal((await db.getAll()).length,6);
- w.close();console.log('PASS home overview: empty state, cross-room counts, expiry and shortages, inventory drilldowns, idempotent shopping coverage, expenses and preserved inventory');
+ w.close();console.log('PASS home status overview: rooms, inventory, shopping partial estimate, current-month expenses, no purchase actions and unchanged records');
 })().catch(e=>{console.error(e);process.exit(1)});
