@@ -1816,11 +1816,11 @@
       h('button',{type:'button',class:'step-btn',disabled:item.quantity<=0?'disabled':null,'aria-label':'הפחתת '+itemName(item),'data-focus-key':'minus-'+item.id,onclick:function(){changeQty(item,-1);}},'−'),
       h('div',{class:'step-value'},h('span',{class:'qty',text:formatQty(item.quantity)}),h('span',{class:'qty-unit',text:unit})),
       h('button',{type:'button',class:'step-btn primary','aria-label':'הוספת '+itemName(item),'data-focus-key':'plus-'+item.id,onclick:function(){changeQty(item,1);}},'+'));
-    var label=stock==='out'?'אזל מהמלאי':stock==='low'?'נותרו '+formatQty(item.quantity)+' מתוך '+formatQty(item.desiredAmount):item.desiredAmount>0?'יעד בבית: '+formatQty(item.desiredAmount):t('categories.'+item.categoryId);
+    var label=stock==='out'?null:stock==='low'?'נותרו '+formatQty(item.quantity)+' מתוך '+formatQty(item.desiredAmount):item.desiredAmount>0?'יעד בבית: '+formatQty(item.desiredAmount):t('categories.'+item.categoryId);
     var card=h('article',{class:'card stock-'+stock},
       h('button',{type:'button',class:'item-open','aria-label':'עריכת '+itemName(item),'data-focus-key':'edit-'+item.id,onclick:function(){openForm(item);}},
         itemThumb(item),h('span',{class:'card-info'},h('span',{class:'card-name',dir:'auto',text:itemName(item)}),
-          h('span',{class:'card-meta'},h('span',{class:'stock-label',text:label}),
+          h('span',{class:'card-meta'},label?h('span',{class:'stock-label',text:label}):null,
             !item.noExpiry&&item.expiryDate?h('span',{class:'expiry-label'+(Home.expiry(item)&&Home.expiry(item).urgent?' expiry-urgent':''),text:Home.expiry(item)?Home.expiry(item).label:''}):null,
             Number.isSafeInteger(item.unitPriceAgorot)?h('span',{class:'item-price',text:formatMoney(item.unitPriceAgorot)+' / '+unit}):null))),stepper);
     card.appendChild(finishedButton(item));
@@ -1828,7 +1828,7 @@
   }
 
   function finishedButton(item){
-    return h('button',{type:'button',class:'item-finished',text:'נגמר',disabled:item.quantity<=0,onclick:function(){
+    return h('button',{type:'button',class:'item-finished',text:item.quantity<=0?'אזל מהמלאי':'נגמר',disabled:item.quantity<=0,onclick:function(){
       changeQty(item,-item.quantity).then(function(){var live=itemById(item.id);if(!live||live.quantity!==0)return;
         showToast('המוצר נגמר. להוסיף לקניות?',function(){addToShoppingList({name:item.name,nameEn:item.nameEn,nameHe:item.nameHe,quantity:Math.max(1,item.desiredAmount||1),unit:item.unit,categoryId:item.categoryId,unitPriceAgorot:item.unitPriceAgorot});},'הוספה לקניות');
       });
